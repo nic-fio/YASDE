@@ -34,7 +34,6 @@ S4 = ul([
     "<b>Memory-backed cache.</b> On the tablet used for tests " + c("~/.cache") + " lives in memory and is emptied at every reboot, so the wallpaper image saved there is lost each time (and a profile that names it then points to nothing; " + c("ph_cfg_pulisci_sfondi") + " only removes files, it does not repair the profile). "
     "To evaluate.",
     "<b>The product name and trademarks.</b> The name \"Samsung DeX\" belongs to Samsung; a non-affiliation line is present in the manuals and in the package. It is not a legal opinion.",
-    "<b>Repository and project name</b> on the hosting service are still to be decided.",
     "<b>Pairing screen hint.</b> When the phone does not announce itself on the network the screen stays at " + ui("Looking for phones on the network…") + " without saying what to check (in a live test the phone had to have its wireless debugging switched off and on). Hints after a few seconds without results were proposed, and the answer is awaited.",
 ])
 

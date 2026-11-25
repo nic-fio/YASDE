@@ -36,7 +36,11 @@ S1 = p("YASDE (“Yet Another Samsung Dex Emulator”) turns one window on your 
     ]) + \
     note("no app is installed on the phone and no root access is needed. The few things YASDE changes while it "
          "runs are put back when it closes (" + rif("What YASDE changes on the phone") + ").", "Nothing to install.") + \
-    p("The program is in English only.")
+    p("The program is in English only.") + \
+    note("YASDE is free: anyone may use it, change it and pass it on, but may not sell it. The terms are the MIT "
+         "License with the Commons Clause condition, in the file " + c("LICENSE") + " of the project. The third-party "
+         "components that come in the package keep their own licences, listed in the documentation folder of the package.",
+         "Licence.")
 
 S2 = table(["If you want to…", "Read", "Chapters"], [
     ["Install YASDE and connect the phone for the first time", "Installation and Connecting the phone", "2 - 3"],

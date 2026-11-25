@@ -693,7 +693,7 @@ Il perché del progetto vive in `notes/`, un file per argomento: `next-session.m
 
 ### 11.5 Licenza e distribuzione
 
-PolyForm Noncommercial; sorgente pubblico (source-available); un solo AppImage; nessun file `.desktop` installato.
+MIT con la condizione «Commons Clause» (decisione del committente: chiunque può usare, modificare e ridistribuire YASDE, ma non venderlo; file `LICENSE`); sorgente pubblico (source-available); un solo AppImage; nessun file `.desktop` installato.
 
 ---
 

@@ -41,8 +41,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 DATE = "November 2026"
 VERSION = re.search(r"^project\([^)]*version:\s*'([^']+)'", (ROOT / "meson.build").read_text(), re.M | re.S).group(1)
-# La licenza del progetto non è ancora decisa: finché questa costante è vuota i manuali non ne citano nessuna.
-LICENZA = ""
+# Licenza del progetto (file LICENSE nella radice): compare nel piè di pagina dei manuali. Se questa costante
+# fosse vuota i manuali non potrebbero citare nessuna licenza (lo controlla --controlla).
+LICENZA = "MIT with Commons Clause"
 NOME = "YASDE"
 SOTTOTITOLO = "YASDE — Yet Another Samsung Dex Emulator"
 AVVISO = ("Independent project, not affiliated with, endorsed by or sponsored by Samsung. "

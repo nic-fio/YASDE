@@ -29,6 +29,15 @@ Samsung and Samsung DeX are trademarks of Samsung Electronics Co., Ltd.
 The program and the public documents are in English. Source comments, internal documents
 and file names are in Italian.
 
+## Licence
+
+YASDE is free: anyone may use it, change it and pass it on, but may not sell it. The terms
+are the MIT License with the Commons Clause condition: see [LICENSE](LICENSE).
+
+The third-party components included in the AppImage (FFmpeg, GTK, the Kora icon theme and
+the others) keep their own licences; their texts and the offer of their sources are in the
+documentation folder of the package.
+
 ## Starting again from this repository
 
 Everything needed to continue the project is here; nothing lives only on a developer's

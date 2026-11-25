@@ -38,7 +38,7 @@ CONTENT = fig(
     + box(40, 124, 190, 52, "gdk-pixbuf loaders", "webp loader + cache template", "dark")
     + box(250, 124, 190, 52, "usr/lib/gio-vuoto", "empty: no GIO modules", "dark")
     + box(460, 124, 190, 52, "glib-2.0/schemas", "GTK GSettings, compiled", "dark")
-    + box(670, 124, 190, 52, "usr/share/doc/ (legal)", "copyright, source offer, lists", "navy")
+    + box(670, 124, 190, 52, "usr/share/doc/licenses/", "copyright, source offer, lists", "navy")
     + box(40, 198, 400, 46, "Left to the host system", "glibc, Vulkan, VA-API, DRM, X11, XCB, Wayland, fontconfig, PipeWire", "dark")
     + box(460, 198, 400, 46, "Not included", "full icon themes (only the Kora icons of the table), other image loaders, GIO modules, GTK themes and engines", "dark"),
     900, 284, "«FIG» — What is inside the AppImage and what is left to the system")
@@ -85,8 +85,8 @@ S5 = p("The package must contain nothing that forces the combined work under GPL
     "fetches the Kora theme by " + c("bikass") + " (" + c("github.com/bikass/kora") + ") at a fixed commit (" + c("ff8ee3ce") + "…, 19 Nov 2026) into a copy outside the repository, reused only if it is at that commit and unmodified; a failed download stops the build, never a package without icons. "
     "Only the icons named in " + c("data/icone-kora.txt") + " (104 rows, " + c("<Android package> <icon name>") + ") are converted to 128×128 PNG with a transparent background (" + c("rsvg-convert") + ", not part of the package) into " + c("usr/share/yasde/icone-kora/") + ", "
     "with an exact copy of the table as " + c("tabella.txt") + " and the SVG sources in " + c("sorgenti/") + " (real files, no links). A malformed row, an empty table, a name missing from the theme or a link leaving the theme stops the build, with the same limits as the program. "
-    "In the package's documentation folder (" + c("usr/share/doc/") + ") go the GPL-3 text of the theme and a credits file (commit, what was done, third-party marks), cited in " + c("LIST.txt") + ", " + c("README.txt") + " and " + c("SOURCE-OFFER.txt") + ". "
-    "The final check verifies the files: table, a PNG and an SVG for each name, PNG size, GPL-3 text and credits. Nothing of Kora is in the repository. The terms of YASDE itself are still to be decided; the GPL-3 applies only to these separate files.",
+    "In the package's documentation folder (" + c("usr/share/doc/licenses/") + ") go the GPL-3 text of the theme and a credits file (commit, what was done, third-party marks), cited in " + c("LIST.txt") + ", " + c("README.txt") + " and " + c("SOURCE-OFFER.txt") + ". "
+    "The final check verifies the files: table, a PNG and an SVG for each name, PNG size, GPL-3 text and credits. Nothing of Kora is in the repository. YASDE itself is under the MIT License with the Commons Clause condition (file " + c("LICENSE") + " of the repository); the GPL-3 applies only to these separate files.",
     "<b>Weather.</b> " + c("open-meteo.txt") + " (in the same documentation folder) carries the credits and terms of Open-Meteo and GeoNames data (CC BY 4.0). No certificate authority is included in the package: the program looks for the host system's (chapter 15), and the script proves, with the package's " + c("libcrypto") + ", "
     "that the same sequence loads the authorities of the container.",
     "<b>Naming.</b> The project name is YASDE. The script fails if a forbidden project name appears, in any capitalization, in file names, in our texts, in the strings of the executable or of the jar, with no exception, " + c("AppRun") + " included. The script first proves the check itself: a phrase with the forbidden name "
