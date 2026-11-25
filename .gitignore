@@ -7,3 +7,5 @@ yasde-prova.*
 !strumenti/yasde-prova.c
 __pycache__/
 .nomi-vietati
+sito/pubblico/
+rilascio/
