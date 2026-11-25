@@ -4,7 +4,7 @@ from build import c, note, p, rif, steps, table, tip, ul, warn, ui
 
 
 S1 = p("YASDE is a single file for Linux PCs with an x86-64 processor. There is nothing to install: you download "
-       "the file, make it executable and start it. The file is about 18 MB and already contains GTK 4 and the video "
+       "the file, make it executable and start it. The file is about 20 MB and already contains GTK 4 and the video "
        "libraries it needs.", lead=True) + \
     table(["Needed", "Details"], [
         ["Operating system", "Linux, 64-bit x86, with glibc 2.38 or newer, and a graphical session (X11 or Wayland)."],

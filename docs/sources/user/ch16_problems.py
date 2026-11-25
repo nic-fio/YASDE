@@ -1,6 +1,6 @@
 # Manuale utente di YASDE: capitolo 16.
 
-from build import c, key, note, p, rif, table, tip, ui, ul, warn
+from build import CONTATTO, SITO_URL, c, key, note, p, rif, table, tip, ui, ul, warn
 
 
 S1 = p("Find the symptom, read the cause, apply the fix.", lead=True) + table(["Symptom", "Cause", "What to do"], [
@@ -46,9 +46,14 @@ S4 = table(["Symptom", "Cause", "What to do"], [
     ["Files YASDE left on the phone", "The connection fell before YASDE could clean up.", "They are removed at the next start of YASDE."],
 ], "«TAB» — Problems with sound, screen, files and weather")
 
+S5 = p("For questions about YASDE and to report a problem, write to " + c(CONTATTO) + ". The project's site is " +
+       c(SITO_URL) + ".", lead=True) + \
+    p("If you can, say which YASDE version you use and, for a problem, the message YASDE showed.")
+
 CHAPTER = ("Problems and solutions", [
     ("Problems when starting", S1),
     ("Connection problems", S2),
     ("Problems with windows and apps", S3),
     ("Sound, screen, files and weather", S4),
+    ("Questions and reports", S5),
 ])

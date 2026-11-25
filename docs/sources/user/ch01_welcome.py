@@ -1,6 +1,6 @@
 # Manuale utente di YASDE: capitolo 1.
 
-from build import VERSION, arrow, box, c, fig, note, p, rif, table, text, tip, ui, ul, zone
+from build import CONTATTO, SITO_URL, VERSION, arrow, box, c, fig, note, p, rif, table, text, tip, ui, ul, zone
 
 
 SCHEMA = fig(
@@ -50,7 +50,8 @@ S2 = table(["If you want to…", "Read", "Chapters"], [
     ["Solve a problem", "Problems and solutions", "16"],
 ], "«TAB» — Where to find what you need") + \
     p("To go from the downloaded file to the first open app, follow " + rif("Pairing step by step") +
-      ". The " + rif("Glossary of terms") + " explains the less common words.")
+      ". The " + rif("Glossary of terms") + " explains the less common words. Questions and reports: " + c(CONTATTO) +
+      "; the project's site is " + c(SITO_URL) + ".")
 
 S3 = table(["Convention", "Meaning"], [
     [ui("Add widget…"), "Text that appears in the interface: buttons, menu items, labels, messages."],

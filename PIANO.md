@@ -195,3 +195,13 @@ Regole fisse (quelle già in `CLAUDE.md` non si ripetono):
 - **Non provato dal vivo:** questa AppImage col telefono vero (vedi sezione 4).
 - **In corso oggi:** ripulitura dei richiami a versioni diverse dalla 2.1 in PIANO.md, commenti e documenti interni; specifica e mockup da parte di un altro lavoro.
 - **Da fare alla ripresa:** pianificare con il committente le attività successive; manuali da tenere allineati a ogni modifica del codice (`python3 docs/sources/build.py`, poi `--controlla`); punti aperti della sezione 5.
+
+## Sito di YASDE (25 nov 2026, approvato dal committente)
+
+- **Indirizzo e contatto** (decisi dal committente): `https://yasde.nicfio.it/` e `yasde@nicfio.it`, da usare come riferimento nel sito e nella documentazione. Sono gli unici indirizzi del progetto ammessi nei file; i controlli dei manuali rifiutano ogni altra email o indirizzo web.
+- **Veste**: stesso tema e stessa struttura del sito che il committente ha indicato come modello tra i suoi (fascia blu notte, sezioni chiare e grigie alternate, pagina dei documenti e pagina della licenza). Una prima versione con un tema scuro verde-azzurro è stata scartata da lui («tema e struttura non mi piacciono»).
+- **Logo**: fornito dal committente (monitor, telefono e arco azzurro); originale e quattro ritagli in `loghi/`. Nel sito: icona + scritta «YASDE» in barra e piede, icona grande in testata, icona della scheda. L'icona dell'app non è cambiata.
+- **Contenuto**: solo ciò che dicono i manuali; schema a due apparecchi (telefono → connessione cifrata → PC); stato dichiarato («tried on one phone so far»).
+- **Scaricamenti**: il sito non ospita file del programma («l'unico posto dove deve risiedere il materiale è il repo GitHub»): i pulsanti portano agli allegati della release (AppImage, sorgenti di terze parti, `SHA256SUMS`).
+- **Come è fatto**: sorgenti in `sito/`; `sito/costruisci.py` genera `sito/pubblico/` (non registrata in git); nessuna risorsa esterna. `sito/pubblica.sh` lo copia sul server web (server passato con `YASDE_SITO_SERVER`, mai scritto nei file).
+- **Server web**: cartella `/srv/www/yasde.nicfio.it` e blocco del sito nella configurazione del server web, preparati il 25 nov 2026; record DNS `yasde.nicfio.it` e alias email `yasde@nicfio.it` creati lo stesso giorno nel pannello del fornitore del dominio.

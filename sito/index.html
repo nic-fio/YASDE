@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+{{INCLUDI:parti/testa.html}}
+<title>YASDE — Yet Another Samsung Dex Emulator: your phone's apps on your Linux desktop</title>
+<meta name="description" content="YASDE turns one window on your Linux PC into a desktop. The apps of an Android 14 or later phone open as windows inside it. One AppImage, nothing installed on the phone, free to use but not to sell.">
+<!--IF:INDIRIZZO-->
+<link rel="canonical" href="{{INDIRIZZO}}">
+<meta property="og:url" content="{{INDIRIZZO}}">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"YASDE","alternateName":"Yet Another Samsung Dex Emulator","description":"A Linux desktop in one window where the apps of an Android 14 or later phone run as windows.","applicationCategory":"UtilitiesApplication","operatingSystem":"Linux (x86-64)","softwareVersion":"{{JSON:VERSION}}","url":"{{JSON:INDIRIZZO}}",{{DOWNLOADJSON}}"license":"{{JSON:INDIRIZZO}}licence.html"}</script>
+<!--/IF-->
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="YASDE">
+<meta property="og:title" content="YASDE — Yet Another Samsung Dex Emulator">
+<meta property="og:description" content="The apps of an Android 14 or later phone as windows on a Linux desktop. One AppImage, nothing installed on the phone.">
+<meta name="twitter:card" content="summary">
+</head>
+<body>
+<div class="blu">
+{{INCLUDI:parti/testata.html}}
+  <section class="apertura" id="top">
+    <div class="largo">
+<!--IF:LOGO-->
+      <div class="logo-testata">{{LOGO_GRANDE}}</div>
+<!--/IF-->
+      <p class="occhiello">Yet Another Samsung Dex Emulator · {{VERSION}}</p>
+      <h1>Your phone's apps on <em>your Linux desktop</em></h1>
+      <p class="sotto">YASDE turns one window on your Linux PC into a desktop. The apps of your Android phone open as windows inside it, and you use them with mouse and keyboard.</p>
+      <div class="bottoni">
+        <a class="pulsante primario" href="{{URL_APPIMAGE}}">Download YASDE {{VERSION}}</a>
+        <a class="pulsante vetro-blu" href="User%20Manual.html">Read the User Manual</a>
+      </div>
+
+      <div class="schema" role="group" aria-label="The phone is connected through an encrypted connection to the Linux PC, where YASDE shows the phone's apps in one window">
+        <div class="disp"><div class="icona-d"><svg width="76" height="57" viewBox="0 0 64 48" aria-hidden="true"><rect x="22" y="2" width="20" height="44" rx="4" fill="#0e2466" stroke="currentColor" stroke-width="2"/><rect x="25" y="6" width="14" height="34" rx="1" fill="#1a7cff" opacity=".75"/></svg></div>Android 14 or later phone</div>
+        <div class="cifrato">
+          <svg class="filo" viewBox="0 0 160 10" preserveAspectRatio="none" fill="none" stroke="#5fd3ff" stroke-width="1.6" aria-hidden="true"><path d="M0 5 H160"/></svg>
+          <div class="lucchetto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Encrypted<br>connection</div>
+        </div>
+        <div class="portatile">
+          <div class="laptop"><div class="coperchio"><div class="schermo"><button type="button" data-zoom class="zoom-pieno" aria-label="Enlarge the screenshot"><img src="{{IMG:desktop.png}}" alt="The YASDE desktop: four app icons on the left, three widgets on the right and a taskbar at the bottom, on a dark teal wallpaper." width="1280" height="720"></button></div></div><div class="base"></div></div>
+          <div class="didascalia">YASDE on your Linux PC<small>The phone's apps, in a window. A screenshot taken with a demonstration phone, with invented apps and data</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="largo">
+    <div class="striscia" id="features">
+      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg></span><div><b>One file</b><span>an AppImage, nothing to install</span></div></div>
+      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span><div><b>Android 14+</b><span>standard Android only</span></div></div>
+      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><div><b>No root</b><span>nothing installed on the phone</span></div></div>
+      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><div><b>x86-64</b><span>Linux, X11 or Wayland</span></div></div>
+    </div>
+  </div>
+</div>
+
+<main id="principale">
+  <section class="sezione chiara">
+    <div class="largo due-col">
+      <div>
+        <p class="occhiello">What it does</p>
+        <h2>With YASDE you can</h2>
+        <p class="guida">YASDE is an independent project. It is designed for Android 14 or later phones of any make, using only standard Android.</p>
+        <ul class="punti-v">
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><div><b>Keep a desktop</b><span>A wallpaper, app icons and widgets, and a taskbar with a launcher. Open the phone's apps in separate windows, several at the same time.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></span><div><b>Type and paste</b><span>Type with the PC keyboard and copy and paste text in both directions.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg></span><div><b>Hear the apps</b><span>The phone's app sound plays through the PC speakers.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg></span><div><b>Notifications and status</b><span>Read the phone's notifications and see the phone's status on the PC.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg></span><div><b>Files and APKs</b><span>Send files to the phone, download files from it and install an APK.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.5"/></svg></span><div><b>Screenshots and recordings</b><span>Take screenshots and record an app's screen.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span><div><b>The real screen</b><span>Open a window that mirrors the phone's real screen.</span></div></li>
+        </ul>
+      </div>
+      <div class="in-cornice">
+        <div class="laptop"><div class="coperchio"><div class="schermo"><button type="button" data-zoom class="zoom-pieno" aria-label="Enlarge the screenshot"><img src="{{IMG:windows-snapped.png}}" alt="Two app windows snapped side by side, each with its own title bar, above the taskbar." width="1280" height="720" loading="lazy"></button></div></div><div class="base"></div></div>
+        <p class="cornice-did">Two app windows snapped side by side.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sezione grigia" id="screens">
+    <div class="largo">
+      <p class="occhiello">Screenshots</p>
+      <h2>What it looks like</h2>
+      <p class="guida">Select a picture to enlarge it. They were taken with a demonstration phone, with invented apps and data; the content inside the app windows is a placeholder.</p>
+      <div class="galleria" style="margin-top:2.2rem">
+        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:launcher.png}}" alt="The launcher open over the desktop, with a search field and a grid of the phone's apps." width="1280" height="720" loading="lazy"></button><figcaption>The launcher, with a search field and the phone's apps.</figcaption></figure>
+        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:widgets.png}}" alt="The Add widget dialog listing widgets such as clock, calendar, phone status and weather." width="1280" height="720" loading="lazy"></button><figcaption>The Add widget dialog.</figcaption></figure>
+        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:transfer.png}}" alt="The Send to the phone panel, with a drop area for files and a choice of destination folder on the phone." width="1280" height="720" loading="lazy"></button><figcaption>Sending files to the phone: drop them on the window or choose them, then pick the folder.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="sezione chiara" id="how">
+    <div class="largo come">
+      <div>
+        <p class="occhiello">How it works</p>
+        <h2>A desktop in one window</h2>
+        <p class="guida">A single YASDE window on the PC is the desktop. The apps keep running on the phone.</p>
+      </div>
+      <div class="passi">
+        <div class="passo"><h3><i>1.</i>One window</h3><p>A single YASDE window on the PC is the desktop.</p></div>
+        <div class="tratteggio" aria-hidden="true">- - →</div>
+        <div class="passo"><h3><i>2.</i>Apps stay on the phone</h3><p>They keep running there, with their data and accounts. YASDE sends their picture and sound to the PC.</p></div>
+        <div class="tratteggio" aria-hidden="true">- - →</div>
+        <div class="passo"><h3><i>3.</i>Mouse and keyboard</h3><p>Your clicks and keystrokes go back to the phone.</p></div>
+        <div class="tratteggio" aria-hidden="true">- - →</div>
+        <div class="passo"><h3><i>4.</i>Nothing to install</h3><p>No app on the phone, no root access. What YASDE changes while it runs is put back when it closes.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sezione grigia" id="download">
+    <div class="largo">
+      <p class="occhiello">Get YASDE</p>
+      <h2>Three steps in</h2>
+      <p class="guida">Version {{VERSION}}: <a href="{{URL_APPIMAGE}}">YASDE-{{VERSION}}-x86_64.AppImage</a> · <a href="{{URL_SORGENTI}}">third-party sources</a> · <a href="{{URL_SOMME}}">SHA256SUMS</a> · <a href="{{URL_RELEASE}}">release page</a> · <a href="{{GITHUB_REPO}}">source code on GitHub</a></p>
+      <div class="schede-3">
+        <div class="scheda-d"><h3><i>1.</i>Download</h3><p>Download <code>YASDE-{{VERSION}}-x86_64.AppImage</code> and put it in any folder you like.</p><p>The archive of the third-party sources is published next to it, in the same release.</p>
+          <a class="pulsante primario" href="{{URL_APPIMAGE}}">Download YASDE {{VERSION}}</a>
+        </div>
+        <div class="scheda-d"><h3><i>2.</i>Make it executable</h3><p>In your file manager open the file's properties and allow running it as a program, or type in a terminal:</p><pre>chmod +x YASDE-{{VERSION}}-x86_64.AppImage</pre></div>
+        <div class="scheda-d"><h3><i>3.</i>Start it</h3><p>Double-click the file, or run it from a terminal. A single YASDE window opens.</p><p>At the first start it shows <em>Connect your phone</em>; the User Manual goes on from there. YASDE adds no menu entry, no launcher and no icon: the file runs from where you put it.</p></div>
+      </div>
+      <p class="collegamenti">To check the downloads, put <code>SHA256SUMS</code> next to them and run <code>sha256sum -c --ignore-missing SHA256SUMS</code>. The licence is on the <a href="licence.html">licence page</a>.</p>
+      <div class="due-schede">
+        <div class="scheda-b ampia"><h3>Version {{VERSION}}</h3>
+          <ul class="elenco-c">
+            <li><b>The desktop</b> — wallpaper, app icons, widgets, and a taskbar with a launcher.</li>
+            <li><b>The phone's apps</b> as windows, several at the same time, with keyboard, clipboard and sound.</li>
+            <li><b>Notifications and phone status</b> on the PC.</li>
+            <li><b>Files</b> — send, download, install an APK; screenshots and recordings; a window that mirrors the phone's real screen.</li>
+          </ul></div>
+        <div class="scheda-b ampia"><h3>What you get</h3>
+          <ul class="elenco-c">
+            <li><b>One AppImage</b> of about 20 MB, with GTK 4 and the video libraries it needs.</li>
+            <li><b>English only</b> — the program and its manuals.</li>
+            <li><b>The two manuals</b>, the User Manual and the Technical Manual, on this site.</li>
+            <li><b>Third-party licences</b> — the components keep their own licences, listed in the documentation folder of the package.</li>
+          </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sezione chiara" id="requirements">
+    <div class="largo">
+      <p class="occhiello">What it needs</p>
+      <h2>What you need</h2>
+      <p class="guida">YASDE is a single file for Linux PCs with an x86-64 processor. It is about 20 MB and already contains GTK 4 and the video libraries it needs.</p>
+      <div class="scorre">
+        <table class="tabella">
+          <caption class="vh">What the PC and the phone need</caption>
+          <thead class="vh"><tr><th scope="col">Needed</th><th scope="col">Details</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Operating system</th><td>Linux, 64-bit x86, with glibc 2.38 or newer, and a graphical session (X11 or Wayland).</td></tr>
+            <tr><th scope="row">Graphics</th><td>A Vulkan driver for your graphics card. Without <code>libvulkan</code> the program does not start. Video decoding uses VA-API when the card offers it, so <code>libva</code> and <code>libva-drm</code> must be present.</td></tr>
+            <tr><th scope="row">Sound</th><td>PipeWire: its library <code>libpipewire-0.3</code> must be present (the program does not start without it) and the PipeWire service must be running to hear sound.</td></tr>
+            <tr><th scope="row">System libraries</th><td>libdrm, fontconfig, and the usual X11, XCB and Wayland client libraries; any recent desktop has them.</td></tr>
+            <tr><th scope="row">Starting the AppImage</th><td>The AppImage carries its own FUSE 3 library, but the system must provide the program <code>fusermount3</code> or <code>fusermount</code> (package fuse3 or fuse) with FUSE enabled.</td></tr>
+            <tr><th scope="row">Phone</th><td>Android 14 or later, with Wireless debugging turned on (the User Manual explains how).</td></tr>
+            <tr><th scope="row">Network</th><td>The PC and the phone on the same Wi-Fi network.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nota-b">The list comes from what the package asks of the system. YASDE has not been tried on every Linux distribution, so a system older than the one described may need more.</p>
+    </div>
+  </section>
+
+  <section class="sezione grigia" id="limits">
+    <div class="largo">
+      <p class="occhiello">What has been tried</p>
+      <h2>Status and limits</h2>
+      <p class="guida">What the manuals say has and has not been tried.</p>
+      <div class="due-blocchi">
+        <ul class="elenco-c">
+          <li><b>Tried on one phone so far.</b> YASDE is designed for Android 14 or later phones of any make, using only standard Android, but it has been tried on one phone so far.</li>
+          <li><b>Not tried on every Linux distribution.</b> A system older than the one described may need more.</li>
+          <li><b>Two cases not tried live.</b> Two cases are described in the User Manual as not tried live: the phone no longer recognizing the PC, so that it must be paired again, and the phone being kept awake again after the PC comes back from a lost connection.</li>
+        </ul>
+      </div>
+<!--IF:CONTATTO-->
+      <p class="bottoni" style="justify-content:flex-start"><a class="pulsante secondario" href="mailto:{{CONTATTO}}?subject=YASDE%20report">Send a report</a></p>
+      <p class="nota-b">Questions and reports: <a href="mailto:{{CONTATTO}}">{{CONTATTO}}</a></p>
+<!--/IF-->
+    </div>
+  </section>
+
+  <section class="blu finale">
+    <div class="largo griglia-f">
+      <div>
+        <p class="occhiello">Start using YASDE</p>
+        <h2>Get your phone's apps on your Linux desktop.</h2>
+        <div class="bottoni">
+          <a class="pulsante primario" href="#download">Download</a>
+          <a class="pulsante vetro-blu" href="licence.html">Read the licence</a>
+        </div>
+      </div>
+      <div class="usi">
+        <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3 3 0 0 1 0 6M21 20c0-2.6-1.6-4.8-4-5.6"/></svg></span><div><b>Free</b><span>Anyone may use it, change it and pass it on.</span></div></div>
+        <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><div><b>Not for sale</b><span>It may not be sold.</span></div></div>
+        <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/></svg></span><div><b>The terms</b><span>The MIT License with the Commons Clause condition.</span></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+{{INCLUDI:parti/piede.html}}
+
+<dialog id="zoom" aria-label="Enlarged screenshot"><button type="button" class="x" aria-label="Close">&times;</button><img alt=""></dialog>
+<script>
+/* Ingrandimento con il <dialog> nativo: riusa l'immagine già nella pagina, nessuna libreria. */
+(function(){var d=document.getElementById("zoom");if(!d||!d.showModal)return;var im=d.querySelector("img");
+document.querySelectorAll("[data-zoom]").forEach(function(b){b.addEventListener("click",function(){var s=b.querySelector("img");im.src=s.src;im.alt=s.alt;d.showModal()})});
+d.addEventListener("click",function(){d.close()})})();
+</script>
+</body>
+</html>

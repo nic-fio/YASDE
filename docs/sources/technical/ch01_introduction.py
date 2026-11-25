@@ -1,6 +1,6 @@
-from build import c, note, p, rif, table, ul, warn
+from build import CONTATTO, SITO_URL, c, note, p, rif, table, ul, warn
 
-S1 = p("YASDE (Yet Another Samsung DeX Emulator) is a Linux program with a single window that is an emulated desktop: the "
+S1 = p("YASDE (Yet Another Samsung Dex Emulator) is a Linux program with a single window that is an emulated desktop: the "
        "apps of an Android 14+ phone run as windows inside it. This manual describes how it is built, for a developer who "
        "must change the code. It documents the code as it is today; where the code and the older design documents "
        "disagree, the code wins and the difference is listed in " + rif("Known deviations from the design documents") + ".", lead=True) + \
@@ -9,7 +9,8 @@ S1 = p("YASDE (Yet Another Samsung DeX Emulator) is a Linux program with a singl
       "component, started with " + c("app_process") + ", creates virtual displays, encodes them to H.264, captures audio, "
       "injects input and answers questions about the phone. Nothing is installed on the phone and nothing needs root.") + \
     note("YASDE is an independent project, not affiliated with Samsung. “DeX” is a trademark of its owner and is used only to "
-         "say which behaviour the desktop imitates.")
+         "say which behaviour the desktop imitates.") + \
+    p("The project's site is " + c(SITO_URL) + ". Questions and reports: " + c(CONTATTO) + ".")
 
 S2 = p("Four rules shape every design choice in the code. They come from the project instructions and are enforced by "
        "review, not by the compiler.", lead=True) + \

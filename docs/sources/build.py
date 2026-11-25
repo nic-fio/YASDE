@@ -45,6 +45,12 @@ VERSION = re.search(r"^project\([^)]*version:\s*'([^']+)'", (ROOT / "meson.build
 # fosse vuota i manuali non potrebbero citare nessuna licenza (lo controlla --controlla).
 LICENZA = "MIT with Commons Clause"
 NOME = "YASDE"
+# Dati pubblici del progetto, voluti dal titolare: sono gli UNICI indirizzi e contatti ammessi nei manuali.
+SITO_HOST = "yasde.nicfio.it"
+SITO_URL = "https://" + SITO_HOST + "/"
+CONTATTO = "yasde@nicfio.it"
+# Oltre al sito del progetto, solo i due indirizzi dei crediti che la licenza dei dati meteo richiede (capitolo del meteo).
+HOST_AMMESSI = {SITO_HOST, "open-meteo.com", "www.geonames.org"}
 SOTTOTITOLO = "YASDE — Yet Another Samsung Dex Emulator"
 AVVISO = ("Independent project, not affiliated with, endorsed by or sponsored by Samsung. "
           "Samsung and Samsung DeX are trademarks of Samsung Electronics Co., Ltd.")
@@ -646,6 +652,13 @@ def controlla():
                 errori.append(f"{meta['file']}: possibile numero di serie vero: {s} (ammesso solo {SERIALE_FINTO})")
             for ip in sorted(set(IP_PRIVATO.findall(testo))):
                 errori.append(f"{meta['file']}: indirizzo IP privato negli esempi: {ip} (usare 192.0.2.x)")
+            # Indirizzi e contatti: ammessi solo quelli del progetto (CONTATTO e SITO_HOST), tutto il resto no.
+            # Le entità HTML si sciolgono prima di cercare: «&#64;» al posto di «@» non deve sfuggire.
+            leggibile = html.unescape(re.sub(r"<[^>]+>", " ", testo))
+            for e in sorted(set(re.findall(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", leggibile)) - {CONTATTO}):
+                errori.append(f"{meta['file']}: indirizzo email non ammesso: {e}")
+            for h in sorted({x.lower() for x in re.findall(r"https?://([^/\s\"'<>)]+)", leggibile, re.I)} - HOST_AMMESSI):
+                errori.append(f"{meta['file']}: indirizzo web non ammesso: {h}")
             for n in sorted(set(m.lower() for m in NOMI_DI_PERSONA.findall(testo))):
                 errori.append(f"{meta['file']}: nome di persona: {n}")
             # Il nome vietato si cerca ovunque: pagina grezza (attributi, stile, script inclusi), pagina

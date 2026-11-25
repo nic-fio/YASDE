@@ -56,7 +56,7 @@ S3 = p("The program ships as one file, " + c("YASDE-2.1-x86_64.AppImage") + " (L
     "<b>No integration.</b> No " + c(".desktop") + " file is installed on the PC; the one inside the package serves only " + c("appimagetool") + " and declares " + c("X-AppImage-Integrate=false") + ".",
     "<b>Public documents</b> in the package are only in English (" + c("README.txt") + ", " + c("SOURCE-OFFER.txt") + ", " + c("LIST.txt") + ", " + c("SYSTEM-REQUIREMENTS.txt") + ", " + c("open-meteo.txt") + ", " + c("type2-runtime/NOTE.txt") + "), with the line that the "
     "project is not affiliated with Samsung.",
-    "<b>Size.</b> About 18 MB for the AppImage and about 45 MB for the AppDir; the source archive is about 295 MB.",
+    "<b>Size.</b> About 20 MB for the AppImage and about 45 MB for the AppDir; the source archive is about 315 MB.",
 ])
 
 S4 = p("Everything downloaded is fetched into the build server's work area (never into the repository), only over HTTPS, with a fixed version and a checksum verified before use.", lead=True) + table(["Item", "Version", "How it is verified"], [
