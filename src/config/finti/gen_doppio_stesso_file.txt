@@ -1,0 +1,2 @@
+"Addio" = "Bye"
+"Addio" = "Goodbye"

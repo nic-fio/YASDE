@@ -1,0 +1,17 @@
+FROM docker.io/library/debian:13
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends     build-essential clang meson ninja-build pkg-config git ca-certificates curl unzip python3     libssl-dev libvulkan-dev vulkan-tools glslc valgrind gdb default-jdk-headless  && rm -rf /var/lib/apt/lists/*
+WORKDIR /lavoro
+# Pezzo video del PC: decodifica (FFmpeg, VA-API) e finestra di prova (SDL3, Wayland).
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends     libavcodec-dev libavutil-dev libva-dev libdrm-dev libsdl3-dev libwayland-dev libxkbcommon-dev     vulkan-validationlayers ffmpeg  && rm -rf /var/lib/apt/lists/*
+# Ondata 2: audio sul PC (Opus, PipeWire).
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends     libopus-dev libpipewire-0.3-dev  && rm -rf /var/lib/apt/lists/*
+# Una lingua con la virgola decimale, per provare che i numeri si leggono e
+# scrivono allo stesso modo qualunque sia la lingua del sistema.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends locales  && sed -i "s/^# *it_IT.UTF-8 UTF-8/it_IT.UTF-8 UTF-8/" /etc/locale.gen && locale-gen  && rm -rf /var/lib/apt/lists/*
+# Shell: GTK4 (toolkit della finestra principale, specifica 4.1 e 4.3).
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libgtk-4-dev  && rm -rf /var/lib/apt/lists/*
+# Screenshot e registrazione: contenitore MP4 e conversione dei colori di FFmpeg
+# (FFmpeg approvato dal committente per questa fase; resta confinato in src/video).
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libavformat-dev libswscale-dev  && rm -rf /var/lib/apt/lists/*
+# Schermo virtuale per le prove dei widget senza monitor: gtk4-broadwayd (libgtk-4-bin) e fonti.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libgtk-4-bin fonts-dejavu-core adwaita-icon-theme shared-mime-info && rm -rf /var/lib/apt/lists/*

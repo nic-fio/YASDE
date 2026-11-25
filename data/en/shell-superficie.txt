@@ -1,0 +1,3 @@
+# Testi del pezzo shell-superficie. Formato: "testo italiano come nel codice" = "English text"
+
+"Non riesco a leggere l'immagine dello screenshot." = "I cannot read the screenshot image."

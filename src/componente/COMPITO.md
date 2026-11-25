@@ -1,0 +1,7 @@
+# COMPITO — aggiunta a componente: `ph_input_pizzico` (0x55, 23 nov)
+
+Realizza la dichiarazione nuova di `componente.h` (`PH_MSG_PIZZICO`, `PH_PIZZICO_*`, `ph_input_pizzico`) come le altre `ph_input_*`: corpo `u32` id, `u16` larghezza, `u16` altezza, `u8` fase, `u16` x, `u16` y, `i16` passo (docs/protocollo.md §2.4). Argomenti non validi (fase > 3, x ≥ larghezza, y ≥ altezza, misure 0): −1 senza mandare nulla; passo limitato a −1200…1200 prima di codificare. Prova con i byte attesi in `prova/prova_messaggi.c` (anche i casi rifiutati) e con il telefono finto.
+
+## Aggiunta del 23 nov sera — PRESENZA (componente.h in coda, protocollo §2.1)
+Realizza l'invio automatico di PRESENZA (0x05, vuoto, OK atteso) quando da `PH_PRESENZA_INTERVALLO_S` (300 s) non parte nessuna richiesta sul canale comandi: il conto riparte a ogni richiesta (di chiunque) e al saluto. Thread o timer che aspetta su una condizione con scadenza e si sveglia subito alla chiusura; nessun lucchetto durante la rete; una PRESENZA in corso quando si chiude finisce o fallisce entro il limite di una richiesta, e dopo il ritorno di `ph_componente_chiudi` non ne parte nessuna. Fallimento: una riga su stderr, niente altro.
+Prove (telefono finto, intervallo accorciato con un aggancio di prova interno): PRESENZA mandata dopo l'intervallo senza altro traffico; NON mandata se ci sono richieste più spesso dell'intervallo; chiusura durante l'attesa (subito) e durante una PRESENZA lenta (entro il limite, AddressSanitizer pulito); ERRORE o nessuna risposta del telefono non fanno danni.

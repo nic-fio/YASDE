@@ -1,0 +1,87 @@
+/* Stile del pezzo shell-sistema (F-06, F-07, F-08): solo classi con prefisso ph-sistema-.
+ * Colori e misure: le variabili di src/shell/ossatura/base.css (--ph-*) e i
+ * valori del mockup citati in COMPITO.md. Caricato da ph_shell_stile_carica
+ * nel proprio _installa (o costruttore). */
+
+/* Contatore della campanella (mockup 16x16, 11px; ingrandito con le icone): 18x18, 12px 600, testo su accento (variabili). */
+.ph-sistema-contatore {
+  min-width: 18px;
+  min-height: 18px;
+  border-radius: 9px;
+  padding: 0 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ph-su-accento);
+  background-color: var(--ph-accento);
+}
+
+/* Rete assente: la stessa icona, attenuata (opacita' .4). */
+.ph-sistema-senza-rete { opacity: 0.4; }
+
+/* "Nessuna notifica" e frase del telefono che non puo' leggerle: 13px testo secondario, imbottitura 8 0. */
+label.ph-sistema-vuoto {
+  font-size: 13px;
+  color: var(--ph-testo-2);
+  padding: 8px 0;
+}
+
+/* Icona di una notifica: 30x30, raggio 8 (il ritaglio lo fa il codice). */
+.ph-sistema-tile {
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 8px;
+}
+
+/* Pulsante largo che apre la notifica: senza cornice, il testo lo decidono le etichette. */
+button.ph-sistema-notifica {
+  border: none;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+  color: var(--ph-testo);
+  font-size: 12px;
+}
+
+/* Titolo 13px 600; testo 12px testo secondario con 2px sopra; "{app} · {ora}" 11px testo terziario con 4px sopra. */
+label.ph-sistema-titolo { font-size: 13px; font-weight: 600; }
+label.ph-sistema-testo { font-size: 12px; color: var(--ph-testo-2); margin-top: 2px; }
+label.ph-sistema-app { font-size: 11px; color: var(--ph-testo-3); margin-top: 4px; }
+
+/* Avviso a comparsa: superficie di vetro chiaro (registrata nel C). Fondo, bordo
+ * chiaro e ombra li da' la classe di vetro; qui restano forma e imbottitura. Il
+ * bordo di 1px resta trasparente solo per non cambiare le misure. */
+button.ph-sistema-toast {
+  background-image: none;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--ph-testo);
+}
+
+/* Cursore del volume: i colori (binario, riempimento, cursore) li da' il tema
+ * dentro le superfici di vetro (base.css); qui solo le misure. */
+scale.ph-sistema-cursore { padding: 0; margin: 0; min-height: 16px; }
+scale.ph-sistema-cursore trough { margin: 0; min-height: 4px; }
+scale.ph-sistema-cursore trough slider {
+  box-shadow: none;
+  min-width: 14px;
+  min-height: 14px;
+  margin: -5px;
+}
+
+/* Nota del volume: 11px testo terziario, interlinea 1,4. */
+label.ph-sistema-nota {
+  font-size: 11px;
+  color: var(--ph-testo-3);
+  line-height: 1.4;
+}
+
+/* Pulsanti larghi dei pannelli: il tema chiaro di GTK lascia un fondo a
+ * sfumatura sopra il colore di .ph-pbtn (si vedevano bianchi); qui si toglie. */
+button.ph-sistema-pbtn { background-image: none; }
+
+/* Percentuale della batteria nella barra: 14px (le icone dell'area di sistema sono a 24 px). */
+label.ph-sistema-percentuale { font-size: 14px; }

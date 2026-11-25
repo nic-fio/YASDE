@@ -1,0 +1,2 @@
+# Stesso testo gia' tradotto in gen_ok.txt.
+"Ciao {nome}" = "Hi {nome}"

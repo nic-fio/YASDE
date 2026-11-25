@@ -1,0 +1,84 @@
+package it.yasde;
+
+import android.content.ClipData;
+import android.content.ClipDescription;
+import android.os.PersistableBundle;
+
+import java.lang.reflect.Method;
+import java.util.Base64;
+
+/**
+ * Prova isolata sul telefono, in un processo shell separato dal servizio (cosi' un cambio degli appunti
+ * "viene dal telefono"):
+ *   CLASSPATH=yasde.jar:yasde-prova-appunti.jar app_process / it.yasde.ProvaAppunti <comando> [argomenti]
+ *   info                      firme di IClipboard e stato degli appunti (nessun contenuto)
+ *   leggi                     "VUOTO", "NONTESTO <mime>" oppure "TESTO <base64>"; poi "SENSIBILE 0|1"
+ *   imposta <base64|-> [sens] mette un testo (UTF-8 in base64, o "-" = da stdin) negli appunti; con "sens" lo marca sensibile
+ *   ripeti <n>                mette n caratteri 'a' negli appunti
+ *   fonte                     pacchetto che ha fatto la copia attuale (se il sistema lo dice)
+ *   svuota                    svuota gli appunti
+ * Nessun contenuto negli appunti viene scritto in un file: lo stampa solo, e lo legge chi lancia la prova.
+ */
+public final class ProvaAppunti {
+    private ProvaAppunti() {}
+
+    public static void main(String[] args) throws Exception {
+        String c = args.length > 0 ? args[0] : "info";
+        if (c.equals("info")) {
+            System.out.println("API mancanti: " + NascosteAppunti.verifica());
+            Class<?> i = Class.forName("android.content.IClipboard");
+            for (Method m : i.getMethods()) System.out.println("  " + m);
+            ClipData d = NascosteAppunti.leggi();
+            System.out.println("appunti: " + (d == null ? "vuoti" : "presenti, voci=" + d.getItemCount()
+                + " mime0=" + (d.getDescription() == null ? "?" : d.getDescription().getMimeType(0))));
+        } else if (c.equals("leggi")) {
+            ClipData d = NascosteAppunti.leggi();
+            if (d == null) {
+                System.out.println("VUOTO");
+                System.out.println("SENSIBILE 0");
+            } else {
+                ClipDescription desc = d.getDescription();
+                CharSequence t = d.getItemCount() > 0 ? d.getItemAt(0).getText() : null;
+                if (t == null) {
+                    System.out.println("NONTESTO " + (desc == null ? "?" : desc.getMimeType(0)));
+                } else {
+                    System.out.println("TESTO " + Base64.getEncoder().encodeToString(t.toString().getBytes("UTF-8")));
+                }
+                PersistableBundle e = desc == null ? null : desc.getExtras();
+                System.out.println("SENSIBILE " + (e != null && e.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE, false) ? 1 : 0));
+            }
+        } else if (c.equals("imposta")) {
+            String b64 = args[1];
+            if (b64.equals("-")) { // base64 da stdin: un argomento troppo lungo non passa per adb shell
+                java.io.ByteArrayOutputStream tutto = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int r;
+                while ((r = System.in.read(buf)) > 0) tutto.write(buf, 0, r);
+                b64 = tutto.toString("US-ASCII").trim();
+            }
+            String testo = new String(Base64.getDecoder().decode(b64), "UTF-8");
+            ClipData d = ClipData.newPlainText("prova", testo);
+            if (args.length > 2 && args[2].equals("sens")) {
+                PersistableBundle e = new PersistableBundle();
+                e.putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true);
+                d.getDescription().setExtras(e);
+            }
+            NascosteAppunti.imposta(d);
+            System.out.println("IMPOSTATO");
+        } else if (c.equals("ripeti")) {
+            int n = Integer.parseInt(args[1]);
+            StringBuilder b = new StringBuilder(n);
+            for (int i = 0; i < n; i++) b.append('a');
+            NascosteAppunti.imposta(ClipData.newPlainText("prova", b.toString()));
+            System.out.println("IMPOSTATO");
+        } else if (c.equals("fonte")) {
+            System.out.println("FONTE " + NascosteAppunti.fonte());
+        } else if (c.equals("svuota")) {
+            NascosteAppunti.svuota();
+            System.out.println("SVUOTATO");
+        } else {
+            System.out.println("comando sconosciuto");
+        }
+        System.exit(0);
+    }
+}

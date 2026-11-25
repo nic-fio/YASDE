@@ -1,0 +1,166 @@
+package it.yasde;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/** Prova su JVM dei gesti per sessione (Gesti): dito e pizzico di sessioni diverse, chiusure, fine del canale. */
+public final class ProvaGesti {
+    private static int falliti;
+    private static final int W = 720, H = 1280;
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    /** Descrive le azioni come "tipo@sessione" (per i pizzichi il primo tipo di mossa). */
+    private static String d(List<Gesti.Cmd> l, Object a, Object b) {
+        List<String> r = new ArrayList<String>();
+        for (Gesti.Cmd c : l) {
+            String nome = c.tipo == Gesti.TOCCO_GIU ? "giu" : c.tipo == Gesti.TOCCO_MUOVI ? "muovi" : c.tipo == Gesti.TOCCO_SU ? "su"
+                    : c.tipo == Gesti.TOCCO_ANNULLA ? "annulla" : "pz" + c.mosse.get(0).tipo;
+            r.add(nome + "@" + (c.sessione == a ? "A" : c.sessione == b ? "B" : "?"));
+        }
+        return r.toString();
+    }
+
+    private static String ev(List<Gesti.Ev> l) {
+        List<String> r = new ArrayList<String>();
+        for (Gesti.Ev e : l) r.add(e.azione + "/" + e.stato + "/" + e.pulsanteAzione);
+        return r.toString();
+    }
+
+    public static void main(String[] args) {
+        Object A = new Object(), B = new Object();
+
+        // dito di A giu', TOCCO giu' su B: prima CANCEL ad A, poi giu' su B; muovi/su di A scartati
+        Gesti g = new Gesti();
+        g.tocco(A, 0, 10, 10, 100);
+        controlla(d(g.tocco(B, 0, 20, 20, 200), A, B).equals("[annulla@A, giu@B]"), "tocco giu' su B con un dito giu' su A: CANCEL ad A, poi giu' su B");
+        controlla(g.tocco(A, 1, 11, 11, 210).isEmpty() && g.tocco(A, 2, 11, 11, 220).isEmpty(), "muovi/su di A dopo il suo annullamento: scartati");
+        List<Gesti.Cmd> su = g.tocco(B, 2, 21, 21, 230);
+        controlla(su.size() == 1 && su.get(0).downTime == 200 && su.get(0).sessione == B && !g.ditoGiu(),
+                "su su B con il downTime di B (non quello di A)");
+
+        // muovi/su di una sessione senza dito suo giu': scartati anche se un dito di un'altra e' giu'
+        g = new Gesti();
+        g.tocco(A, 0, 1, 1, 10);
+        controlla(g.tocco(B, 1, 2, 2, 11).isEmpty() && g.tocco(B, 2, 2, 2, 12).isEmpty() && g.tocco(B, 3, 2, 2, 13).isEmpty() && g.ditoGiu(),
+                "muovi/su/annulla di B con il dito giu' di A: scartati, il dito di A resta");
+
+        // pizzico su B con un dito giu' su A: CANCEL sullo schermo di A (non di B), poi il pizzico di B
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 100);
+        List<Gesti.Cmd> pz = g.pizzicoFase(B, 0, W, H, 360, 640, 0, 200);
+        controlla(d(pz, A, B).equals("[annulla@A, pz0@B]") && !g.ditoGiu(), "pizzico su B con un dito giu' su A: CANCEL sullo schermo di A, poi il pizzico di B");
+        controlla(g.tocco(A, 2, 5, 5, 210).isEmpty(), "il su del dito di A dopo l'annullamento: scartato");
+
+        // TOCCO giu' su B con un pizzico aperto su A: prima il pizzico di A si annulla
+        g = new Gesti();
+        g.pizzicoFase(A, 0, W, H, 360, 640, 0, 100);
+        controlla(d(g.tocco(B, 0, 9, 9, 150), A, B).equals("[pz5@A, giu@B]") && !g.pizzicoAperto(), "tocco giu' su B con un pizzico aperto su A: il pizzico di A si annulla, poi giu' su B");
+
+        // pizzico su B con un pizzico aperto su A: fine di A (alla protocollo), poi il nuovo
+        g = new Gesti();
+        g.pizzicoFase(A, 0, W, H, 360, 640, 0, 100);
+        List<Gesti.Cmd> due = g.pizzicoFase(B, 0, W, H, 100, 100, 0, 150);
+        controlla(due.size() == 2 && due.get(0).sessione == A && due.get(0).mosse.get(0).tipo == Pizzico.DITO2_SU && due.get(1).sessione == B,
+                "pizzico su B con pizzico aperto su A: fine di A sul suo schermo, poi il pizzico di B");
+        controlla(g.pizzicoFase(A, 2, W, H, 0, 0, 0, 160).isEmpty() && !g.pizzicoFase(B, 2, W, H, 0, 0, 0, 160).isEmpty(),
+                "continua/fine di A dopo la sua chiusura: scartati; quelli di B valgono");
+
+        // chiusura / pausa / cambio di misura di A (chiudiDi): annulla il dito e il pizzico di A, mai quelli di B
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 100);
+        controlla(d(g.chiudiDi(A, 200), A, B).equals("[annulla@A]") && !g.ditoGiu(), "chiudiDi(A) con un dito singolo di A: CANCEL");
+        g = new Gesti();
+        g.tocco(B, 0, 5, 5, 100);
+        controlla(g.chiudiDi(A, 200).isEmpty() && g.ditoGiu(), "chiudiDi(A) con il dito di B: non lo tocca");
+        g = new Gesti();
+        g.pizzicoFase(A, 0, W, H, 360, 640, 0, 100);
+        controlla(d(g.chiudiDi(A, 200), A, B).equals("[pz5@A]") && !g.pizzicoAperto(), "chiudiDi(A) con il pizzico di A: annulla");
+        controlla(g.chiudiDi(A, 300).isEmpty(), "chiudiDi di nuovo: niente da fare");
+        g = new Gesti();
+        g.pizzicoFase(B, 0, W, H, 360, 640, 0, 100);
+        controlla(g.chiudiDi(A, 200).isEmpty() && g.pizzicoAperto(), "chiudiDi(A) con il pizzico di B: non lo tocca");
+
+        // fine del canale input: tutto si annulla, di qualunque sessione
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 100);
+        controlla(d(g.chiudiTutto(200), A, B).equals("[annulla@A]") && !g.ditoGiu(), "fine del canale con un dito di A giu': CANCEL");
+        g = new Gesti();
+        g.pizzicoFase(B, 0, W, H, 360, 640, 0, 100);
+        controlla(d(g.chiudiTutto(200), A, B).equals("[pz5@B]") && !g.pizzicoAperto(), "fine del canale con un pizzico di B aperto: annulla");
+        controlla(g.chiudiTutto(300).isEmpty(), "fine del canale senza gesti: niente");
+
+        // stessa sessione: giu' con un dito rimasto giu' (muovi mancato): CANCEL poi nuovo giu'
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 100);
+        controlla(d(g.tocco(A, 0, 6, 6, 150), A, B).equals("[annulla@A, giu@A]"), "secondo giu' senza su: prima CANCEL del dito rimasto, poi il nuovo");
+
+        // il pizzico della stessa sessione con il suo dito giu': il dito si annulla
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 100);
+        controlla(d(g.pizzicoFase(A, 0, W, H, 360, 640, 0, 150), A, B).equals("[annulla@A, pz0@A]"), "pizzico con un dito giu' della stessa sessione: il dito si annulla");
+
+        // pulsanti: il tipo di gesto si decide alla pressione e si ricorda fino al rilascio
+        g = new Gesti();
+        List<Gesti.Cmd> r = g.tocco(A, 0, 5, 5, 2, 100);
+        controlla(r.size() == 1 && r.get(0).pulsante == Gesti.DESTRO, "giu' col destro: gesto mouse destro");
+        controlla(g.tocco(A, 1, 6, 6, 0, 110).get(0).pulsante == Gesti.DESTRO, "muovi con pulsanti 0: resta destro (ricordato)");
+        controlla(g.tocco(A, 2, 6, 6, 0, 120).get(0).pulsante == Gesti.DESTRO && !g.ditoGiu(), "su con pulsanti 0: rilascio del destro");
+        g = new Gesti();
+        controlla(g.tocco(A, 0, 5, 5, 4, 100).get(0).pulsante == Gesti.CENTRALE && g.tocco(A, 2, 5, 5, 0, 110).get(0).pulsante == Gesti.CENTRALE, "gesto centrale giu'/su");
+        g = new Gesti();
+        controlla(g.tocco(A, 0, 5, 5, 6, 100).get(0).pulsante == Gesti.DESTRO, "destro + centrale: vince il destro");
+        g = new Gesti();
+        controlla(g.tocco(A, 0, 5, 5, 1, 100).get(0).pulsante == Gesti.DITO && g.tocco(A, 1, 5, 5, 6, 110).get(0).pulsante == Gesti.DITO,
+                "sinistro: dito, e un destro che arriva a gesto avviato non lo cambia");
+        controlla(g.tocco(A, 2, 5, 5, 0, 120).get(0).pulsante == Gesti.DITO, "su del sinistro: dito");
+        g = new Gesti();
+        controlla(g.tocco(A, 0, 5, 5, 0x78, 100).get(0).pulsante == Gesti.DITO && g.tocco(A, 2, 5, 5, 0, 110).get(0).pulsante == Gesti.DITO,
+                "bit sconosciuti (3-7) ignorati: dito");
+        g = new Gesti();
+        controlla(g.tocco(A, 0, 5, 5, 0xfa, 100).get(0).pulsante == Gesti.DESTRO, "bit sconosciuti accanto al destro: destro");
+        // destro di A giu', giu' di B col sinistro: annulla del destro di A (con il SUO pulsante), poi dito su B
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 2, 100);
+        r = g.tocco(B, 0, 7, 7, 1, 200);
+        controlla(d(r, A, B).equals("[annulla@A, giu@B]") && r.get(0).pulsante == Gesti.DESTRO && r.get(1).pulsante == Gesti.DITO,
+                "destro di A giu', sinistro su B: annulla il destro di A, poi dito su B");
+        controlla(g.tocco(A, 2, 5, 5, 0, 210).isEmpty(), "il su del destro di A dopo l'annullamento: scartato");
+        // dito di A, giu' col centrale su B: l'annulla del dito resta dito
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 1, 100);
+        r = g.tocco(B, 0, 7, 7, 4, 200);
+        controlla(r.get(0).pulsante == Gesti.DITO && r.get(1).pulsante == Gesti.CENTRALE, "dito di A, centrale su B: annulla dito, poi mouse centrale");
+        // pizzico, chiudiDi e chiudiTutto con un destro giu': annullano con il pulsante giusto
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 2, 100);
+        r = g.pizzicoFase(B, 0, W, H, 360, 640, 0, 150);
+        controlla(r.get(0).tipo == Gesti.TOCCO_ANNULLA && r.get(0).pulsante == Gesti.DESTRO, "pizzico con un destro giu': annulla del destro");
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 4, 100);
+        controlla(g.chiudiDi(A, 200).get(0).pulsante == Gesti.CENTRALE, "chiudiDi con un centrale giu': annulla centrale");
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 2, 100);
+        controlla(g.chiudiTutto(200).get(0).pulsante == Gesti.DESTRO && g.chiudiTutto(300).isEmpty(), "chiudiTutto con un destro giu': annulla destro, una volta sola");
+        // dopo un destro, un nuovo sinistro e' di nuovo un dito
+        g = new Gesti();
+        g.tocco(A, 0, 5, 5, 2, 100);
+        g.tocco(A, 2, 5, 5, 0, 110);
+        controlla(g.tocco(A, 0, 5, 5, 1, 120).get(0).pulsante == Gesti.DITO, "sinistro dopo un destro: dito");
+
+        // eventi del gesto mouse (Gesti.eventiMouse): [azione/buttonState/actionButton, ...]
+        for (int pul : new int[] {Gesti.DESTRO, Gesti.CENTRALE}) {
+            String n = pul == Gesti.DESTRO ? "destro" : "centrale";
+            String p = String.valueOf(pul);
+            controlla(ev(Gesti.eventiMouse(Gesti.TOCCO_GIU, pul)).equals("[0/" + p + "/0, 11/" + p + "/" + p + "]"), n + " giu': DOWN col pulsante, poi BUTTON_PRESS con lo stesso actionButton");
+            controlla(ev(Gesti.eventiMouse(Gesti.TOCCO_MUOVI, pul)).equals("[2/" + p + "/0]"), n + " muovi: MOVE col pulsante tenuto");
+            controlla(ev(Gesti.eventiMouse(Gesti.TOCCO_SU, pul)).equals("[12/0/" + p + ", 1/0/0]"), n + " su: BUTTON_RELEASE poi UP a pulsante 0");
+            controlla(ev(Gesti.eventiMouse(Gesti.TOCCO_ANNULLA, pul)).equals("[3/0/0]"), n + " annulla: solo CANCEL a pulsante 0, nessun BUTTON_RELEASE");
+        }
+        System.out.println("falliti: " + falliti);
+        if (falliti > 0) System.exit(1);
+    }
+}

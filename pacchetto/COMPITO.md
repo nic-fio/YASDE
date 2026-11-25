@@ -1,0 +1,14 @@
+# COMPITO — pacchetto: aggiunte per il meteo (23 nov sera)
+
+- **Nessuna libreria nuova**: il pezzo `src/meteo` usa OpenSSL (già nel pacchetto per ADB) e codice nostro per HTTP e JSON. Verificare che `libssl.so.3`/`libcrypto.so.3` restino nel pacchetto e che nessun file di configurazione di OpenSSL del container (percorsi `/usr/lib/ssl`) sia richiesto per funzionare: il pezzo cerca da solo i certificati del SISTEMA (`/etc/ssl/certs/ca-certificates.crt` e gli altri percorsi noti). NON includere certificati di autorità nel pacchetto.
+- **Attribuzione e condizioni d'uso dei dati**: aggiungere `usr/share/doc/licenses/open-meteo.txt` con: dati meteo di Open-Meteo.com (https://open-meteo.com/), licenza dei dati CC BY 4.0 (testo o collegamento: https://creativecommons.org/licenses/by/4.0/), servizio usato secondo i termini d'uso non commerciale di Open-Meteo; i dati si mostrano solo nel widget, con la dicitura.
+- In `open-meteo.txt` anche: la ricerca dei luoghi usa la geocodifica di Open-Meteo (`geocoding-api.open-meteo.com`), base dei luoghi GeoNames (https://www.geonames.org/), licenza CC BY 4.0.
+- In `LEGGIMI.md`, sezione «Che cosa c'è dentro» o «Licenze»: una riga che dice che l'app si collega a `api.open-meteo.com` (previsioni) e a `geocoding-api.open-meteo.com` (ricerca di una località scritta dall'utente) SOLO mentre un widget Meteo è sul desktop; non c'è un dialogo di consenso: aggiungere il widget è la scelta. Che cosa esce: coordinate arrotondate a circa 1 km, oppure il testo cercato.
+- **Manuale**: la pagina del widget Meteo del manuale dell'utente descrive questo comportamento (quando si collega, che cosa manda, la città scritta a mano usata solo senza la posizione del telefono, che cosa resta su disco: solo la città scelta, nel profilo).
+
+## Manuale — voce «Compatibilità» (23 nov sera)
+Testo per la pagina delle finestre delle app:
+«**Compatibilità.** Alcune app si vedono troppo piccole, raccolte in un angolo della finestra. Per queste app apri il menu ⋮ della finestra e attiva «Compatibilità»: l'app viene mostrata con la densità dello schermo del telefono e occupa di nuovo tutta la finestra. YASDE se lo ricorda per quell'app e su quel telefono: la prossima volta si apre già così. Le altre app non cambiano. Con la voce attiva l'immagine viene ridimensionata dalla scheda grafica e può essere un po' meno nitida; disattivala se l'app si vede bene anche senza. Durante una registrazione la voce non si può cambiare.»
+
+## Nota del 23 nov notte — precisione della posizione per il meteo
+La posizione si arrotonda ora a circa 500 m (non più circa 1 km). In `LEGGIMI.md` (riga «Esce: coordinate arrotondate a circa 1 km…») e nel testo uguale di `dentro.sh` scrivi: «Esce: la posizione del telefono arrotondata a circa 500 m (o le coordinate della località scelta a mano), oppure il testo cercato; i server vedono inoltre l'indirizzo IP del PC.» Stessa precisazione nella pagina del Meteo del manuale.

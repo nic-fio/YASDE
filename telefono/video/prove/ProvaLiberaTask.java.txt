@@ -1,0 +1,69 @@
+package it.yasde;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/** Prova su JVM della chiusura con "Chiudi" (LiberaTask): rimozione di tutti i task, attesa, nessun Indietro. */
+public final class ProvaLiberaTask {
+    private static int falliti;
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    /** Schermo finto: i task spariscono dopo `attesePerSvuotare` attese; `ostinati` non spariscono mai. */
+    private static final class Finto implements LiberaTask.Schermo {
+        final List<Integer> task = new ArrayList<Integer>();
+        final List<Integer> tolti = new ArrayList<Integer>();
+        boolean ostinati;
+        int attese, attesePerSvuotare;
+
+        @Override
+        public List<Integer> task() {
+            return new ArrayList<Integer>(task);
+        }
+
+        @Override
+        public boolean togli(int idTask) {
+            tolti.add(idTask);
+            if (!ostinati && attesePerSvuotare == 0) task.remove(Integer.valueOf(idTask));
+            return true;
+        }
+
+        @Override
+        public void attendi() {
+            attese++;
+            if (!ostinati && attese >= attesePerSvuotare) task.clear();
+        }
+
+        @Override
+        public void riga(String testo) {}
+    }
+
+    public static void main(String[] args) throws Exception {
+        Finto f = new Finto();
+        f.task.add(1);
+        f.task.add(2);
+        int n = LiberaTask.esegui(f, 20);
+        controlla(n == 2 && f.tolti.size() == 2 && f.attese == 0, "tutti i task tolti; schermo gia' vuoto: nessuna attesa");
+
+        f = new Finto();
+        f.task.add(7);
+        f.attesePerSvuotare = 3;
+        n = LiberaTask.esegui(f, 20);
+        controlla(n == 1 && f.attese == 3 && f.task.isEmpty(), "l'attesa si ferma appena lo schermo e' vuoto (3 attese su 20)");
+
+        f = new Finto();
+        f.task.add(9);
+        f.ostinati = true;
+        n = LiberaTask.esegui(f, 5);
+        controlla(n == 1 && f.attese == 5, "un task che non sparisce: attesa limitata dal tetto");
+
+        f = new Finto();
+        n = LiberaTask.esegui(f, 20);
+        controlla(n == 0 && f.tolti.isEmpty() && f.attese == 0, "nessun task: niente da fare");
+        System.out.println("falliti: " + falliti);
+        if (falliti > 0) System.exit(1);
+    }
+}

@@ -1,0 +1,64 @@
+#!/bin/sh
+# Punto d'ingresso dell'AppImage: fa trovare al programma le librerie e i dati
+# del pacchetto, poi gli lascia il posto (exec). L'unico file che scrive sul PC e'
+# quello dei caricatori di immagini, in ~/.cache/YASDE (vedi sotto).
+# Si usa sempre la cartella di questo script: un APPDIR ereditato dall'ambiente
+# potrebbe puntare a un altro pacchetto.
+APPDIR="$(dirname "$(readlink -f "$0")")"
+export APPDIR
+# Le librerie del pacchetto vengono prima di quelle del sistema; quelle
+# richieste al sistema (driver grafici, glibc, PipeWire...) si trovano in coda.
+export LD_LIBRARY_PATH="$APPDIR/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+# Schemi GSettings di GTK inclusi nel pacchetto, poi quelli del sistema.
+export XDG_DATA_DIRS="$APPDIR/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+# Nessun modulo GIO (neanche quelli del sistema, legati ad altre versioni di
+# GLib): cartella vuota del pacchetto.
+export GIO_MODULE_DIR="$APPDIR/usr/lib/gio-vuoto"
+# Caricatori di immagini di gdk-pixbuf: il modello ha i percorsi con un
+# segnaposto, qui si risolve sulla cartella dove il pacchetto e' montato adesso.
+# Il file va solo in ~/.cache/YASDE (la specifica non ammette altro sul PC).
+# Se il percorso ha caratteri che romperebbero la sostituzione o le virgolette
+# del file dei caricatori (barra rovesciata, virgolette, & , |, a capo) oppure
+# la cartella non e' scrivibile, si rinuncia ai caricatori con un avviso (webp
+# non si apre; png e jpeg restano, sono dentro la libreria).
+# Toglie i file dei caricatori di corse passate (vedi sotto, dove si chiama).
+pulisci_pixbuf() {
+    for f in "$1"/yasde-pixbuf-*.cache; do
+        [ -f "$f" ] && [ ! -L "$f" ] || continue
+        nome="${f##*/}"
+        pid="${nome#yasde-pixbuf-}"
+        pid="${pid%.cache}"
+        case "$pid" in '' | *[!0-9]*) continue ;; esac
+        if ! kill -0 "$pid" 2>/dev/null || [ -n "$(find "$f" -maxdepth 0 -mtime +0 2>/dev/null)" ]; then
+            rm -f "$f"
+        fi
+    done
+}
+NL='
+'
+CARTELLA_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/YASDE"
+export GDK_PIXBUF_MODULE_FILE=/dev/null
+case "$APPDIR" in
+    *\\*|*\"*|*\&*|*\|*|*"$NL"*)
+        echo "YASDE: the package path contains characters that are not allowed, image loaders not prepared (webp unavailable)" >&2 ;;
+    *)
+        if mkdir -p "$CARTELLA_CACHE" 2>/dev/null; then
+            # Pulizia dei file di corse precedenti (il punto di montaggio cambia a ogni
+            # avvio): si tolgono quelli il cui pid non e' piu' vivo e, per i pid
+            # riusati da altri programmi, quelli piu' vecchi di 24 ore. Solo file veri
+            # con il nome esatto yasde-pixbuf-<cifre>.cache in questa cartella.
+            # Limite: un'istanza viva da piu' di 24 ore che non avesse ancora caricato
+            # immagini potrebbe perdere il suo file se se ne avvia un'altra; in quel
+            # caso webp non si apre.
+            pulisci_pixbuf "$CARTELLA_CACHE"
+            CACHE_PIXBUF="$CARTELLA_CACHE/yasde-pixbuf-$$.cache"
+            if sed "s|@APPDIR@|$APPDIR|g" "$APPDIR/usr/lib/gdk-pixbuf-2.0/loaders.cache.modello" > "$CACHE_PIXBUF" 2>/dev/null; then
+                export GDK_PIXBUF_MODULE_FILE="$CACHE_PIXBUF"
+            else
+                echo "YASDE: image loaders not prepared (webp unavailable)" >&2
+            fi
+        else
+            echo "YASDE: $CARTELLA_CACHE is not writable, image loaders not prepared (webp unavailable)" >&2
+        fi ;;
+esac
+exec "$APPDIR/usr/bin/yasde" "$@"

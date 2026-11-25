@@ -1,0 +1,97 @@
+package it.yasde;
+
+import java.lang.reflect.Method;
+
+/**
+ * Prove sul telefono vero, fuori dal jar di produzione. Il jar di prova contiene anche base e contratto.
+ *
+ *   ... app_process / it.yasde.ProvaControlliTelefono servizio <volumeTrova>
+ *     avvia il servizio vero con il pezzo controlli registrato da qui (anche se non e' ancora in Servizio.PEZZI)
+ *     e con le DUE opzioni di sola prova di «trova il telefono»: volume della suoneria <volumeTrova> invece del
+ *     massimo, e suoneria con il volume del lettore a 0 e senza vibrazione (nessun suono udibile).
+ *
+ *   ... diagnosi        stampa che cosa riesce a leggere il pezzo (sola lettura)
+ *   ... torcia-su       accende la torcia, scrive «acceso» e resta in attesa su stdin (per ucciderlo con kill -9)
+ *   ... torcia-stato    scrive «torcia=0» o «torcia=1» (o «torcia=?»)
+ *   ... torcia-spegni   spegne la torcia (rete di sicurezza della prova)
+ */
+public final class ProvaControlliTelefono {
+    private ProvaControlliTelefono() {}
+
+    public static void main(String[] args) throws Exception {
+        String cmd = args.length > 0 ? args[0] : "";
+        TelefonoAndroid t = new TelefonoAndroid();
+        if (cmd.equals("servizio")) {
+            TelefonoAndroid.volumeTrovaProva = Integer.parseInt(args[1]);
+            TelefonoAndroid.suonoSilenziosoProva = true;
+            Controlli.registra();
+            Method m = Class.forName("it.yasde.Servizio").getMethod("main", String[].class);
+            m.invoke(null, (Object) new String[0]);
+        } else if (cmd.equals("diagnosi")) {
+            // solo letture: che cosa riesce a leggere il pezzo e con quale errore
+            try {
+                System.out.println("filtro=" + t.filtroNonDisturbare());
+            } catch (Throwable e) {
+                System.out.println("filtro: " + e);
+                e.printStackTrace(System.out);
+            }
+            System.out.println("haComandoNonDisturbare=" + t.haComandoNonDisturbare() + " haComandiRipristino=" + t.haComandiRipristino());
+        } else if (cmd.equals("suono-prova")) {
+            // fa partire il suono SOLO muto (volume del lettore 0, nessuna vibrazione), lo tiene <secondi> e lo ferma;
+            // se avviaSuono non torna entro 8 s stampa dove e' fermo
+            TelefonoAndroid.suonoSilenziosoProva = true;
+            final TelefonoAndroid ta = t;
+            final Throwable[] esito = new Throwable[1];
+            Thread w = new Thread("suono-prova") {
+                @Override
+                public void run() {
+                    try {
+                        ta.avviaSuono(new Telefono.Fermata() {
+                            @Override
+                            public boolean richiesta() {
+                                return false;
+                            }
+                        });
+                    } catch (Throwable e) {
+                        esito[0] = e;
+                    }
+                }
+            };
+            w.setDaemon(true);
+            w.start();
+            w.join(8000);
+            if (w.isAlive()) {
+                System.out.println("avviaSuono bloccato:");
+                for (StackTraceElement e : w.getStackTrace()) System.out.println("  " + e);
+            } else {
+                System.out.println("avviaSuono: " + (esito[0] == null ? "ok" : esito[0].toString()));
+            }
+            Thread.sleep(Long.parseLong(args[1]) * 1000);
+            t.fermaSuono();
+            System.out.println("fermato");
+        } else if (cmd.equals("torcia-su")) {
+            t.impostaTorcia(true);
+            System.out.println("acceso");
+            System.out.flush();
+            while (System.in.read() >= 0) {
+                // aspetta la chiusura di stdin
+            }
+            t.impostaTorcia(false);
+        } else if (cmd.equals("torcia-stato")) {
+            String r;
+            try {
+                r = String.valueOf(t.torcia());
+            } catch (Exception e) {
+                r = "?";
+            }
+            System.out.println("torcia=" + r);
+        } else if (cmd.equals("torcia-spegni")) {
+            t.impostaTorcia(false);
+            System.out.println("spenta");
+        } else {
+            System.out.println("uso: servizio <volumeTrova> | torcia-su | torcia-stato | torcia-spegni");
+            System.exit(2);
+        }
+        System.exit(0);
+    }
+}

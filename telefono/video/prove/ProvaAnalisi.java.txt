@@ -1,0 +1,44 @@
+package it.yasde;
+
+/** Prova su JVM dell'analizzatore dei flag delle finestre (nessun Android). */
+public final class ProvaAnalisi {
+    private static int falliti;
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    private static String finestra(int n, int schermo, boolean visibile, String flags) {
+        return "\n  Window #" + n + " Window{abc u0 prova/Attivita}:\n    mDisplayId=" + schermo
+                + " taskId=1 mSession=S\n    mAttrs={(0,0)(fillxfill) ty=BASE_APPLICATION\n" + flags
+                + "}\n    mViewVisibility=0x0\n    mHasSurface=true isReadyForDisplay()=" + visibile + "\n";
+    }
+
+    public static void main(String[] args) {
+        String esa = "      fl=81812500\n      pfl=100808c0\n      sfl=5";
+        String esaNo = "      fl=81810700\n      pfl=100808c0\n      sfl=5";
+        AnalisiFinestre.Esito e = AnalisiFinestre.analizza(finestra(0, 7, true, esa) + finestra(1, 8, true, esaNo));
+        controlla(e.protetto(7) && !e.protetto(8) && e.nonRiconosciute == 0, "esadecimale senza prefisso");
+        e = AnalisiFinestre.analizza(finestra(0, 7, true, "      fl=#81812500") + finestra(1, 8, true, "      fl=0x81810700"));
+        controlla(e.protetto(7) && !e.protetto(8), "esadecimale con # e con 0x");
+        String nomi = "    fl=LAYOUT_IN_SCREEN SECURE LAYOUT_INSET_DECOR pfl=NO_MOVE_ANIMATION";
+        String nomiNo = "    fl=LAYOUT_IN_SCREEN NOT_FOCUSABLE pfl=SECURE_LIKE";
+        e = AnalisiFinestre.analizza(finestra(0, 3, true, nomi) + finestra(1, 4, true, nomiNo));
+        controlla(e.protetto(3) && !e.protetto(4) && e.nonRiconosciute == 0, "nomi con la parola SECURE (e SECURE solo dopo pfl= ignorato)");
+        e = AnalisiFinestre.analizza(finestra(0, 5, true, "    fl=NOT_SECURE_AT_ALL"));
+        controlla(!e.protetto(5), "una parola che contiene SECURE non basta");
+        e = AnalisiFinestre.analizza(finestra(0, 6, false, esa));
+        controlla(!e.protetto(6), "finestra non visibile ignorata");
+        e = AnalisiFinestre.analizza(finestra(0, 9, true, esaNo) + finestra(1, 9, true, esa));
+        controlla(e.protetto(9), "basta una finestra protetta sullo schermo");
+        e = AnalisiFinestre.analizza(finestra(0, 2, true, "      fl=???") + finestra(1, 2, true, "      pfl=1"));
+        controlla(e.nonRiconosciute == 2 && !e.protetto(2), "formato sconosciuto contato (da registrare nel log)");
+        controlla(AnalisiFinestre.analizza("").protetti.isEmpty(), "testo vuoto");
+        e = AnalisiFinestre.analizza(finestra(0, 99, true, esa).replace("mDisplayId=99", "mDisplayId=99999999999")
+                + finestra(1, 5, true, esa));
+        controlla(e.protetto(5) && e.protetti.size() == 1, "mDisplayId illeggibile: salta solo quella finestra");
+        System.out.println("falliti: " + falliti);
+        if (falliti > 0) System.exit(1);
+    }
+}

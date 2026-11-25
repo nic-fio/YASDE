@@ -1,0 +1,6 @@
+/* Caso finto: chiamata con un argomento che non e' un letterale (errore). */
+void f(const char *x)
+{
+    const char *a = ph_t(x);
+    const char *b = ph_t("Ciao");
+}

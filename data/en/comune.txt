@@ -1,0 +1,5 @@
+# Traduzioni inglesi dei testi dell'interfaccia (specifica 5.11).
+# Formato: "testo italiano come nel codice" = "English text"
+# I segnaposto {nome} devono essere gli stessi nelle due lingue.
+# Aggiungere qui (o in altri file data/en/*.txt) le voci man mano che i testi
+# compaiono nel codice con ph_t("...").

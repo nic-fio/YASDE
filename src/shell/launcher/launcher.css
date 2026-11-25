@@ -1,0 +1,79 @@
+/* Stile del pezzo shell-launcher (F-04): solo classi con prefisso ph-launcher-.
+ * Colori e misure: le variabili di src/shell/ossatura/base.css (--ph-*) e i
+ * valori del mockup (righe 233-246 di Main.dc.html, classe .ico). */
+
+/* Riquadro: centrato, 60 % della larghezza (480-960 px), alto quanto il
+ * contenuto fino al 76 % dell'area sopra la barra (misure nel codice, in
+ * logica.h); raggio e imbottitura qui. Fondo, bordo (come ombra interna, che
+ * non occupa spazio) e ombra li da' la classe di vetro chiaro, messa da
+ * ph_shell_vetro_registra (launcher.c). */
+.ph-launcher {
+  /* ATTENZIONE: imbottitura (20px 24px), il raggio (18px, anche in
+   * ph_shell_vetro_registra) e lo spazio di 18 px tra campo e griglia
+   * (gtk_box_new) sono ripetuti nel codice: cambiarli insieme a
+   * PH_LAUNCHER_BORDO_E_IMBOTTITURA (logica.h, ora 48: nessun bordo che
+   * occupi spazio) e RIQUADRO_VERTICALE / SPAZIO_RIQUADRO (launcher.c), e
+   * viceversa. La prova a schermo controlla la larghezza interna. */
+  border-radius: 18px;
+  padding: 20px 24px;
+  color: var(--ph-testo);
+}
+
+/* Griglia. Il tema predefinito di GTK mette `gridview > child` con imbottitura
+ * 3 px e `gridview > child box` con margine 12 px e border-spacing 8 px: si
+ * annullano qui (selettori piu' specifici) e le misure del mockup si danno
+ * sulla cella: 8 px tra le colonne (colonna larga 112), 28 tra le righe, 6 tra icona e nome,
+ * imbottitura della griglia 4 0 0 (il resto lo da' la cella). */
+gridview.ph-launcher-griglia {
+  background: transparent;
+  padding: 4px 0 0;
+}
+gridview.ph-launcher-griglia > child {
+  padding: 0;
+  margin: 0;
+  background: none;
+  border-radius: 10px;
+}
+gridview.ph-launcher-griglia > child box {
+  margin: 0;
+  border-spacing: 0;
+}
+/* Fuoco da tastiera visibile: 2 px, colore del tema (--ph-fuoco). */
+gridview.ph-launcher-griglia > child:focus-visible {
+  outline: 2px solid var(--ph-fuoco);
+  outline-offset: 1px;
+}
+
+/* .ico del mockup: raggio 10, imbottitura 6 4, sopra (--ph-sopra). */
+gridview.ph-launcher-griglia > child > box.ph-launcher-cella {
+  margin: 0 4px 28px;
+  padding: 6px 4px;
+  border-spacing: 6px;
+  border-radius: 10px;
+}
+gridview.ph-launcher-griglia > child > box.ph-launcher-cella:hover {
+  background-color: var(--ph-sopra);
+}
+
+/* Icona 60x60, raggio 16, ombra 0 4px 12px. */
+.ph-launcher-icona {
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); /* colore-dato: ombra sotto l'icona dell'app, sta sull'icona e non sul vetro, uguale su chiaro e scuro */
+}
+
+/* Icona vera dell'app: niente ombra rettangolare (vedi cella_icona). */
+.ph-launcher-icona-vera {
+  box-shadow: none;
+}
+
+.ph-launcher-nome {
+  font-size: 12px;
+  color: var(--ph-testo);
+}
+
+/* «Nessuna app trovata»: 13 px, secondario, imbottitura 8, centrato. */
+.ph-launcher-nessuna {
+  font-size: 13px;
+  color: var(--ph-testo-2);
+  padding: 8px;
+}

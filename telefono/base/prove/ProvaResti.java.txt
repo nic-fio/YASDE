@@ -1,0 +1,253 @@
+import it.yasde.Custode;
+import it.yasde.Resti;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.List;
+
+/** Prova di Resti e della pulizia dei resti sulla JVM normale. Non entra nel jar (.txt). */
+public class ProvaResti {
+    static int errori = 0;
+
+    static void verifica(boolean ok, String nome) {
+        if (!ok) {
+            errori++;
+            System.out.println("FALLITA: " + nome);
+        }
+    }
+
+    static void scrivi(File f, String testo) throws Exception {
+        Files.write(f.toPath(), testo.getBytes(StandardCharsets.UTF_8));
+    }
+
+    static void processo(File proc, int pid, String... argomenti) throws Exception {
+        File d = new File(proc, String.valueOf(pid));
+        d.mkdirs();
+        StringBuilder sb = new StringBuilder();
+        for (String a : argomenti) sb.append(a).append('\0');
+        scrivi(new File(d, "cmdline"), sb.toString());
+    }
+
+    static final Custode.Verifica REGOLARI = new Custode.Verifica() {
+        public boolean eFileNostro(File f) {
+            return Files.isRegularFile(f.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS);
+        }
+    };
+
+    static String elenco(File dir) {
+        return String.join(",", new java.util.TreeSet<String>(Arrays.asList(dir.list())));
+    }
+
+    public static void main(String[] args) throws Exception {
+        File base = Files.createTempDirectory("prova-resti").toFile();
+        File dir = new File(base, "tmp");
+        File proc = new File(base, "proc");
+        dir.mkdirs();
+        proc.mkdirs();
+        String d = dir.getPath() + "/";
+
+        // nomi: solo la forma esatta e' "nostra"
+        verifica(Resti.pidDelloScript("yasde-custode-123.sh") == 123, "script nostro riconosciuto");
+        verifica(Resti.pidDelloScript("yasde-custode-.sh") == null, "script senza pid non nostro");
+        verifica(Resti.pidDelloScript("yasde-custode-12a.sh") == null, "script con pid non numerico non nostro");
+        verifica(Resti.pidDelloScript("yasde-custode-123.sh.bak") == null, "script con coda non nostro");
+        verifica(Resti.pidDelloScript("x-yasde-custode-123.sh") == null, "script con prefisso non nostro");
+        verifica(Resti.eUnJarNostro("yasde-0123abcd.jar"), "jar nostro riconosciuto");
+        for (String no : new String[] {"yasde.jar", "yasde-0123ABCD.jar", "yasde-0123abc.jar",
+            "yasde-0123abcde.jar", "yasde-apk-0123abcd.apk", "yasde-0123abcd.jar.bak", "altro-0123abcd.jar",
+            "yasde-widgetprova.txt", "prova-video.jar"}) {
+            verifica(!Resti.eUnJarNostro(no), "non e' un jar nostro: " + no);
+        }
+
+        // processi vivi letti da una finta /proc
+        processo(proc, 100, "app_process", "/", "it.yasde.Servizio");
+        processo(proc, 101, "sh", "-c", "ELENCO=$1; ...", "custode", d + "yasde-custode-200.sh", d + "yasde-aaaaaaaa.jar");
+        processo(proc, 102, "sh", "-c", "CLASSPATH=" + d + "yasde-bbbbbbbb.jar app_process / it.yasde.Servizio");
+        processo(proc, 103, "com.example.app");
+        new File(proc, "self").mkdirs(); // voce non numerica: ignorata
+        Resti.Vivi v = Resti.scansiona(proc, d, 100);
+        verifica(v.attendibile, "scansione attendibile quando compare il servizio stesso");
+        verifica(v.servizi.contains(100) && v.servizi.contains(102) && !v.servizi.contains(101) && !v.servizi.contains(103),
+            "servizi vivi riconosciuti");
+        verifica(v.percorsi.contains(d + "yasde-custode-200.sh") && v.percorsi.contains(d + "yasde-aaaaaaaa.jar")
+            && v.percorsi.contains(d + "yasde-bbbbbbbb.jar"), "percorsi citati da processi vivi");
+
+        // piano
+        List<String> nomi = Arrays.asList(
+            "yasde-custode-1.sh",          // morto: da eseguire
+            "yasde-custode-100.sh",        // pid del servizio NUOVO (il mio): il suo guardiano non c'e' ancora, e' un resto vecchio: da eseguire
+            "yasde-custode-102.sh",        // un altro servizio vivo (102): resta
+            "yasde-custode-200.sh",        // il suo guardiano e' vivo: resta
+            "yasde-custode-1.sh.pid",      // accessorio di uno script che c'e': lo toglie chi esegue lo script
+            "yasde-custode-7.sh.pid",      // orfano: da cancellare
+            "yasde-custode-8.sh.tentativi", // contatore orfano: da cancellare
+            "yasde-custode-102.sh.tmp",    // orfano ma quel servizio e' vivo: resta
+            "yasde-0123abcd.jar",          // vecchio: da cancellare
+            "yasde-cccccccc.jar",          // corrente: resta
+            "yasde-aaaaaaaa.jar",          // citato da un guardiano vivo: resta
+            "yasde-bbbbbbbb.jar",          // citato da un servizio che parte: resta
+            "yasde.jar", "yasde-apk-0123abcd.apk", "yasde-widgetprova.txt", "altro.jar");
+        Resti.Piano p = Resti.piano(nomi, d, "yasde-cccccccc.jar", v, 100);
+        verifica(p.scriptDaEseguire.equals(Arrays.asList("yasde-custode-1.sh", "yasde-custode-100.sh")), "piano: script da eseguire " + p.scriptDaEseguire);
+        verifica(p.accessoriOrfani.equals(Arrays.asList("yasde-custode-7.sh.pid", "yasde-custode-8.sh.tentativi")), "piano: accessori orfani " + p.accessoriOrfani);
+        verifica(p.jarVecchi.equals(Arrays.asList("yasde-0123abcd.jar")), "piano: jar vecchi " + p.jarVecchi);
+
+        // accessorio orfano col pid del servizio nuovo (che risulta vivo nella scansione): e' un resto
+        Resti.Vivi v2 = new Resti.Vivi();
+        v2.servizi.add(106);
+        v2.attendibile = true;
+        Resti.Piano p2 = Resti.piano(Arrays.asList("yasde-custode-106.sh.pid"), d, null, v2, 106);
+        verifica(p2.accessoriOrfani.equals(Arrays.asList("yasde-custode-106.sh.pid")), "accessorio col pid del servizio nuovo: orfano");
+        Resti.Piano p3 = Resti.piano(Arrays.asList("yasde-custode-106.sh.pid"), d, null, v2, 999);
+        verifica(p3.accessoriOrfani.isEmpty(), "accessorio di un altro servizio vivo: resta");
+
+        // pulizia vera su cartelle di prova (richiede sh e setsid)
+        boolean setsid = new File("/usr/bin/setsid").exists() || new File("/bin/setsid").exists();
+        if (!setsid) {
+            System.out.println("setsid assente: pulizia end-to-end saltata");
+        } else {
+            File segno = new File(base, "segno");
+            String cmd = "echo \"$0\" >> '" + segno.getPath() + "'";
+            String contenuto = "# ripristini di YASDE\necho $$ > \"$0.pid\"\nT=; command -v timeout >/dev/null 2>&1 && T='timeout 20'\n"
+                + "# audio-volume\n$T sh -c 'echo ripristinato >> " + segno.getPath() + "'\n";
+            scrivi(new File(dir, "yasde-custode-1.sh"), contenuto);
+            scrivi(new File(dir, "yasde-custode-100.sh"), contenuto); // il pid del servizio nuovo: va eseguito
+            scrivi(new File(dir, "yasde-custode-102.sh"), contenuto); // un altro servizio vivo: resta
+            scrivi(new File(dir, "yasde-custode-200.sh"), contenuto);
+            scrivi(new File(dir, "yasde-custode-7.sh.pid"), "7");
+            for (String n : new String[] {"yasde-0123abcd.jar", "yasde-cccccccc.jar", "yasde-aaaaaaaa.jar",
+                "yasde-bbbbbbbb.jar", "yasde.jar", "yasde-apk-0123abcd.apk", "yasde-widgetprova.txt", "altro.jar"}) {
+                scrivi(new File(dir, n), "x");
+            }
+            scrivi(new File(dir, "yasde-custode-1.sh.tentativi"), "2");
+            Custode.pulisciResti(dir, proc, "yasde-cccccccc.jar", 100, 10000, REGOLARI);
+            String restoDopo = String.join(",", new java.util.TreeSet<String>(Arrays.asList(dir.list())));
+            verifica(restoDopo.equals("altro.jar,yasde-aaaaaaaa.jar,yasde-apk-0123abcd.apk,yasde-bbbbbbbb.jar,"
+                + "yasde-cccccccc.jar,yasde-custode-102.sh,yasde-custode-200.sh,yasde-widgetprova.txt,yasde.jar"),
+                "pulizia: restano solo i file vivi o non nostri (resta: " + restoDopo + ")");
+            String s = segno.exists() ? new String(Files.readAllBytes(segno.toPath()), StandardCharsets.UTF_8) : "";
+            verifica(s.equals("ripristinato\nripristinato\n"), "pulizia: i due ripristini pendenti (compreso quello col pid del servizio nuovo) eseguiti UNA volta ciascuno (visto: " + s.trim() + ")");
+
+            // resti di una sessione morta: il ripristino pendente cita il jar e funziona solo se il jar c'e'
+            // ANCORA quando lo script gira; il jar si toglie dopo
+            File d5 = new File(base, "tmp5");
+            d5.mkdirs();
+            File segno5 = new File(base, "segno5");
+            String jarV = d5.getPath() + "/yasde-0123abcd.jar";
+            String vecchio = "# ripristini di YASDE\necho $$ > \"$0.pid\"\n"
+                + "[ -f " + jarV + " ] && echo ripristinato-col-jar >> " + segno5.getPath() + "\n";
+            scrivi(new File(d5, "yasde-custode-5.sh"), vecchio);
+            scrivi(new File(d5, "yasde-custode-5.sh.tentativi"), "1");
+            scrivi(new File(d5, "yasde-custode-300.sh"), vecchio); // altro servizio vivo: non toccato
+            scrivi(new File(d5, "yasde-custode-302.sh"), vecchio); // guardiano vivo lo cita: non toccato
+            scrivi(new File(d5, "yasde-custode-9.sh.pid"), "9");
+            for (String n : new String[] {"yasde-0123abcd.jar", "yasde-dddddddd.jar", "yasde2-custode-6.sh", "yasde2-0123abcd.jar", "yasde-apk-0123abcd.apk"}) {
+                scrivi(new File(d5, n), "x");
+            }
+            File procV = new File(base, "proc-vecchio");
+            processo(procV, 100, "app_process", "/", "it.yasde.Servizio");
+            processo(procV, 300, "app_process", "/", "it.yasde.Servizio");
+            processo(procV, 301, "sh", "-c", "ELENCO=$1; ...", "custode", d5.getPath() + "/yasde-custode-302.sh",
+                d5.getPath() + "/yasde-dddddddd.jar");
+            Custode.pulisciResti(d5, procV, "yasde-cccccccc.jar", 100, 10000, REGOLARI);
+            verifica(elenco(d5).equals("yasde-apk-0123abcd.apk,yasde-custode-300.sh,yasde-custode-302.sh,"
+                + "yasde-dddddddd.jar,yasde2-0123abcd.jar,yasde2-custode-6.sh"),
+                "resti: tolti solo script morto, accessorio orfano e jar non citato (resta: " + elenco(d5) + ")");
+            String s5 = segno5.exists() ? new String(Files.readAllBytes(segno5.toPath()), StandardCharsets.UTF_8) : "";
+            verifica(s5.equals("ripristinato-col-jar\n"), "resti: ripristino eseguito UNA volta col jar ancora presente (visto: " + s5.trim() + ")");
+
+            // un ripristino che non finisce: lo script resta e con lui il jar che cita
+            File d6 = new File(base, "tmp6");
+            d6.mkdirs();
+            scrivi(new File(d6, "yasde-custode-6.sh"), "echo $$ > \"$0.pid\"\nCLASSPATH=" + d6.getPath() + "/yasde-0123abcd.jar sleep 30\n");
+            scrivi(new File(d6, "yasde-0123abcd.jar"), "x");
+            Custode.pulisciResti(d6, procV, "yasde-cccccccc.jar", 100, 1500, REGOLARI);
+            verifica(new File(d6, "yasde-custode-6.sh").exists() && new File(d6, "yasde-0123abcd.jar").exists(),
+                "ripristino non finito: script e jar citato restano");
+
+            // scansione non attendibile: il servizio stesso (pid 555) non compare, o /proc illeggibile: nulla si tocca
+            File marker = new File(base, "marker");
+            File d2 = new File(base, "tmp2");
+            d2.mkdirs();
+            scrivi(new File(d2, "yasde-custode-1.sh"), contenuto);
+            scrivi(new File(d2, "yasde-0123abcd.jar"), "x");
+            String prima = elenco(d2);
+            Custode.pulisciResti(d2, proc, "yasde-cccccccc.jar", 555, 4000, REGOLARI);
+            verifica(elenco(d2).equals(prima), "non attendibile (servizio assente dalla scansione): nulla toccato");
+            Custode.pulisciResti(d2, new File(base, "non-esiste"), "yasde-cccccccc.jar", 100, 4000, REGOLARI);
+            verifica(elenco(d2).equals(prima), "non attendibile (/proc illeggibile): nulla toccato");
+            verifica(!segno.exists() || new String(Files.readAllBytes(segno.toPath()), StandardCharsets.UTF_8).equals("ripristinato\nripristinato\n"),
+                "non attendibile: nessun ripristino eseguito");
+
+            // un ripristino che non finisce: budget totale rispettato, contatore, terzo fallimento
+            File d3 = new File(base, "tmp3");
+            d3.mkdirs();
+            scrivi(new File(d3, "yasde-custode-2.sh"), "# x\necho $$ > \"$0.pid\"\necho x >> '" + marker.getPath() + "'\nsleep 30\n");
+            for (int i = 1; i <= 4; i++) {
+                long t0 = System.currentTimeMillis();
+                Custode.pulisciResti(d3, proc, "yasde-cccccccc.jar", 100, 1500, REGOLARI);
+                long ms = System.currentTimeMillis() - t0;
+                verifica(ms < 3000, "budget totale rispettato, uccisione compresa (giro " + i + ": " + ms + " ms)");
+                verifica(new File(d3, "yasde-custode-2.sh").exists(), "script scaduto lasciato (giro " + i + ")");
+                File tent = new File(d3, "yasde-custode-2.sh.tentativi");
+                String t = tent.exists() ? new String(Files.readAllBytes(tent.toPath()), StandardCharsets.UTF_8).trim() : "";
+                verifica(t.equals(String.valueOf(Math.min(i, 3))), "contatore dei tentativi dopo il giro " + i + " (visto: " + t + ")");
+            }
+            String m = marker.exists() ? new String(Files.readAllBytes(marker.toPath()), StandardCharsets.UTF_8) : "";
+            verifica(m.equals("x\nx\nx\n"), "eseguito 3 volte e non la quarta (visto: " + m.length() / 2 + " volte)");
+
+            // collegamento simbolico o file non nostro: non eseguito e non cancellato
+            File d4 = new File(base, "tmp4");
+            d4.mkdirs();
+            File vero = new File(base, "vero.sh");
+            scrivi(vero, "echo x >> '" + marker.getPath() + "'\n");
+            Files.createSymbolicLink(new File(d4, "yasde-custode-3.sh").toPath(), vero.toPath());
+            scrivi(new File(d4, "yasde-custode-4.sh"), "echo x >> '" + marker.getPath() + "'\n");
+            // un verificatore che rifiuta tutto: niente eseguito, niente cancellato
+            Custode.pulisciResti(d4, proc, "yasde-cccccccc.jar", 100, 4000, new Custode.Verifica() {
+                public boolean eFileNostro(File f) {
+                    return false;
+                }
+            });
+            verifica(new File(d4, "yasde-custode-4.sh").exists(), "file non nostro non cancellato");
+            verifica(new String(Files.readAllBytes(marker.toPath()), StandardCharsets.UTF_8).equals(m), "file non nostro non eseguito");
+            // verificatore vero: il collegamento simbolico resta e non viene eseguito, il file regolare si
+            Custode.pulisciResti(d4, proc, "yasde-cccccccc.jar", 100, 4000, REGOLARI);
+            verifica(Files.isSymbolicLink(new File(d4, "yasde-custode-3.sh").toPath()), "collegamento simbolico non cancellato");
+            verifica(new String(Files.readAllBytes(marker.toPath()), StandardCharsets.UTF_8).equals(m + "x\n"),
+                "collegamento simbolico non eseguito (solo il file regolare)");
+
+            // script che non e' un file regolare (FIFO, collegamento simbolico): non si apre, il jar resta,
+            // e pulisciResti torna entro il tempo (con una scadenza qui: se si bloccasse, la prova fallisce)
+            for (final String tipo : new String[] {"fifo", "link"}) {
+                final File d7 = new File(base, "tmp7-" + tipo);
+                d7.mkdirs();
+                File sc = new File(d7, "yasde-custode-7.sh");
+                if (tipo.equals("fifo")) {
+                    Process mk = new ProcessBuilder("mkfifo", sc.getPath()).start();
+                    mk.waitFor();
+                } else {
+                    Files.createSymbolicLink(sc.toPath(), new File("/dev/zero").toPath());
+                }
+                scrivi(new File(d7, "yasde-0123abcd.jar"), "x");
+                final boolean[] finito = {false};
+                Thread th = new Thread(new Runnable() {
+                    public void run() {
+                        Custode.pulisciResti(d7, procV, "yasde-cccccccc.jar", 100, 2000, REGOLARI);
+                        finito[0] = true;
+                    }
+                });
+                th.setDaemon(true);
+                th.start();
+                th.join(8000);
+                verifica(finito[0], "script " + tipo + ": pulisciResti torna entro il tempo");
+                verifica(new File(d7, "yasde-0123abcd.jar").exists(), "script " + tipo + ": il jar resta");
+            }
+        }
+
+        System.out.println(errori == 0 ? "ProvaResti: tutto ok" : "ProvaResti: " + errori + " errori");
+        System.exit(errori == 0 ? 0 : 1);
+    }
+}

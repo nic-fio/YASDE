@@ -1,0 +1,140 @@
+package it.yasde;
+
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+
+/** Prova su JVM di Regole (formato dei messaggi, \u00abnon passa mai\u00bb, eco). Non entra nel jar (estensione .txt). */
+public class ProvaRegole {
+    static int errori = 0;
+
+    static void verifica(boolean ok, String nome) {
+        if (!ok) {
+            errori++;
+            System.out.println("FALLITA: " + nome);
+        }
+    }
+
+    static String ripeti(String s, int n) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < n; i++) b.append(s);
+        return b.toString();
+    }
+
+    static byte[] unisci(byte[]... pezzi) {
+        ByteArrayOutputStream o = new ByteArrayOutputStream();
+        for (byte[] p : pezzi) o.write(p, 0, p.length);
+        return o.toByteArray();
+    }
+
+    static byte[] u32(int v) {
+        return new byte[] {(byte) (v >>> 24), (byte) (v >>> 16), (byte) (v >>> 8), (byte) v};
+    }
+
+    public static void main(String[] a) throws Exception {
+        String accenti = "perch\u00e9 \u00e8 cos\u00ec \ud83d\ude00 \u4e2d\u6587";
+
+        // formato: tipo + u32 lunghezza + corpo; testo = u32 + UTF-8
+        byte[] corpo = Regole.corpoTesto(accenti);
+        byte[] utf8 = accenti.getBytes("UTF-8");
+        verifica(corpo.length == 4 + utf8.length, "lunghezza corpo testo");
+        verifica(Arrays.equals(Arrays.copyOfRange(corpo, 4, corpo.length), utf8), "byte UTF-8 del testo");
+        byte[] m = Regole.messaggio(Regole.APPUNTI_TESTO, corpo);
+        verifica(m[0] == 0x58 && Arrays.equals(Arrays.copyOfRange(m, 1, 5), u32(corpo.length)), "intestazione messaggio");
+        verifica(Arrays.equals(Arrays.copyOfRange(m, 5, m.length), corpo), "corpo del messaggio");
+
+        // lettura di IMPOSTA e INCOLLA: andata e ritorno con accenti ed emoji
+        verifica(accenti.equals(Regole.leggiImposta(corpo)), "IMPOSTA andata e ritorno");
+        Regole.Incolla i = Regole.leggiIncolla(unisci(u32(7), corpo));
+        verifica(i != null && i.sessione == 7 && accenti.equals(i.testo), "INCOLLA andata e ritorno");
+
+        // messaggi malformati: ignorati, mai eccezioni
+        verifica(Regole.leggiImposta(new byte[0]) == null, "IMPOSTA vuoto");
+        verifica(Regole.leggiImposta(new byte[] {0, 0, 0}) == null, "IMPOSTA troncato");
+        verifica(Regole.leggiImposta(unisci(u32(5), new byte[] {'a', 'b'})) == null, "IMPOSTA lunghezza che non torna");
+        verifica(Regole.leggiImposta(unisci(u32(1), new byte[] {'a', 'b'})) == null, "IMPOSTA byte in piu'");
+        verifica(Regole.leggiImposta(u32(0)) == null, "IMPOSTA testo vuoto");
+        verifica(Regole.leggiImposta(unisci(u32(-1), new byte[] {'a'})) == null, "IMPOSTA lunghezza negativa");
+        verifica(Regole.leggiImposta(unisci(u32(2), new byte[] {(byte) 0xc3, 0x28})) == null, "IMPOSTA UTF-8 non valido");
+        verifica(Regole.leggiIncolla(new byte[] {0, 0, 0}) == null, "INCOLLA senza id");
+        verifica(Regole.leggiIncolla(u32(1)) == null, "INCOLLA senza testo");
+
+        // limite 200.000 byte: esatto passa, uno in piu' no (in entrambi i versi)
+        String giusto = ripeti("a", Regole.MAX_TESTO);
+        String troppo = giusto + "a";
+        verifica(giusto.equals(Regole.leggiImposta(Regole.corpoTesto(giusto))), "IMPOSTA al limite passa");
+        verifica(Regole.leggiImposta(Regole.corpoTesto(troppo)) == null, "IMPOSTA oltre il limite ignorato");
+        verifica(Regole.leggiIncolla(unisci(u32(1), Regole.corpoTesto(troppo))) == null, "INCOLLA oltre il limite ignorato");
+        verifica(Regole.puoPartire(giusto, false, null), "T->PC al limite passa");
+        verifica(!Regole.puoPartire(troppo, false, null), "T->PC oltre il limite non passa");
+        // 100.000 caratteri da 2 byte = 200.000 byte: passa; uno in piu' no (si conta in byte, non in caratteri)
+        String doppi = ripeti("\u00e9", 100000);
+        verifica(Regole.puoPartire(doppi, false, null), "200.000 byte in 100.000 caratteri passa");
+        verifica(!Regole.puoPartire(doppi + "\u00e9", false, null), "200.002 byte non passa");
+        verifica(!Regole.puoPartire(ripeti("\u20ac", 66667), false, null), "caratteri da 3 byte oltre il limite");
+
+        // regole \u00abnon passa mai\u00bb
+        verifica(Regole.puoPartire(accenti, false, null), "testo normale passa");
+        verifica(!Regole.puoPartire(accenti, true, null), "marcato sensibile non passa");
+        verifica(!Regole.puoPartire("", false, null), "vuoto non passa");
+        verifica(!Regole.puoPartire(null, false, null), "null non passa");
+        verifica(!Regole.puoPartire(accenti, false, "com.bitwarden"), "gestore di password non passa");
+        verifica(!Regole.puoPartire(accenti, false, "com.x8bit.bitwarden.beta"), "sotto-pacchetto di gestore non passa");
+        verifica(Regole.puoPartire(accenti, false, "com.bitwardenfake"), "nome solo simile passa");
+        verifica(Regole.puoPartire(accenti, false, "com.android.shell"), "fonte shell passa");
+        verifica(Regole.puoPartire(accenti, false, "com.android.chrome"), "fonte qualunque passa");
+
+        // fonte letta prima e dopo: devono coincidere e non essere gestori
+        verifica(Regole.fonteSicura("com.android.chrome", "com.android.chrome"), "fonti uguali: sicura");
+        verifica(Regole.fonteSicura(null, null), "fonti ignote uguali: sicura");
+        verifica(!Regole.fonteSicura("com.android.chrome", "com.bitwarden"), "fonte cambiata verso un gestore");
+        verifica(!Regole.fonteSicura("com.bitwarden", "com.android.chrome"), "fonte cambiata da un gestore");
+        verifica(!Regole.fonteSicura("com.android.chrome", "com.android.shell"), "fonti diverse: nel dubbio no");
+        verifica(!Regole.fonteSicura(null, "com.android.chrome"), "fonte sparita: nel dubbio no");
+        verifica(!Regole.puoPartire(accenti, false, "com.authy.authy"), "app di codici non passa");
+        verifica(!Regole.puoPartire(accenti, false, "proton.android.pass"), "Proton Pass non passa");
+        verifica(!Regole.puoPartire(accenti, false, "com.siber.roboform"), "RoboForm non passa");
+        verifica(!Regole.puoPartire(accenti, false, "com.samsung.android.samsungpass"), "Samsung Pass non passa");
+        verifica(Regole.puoPartire(accenti, false, "org.keepassxc"), "org.keepassxc non e' piu' in lista");
+
+        // eco: solo la copia di YASDE (etichetta + fonte shell) con il testo arrivato dal PC
+        Regole.Eco e = new Regole.Eco();
+        verifica(!e.eEco("x", "yasde", null), "senza memoria nessun eco");
+        e.daPc("dal pc");
+        verifica(e.eEco("dal pc", "yasde", null), "eco soppresso (fonte ignota)");
+        verifica(e.eEco("dal pc", "yasde", "com.android.shell"), "eco soppresso (fonte shell)");
+        verifica(e.eEco("dal pc", "yasde", null), "eco soppresso anche una seconda volta");
+        verifica(!e.eEco("dal pc", "prova", "com.android.shell"), "stesso testo ma altra etichetta: copia vera, passa");
+        verifica(!e.eEco("dal pc", null, null), "stesso testo senza etichetta: passa");
+        verifica(!e.eEco("dal pc", "yasde", "com.android.chrome"), "etichetta uguale ma altra fonte: passa");
+        verifica(!e.eEco("altro", "yasde", null), "testo diverso: passa");
+        e.annulla();
+        verifica(!e.eEco("dal pc", "yasde", null), "imposta() fallita: nessun eco");
+        e.daPc("ancora");
+        verifica(e.eEco("ancora", "yasde", null), "dopo annulla, un nuovo testo dal PC torna a contare");
+        verifica(e.eEco("ancora", "yasde", null), "la memoria non si azzera a ogni copia");
+
+        // avvisi doppi: stessa marca di tempo E stesso testo si valutano una volta sola
+        Regole.Eco e2 = new Regole.Eco();
+        verifica(!e2.giaVisto(100, "a"), "prima copia nuova");
+        verifica(e2.giaVisto(100, "a"), "stessa marca e stesso testo: gia' vista");
+        verifica(!e2.giaVisto(100, "b"), "stessa marca ma testo diverso: nuova");
+        verifica(!e2.giaVisto(101, "b"), "marca diversa: nuova");
+        verifica(!e2.giaVisto(0, "b") && !e2.giaVisto(0, "b"), "marca zero: mai considerata vista");
+
+        // copia scartata per fonte incerta: non e' "vista"; rivalutata con fonte coerente passa, una volta sola
+        Regole.Eco e3 = new Regole.Eco();
+        verifica(e3.daValutare(200, "t", "com.a", "com.b") == Regole.Eco.FONTE_INCERTA, "fonte incerta: scartata");
+        verifica(e3.daValutare(200, "t", "com.a", "com.a") == Regole.Eco.DA_VALUTARE, "stessa copia con fonte coerente: passa");
+        verifica(e3.daValutare(200, "t", "com.a", "com.a") == Regole.Eco.DOPPIONE, "poi il doppione si scarta");
+        // gestore di password: motivo distinto, segnata come vista (una sola riga di log)
+        verifica(e3.daValutare(201, "t", "com.bitwarden", "com.bitwarden") == Regole.Eco.DA_GESTORE, "gestore: motivo gestore");
+        verifica(e3.daValutare(201, "t", "com.bitwarden", "com.bitwarden") == Regole.Eco.DOPPIONE, "gestore: secondo avviso doppione");
+        verifica(e3.daValutare(202, "u", "com.a", "com.bitwarden") == Regole.Eco.DA_GESTORE, "fonte passata a un gestore: gestore");
+        verifica(e3.daValutare(202, "u", "com.a", "com.bitwarden") == Regole.Eco.DA_GESTORE, "fonti diverse: non segnata come vista");
+        verifica(e3.daValutare(203, "v", "com.bitwarden", "com.a") == Regole.Eco.DA_GESTORE, "fonte tornata da un gestore: gestore");
+        verifica(e3.daValutare(203, "v", "com.a", "com.a") == Regole.Eco.DA_VALUTARE, "stessa copia con fonte coerente dopo: passa");
+
+        System.out.println(errori == 0 ? "ProvaRegole: tutto ok" : "ProvaRegole: ERRORI " + errori);
+        if (errori != 0) System.exit(1);
+    }
+}

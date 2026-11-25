@@ -1,0 +1,108 @@
+package it.yasde;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+/** Prova su JVM della barriera sulla coda di iniezione (Barriera): input in coda + pausa, coda bloccata. */
+public final class ProvaBarriera {
+    private static int falliti;
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    /** Un thread che serve la coda (FIFO) come il thread di iniezione. */
+    private static Thread servi(final BlockingQueue<Runnable> q) {
+        Thread t = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    while (true) q.take().run();
+                } catch (InterruptedException e) {
+                    // fine
+                }
+            }
+        };
+        t.setDaemon(true);
+        t.start();
+        return t;
+    }
+
+    public static void main(String[] args) throws Exception {
+        // input gia' in coda + pausa: l'input arriva prima dello stacco
+        final List<String> ordine = Collections.synchronizedList(new ArrayList<String>());
+        BlockingQueue<Runnable> q = new ArrayBlockingQueue<Runnable>(16);
+        for (int i = 1; i <= 3; i++) {
+            final int k = i;
+            q.put(new Runnable() {
+                @Override
+                public void run() {
+                    ordine.add("input" + k);
+                }
+            });
+        }
+        Thread t = servi(q);
+        boolean eseguito = Barriera.esegui(q, new Runnable() {
+            @Override
+            public void run() {
+                ordine.add("chiusura gesti");
+            }
+        }, 50, 2000);
+        ordine.add("stacco");
+        controlla(eseguito && ordine.toString().equals("[input1, input2, input3, chiusura gesti, stacco]"),
+                "input in coda e pausa: gli input sono iniettati, poi si chiudono i gesti, poi lo stacco: " + ordine);
+        t.interrupt();
+
+        // coda bloccata (il thread di iniezione e' fermo su un evento): la barriera non aspetta oltre il limite...
+        final CountDownLatch sblocca = new CountDownLatch(1);
+        final CountDownLatch chiusuraFatta = new CountDownLatch(1);
+        q = new ArrayBlockingQueue<Runnable>(16);
+        q.put(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    sblocca.await();
+                } catch (InterruptedException e) {
+                    // fine
+                }
+            }
+        });
+        t = servi(q);
+        long da = System.nanoTime();
+        boolean r = Barriera.esegui(q, new Runnable() {
+            @Override
+            public void run() {
+                chiusuraFatta.countDown();
+            }
+        }, 50, 150);
+        long ms = (System.nanoTime() - da) / 1000000;
+        controlla(!r && ms < 1000, "coda bloccata: la barriera torna entro il limite senza aver eseguito (" + ms + " ms)");
+        // ... e la chiusura, rimasta in coda, viene eseguita appena il thread riparte
+        controlla(chiusuraFatta.getCount() == 1, "finche' il thread e' fermo la chiusura non e' ancora eseguita");
+        sblocca.countDown();
+        controlla(chiusuraFatta.await(2, TimeUnit.SECONDS), "appena il thread riparte la chiusura dei gesti, rimasta in coda, viene eseguita");
+        t.interrupt();
+
+        // coda piena e ferma: non si entra nemmeno, e non si aspetta oltre il limite
+        q = new ArrayBlockingQueue<Runnable>(1);
+        q.put(new Runnable() {
+            @Override
+            public void run() {}
+        });
+        da = System.nanoTime();
+        r = Barriera.esegui(q, new Runnable() {
+            @Override
+            public void run() {}
+        }, 50, 150);
+        ms = (System.nanoTime() - da) / 1000000;
+        controlla(!r && ms < 1000 && q.size() == 1, "coda piena e ferma: non entra, torna entro il limite (" + ms + " ms)");
+        System.out.println("falliti: " + falliti);
+        if (falliti > 0) System.exit(1);
+    }
+}

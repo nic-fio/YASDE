@@ -1,0 +1,71 @@
+/* Stile del pezzo shell-ossatura (F-01, 4.8, 4.14): solo classi con prefisso ph-ossatura-.
+ * Colori e misure: le variabili di src/shell/ossatura/base.css (--ph-*) e i
+ * valori del mockup (Main.dc.html: .fs, .wc, velo a z 9000). Caricato da
+ * ph_shell_stile_carica nel proprio _installa (ph_ossatura_installa_pezzi). */
+
+/* Velo di blocco e connessione (4.8): a tutta area, sopra le finestre. */
+.ph-ossatura-velo {
+  background-color: var(--ph-velo);
+  color: var(--ph-bianco);
+}
+
+.ph-ossatura-velo-titolo {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ph-bianco);
+}
+
+.ph-ossatura-velo-testo {
+  font-size: 13px;
+  color: var(--ph-testo-2);
+}
+
+/* "Riconnetti ora": accento, 13 px 600, imbottitura 9 16, raggio 8, margine alto 8. */
+button.ph-ossatura-velo-pulsante {
+  margin-top: 8px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Striscia dello schermo intero (mockup .fs): 6 px che al passaggio del mouse
+ * si espandono a 36 px; il fondo e' quello della barra del titolo. */
+.ph-ossatura-striscia {
+  background-color: var(--ph-titolo-host);
+  min-height: 6px;
+}
+
+.ph-ossatura-titolo-riga {
+  min-height: 36px;
+  padding: 0 8px 0 14px;
+}
+
+.ph-ossatura-titolo-nome {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ph-testo);
+}
+
+/* Pulsante rotondo della barra (mockup .wc): 26x26, fondo bianco al 10%. */
+button.ph-ossatura-wc {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  border-radius: 13px;
+  border: none;
+  box-shadow: none;
+  background-image: none;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--ph-testo);
+}
+
+button.ph-ossatura-wc:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Solo per demo-ossatura senza il pezzo desktop: lo sfondo predefinito del
+ * mockup (sfumatura 135 gradi, #0e2638 -> #1a625f). */
+.ph-ossatura-demo-sfondo {
+  background-image: linear-gradient(135deg, #0e2638, #1a625f);
+}

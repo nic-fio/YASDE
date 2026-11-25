@@ -1,0 +1,6 @@
+/* Caso finto: un solo testo senza traduzione inglese (alla riga 5). */
+void f(void)
+{
+    const char *a = ph_t("Ciao");
+    const char *b = ph_t("Questo testo non ha la traduzione");
+}

@@ -1,0 +1,633 @@
+package it.yasde;
+
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+/** Prova su JVM della parte pura dei dati del telefono (nessun Android). */
+public final class ProvaDati {
+    private static int falliti;
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    private static String ripeti(String s, int n) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < n; i++) sb.append(s);
+        return sb.toString();
+    }
+
+    private static String registro(String pk, String chiave, String gruppo, String flags, String titolo, String testo, String nascosta, long tempo) {
+        String extras = "            extras={\n                android.title=" + titolo + "\n"
+                + (testo == null ? "" : "                android.text=" + testo + "\n")
+                + "                android.showWhen=Boolean (true)\n            }\n";
+        return "    NotificationRecord(0x1: pkg=" + pk + " user=UserHandle{0} id=1 tag=null importance=3 key=" + chiave + ": Notification(channel=c)\n"
+                + "      uid=1 userId=0\n      opPkg=" + pk + "\n      flags=" + flags + "\n      pri=0\n      key=" + chiave + "\n"
+                + "      seen=false\n      groupKey=" + gruppo + "\n      notification=\n            fullscreenIntent=null\n" + extras
+                + "      publicNotification=\n            extras={\n                android.title=String (PUBBLICA)\n            }\n"
+                + "      stats=x\n      mHidden==" + nascosta + "\n      mCreationTimeMs=" + tempo + "(2026-01-01 00:00:00.000+0100)\n      mUpdateTimeMs=1(x)\n";
+    }
+
+    /** Record con il blocco extras scritto a mano (righe gia' con il loro rientro) e un `when` facoltativo. */
+    private static String registroGrezzo(String pk, String chiave, String extras, String when, boolean conNotifica) {
+        return "    NotificationRecord(0x1: pkg=" + pk + " user=UserHandle{0} id=1 tag=null key=" + chiave + ": Notification(channel=c)\n"
+                + "      uid=1 userId=0\n      flags=0\n      key=" + chiave + "\n      seen=false\n      groupKey=" + chiave + "\n"
+                + (conNotifica ? "      notification=\n            number=0\n" + (when == null ? "" : "            when=" + when + "/" + when + "\n") + extras : "")
+                + "      publicNotification=\n            None\n      stats=x\n      mHidden==false\n      mCreationTimeMs=777(x)\n";
+    }
+
+    private static String extras(String voci) {
+        return "            extras={\n" + voci + "            }\n";
+    }
+
+    private static boolean ok(long da, long a, int massimo) {
+        try {
+            CampiDati.controllaIntervallo(da, a, massimo);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        // troncamento
+        controlla(CampiDati.tronca("ciao", 10).equals("ciao"), "stringa corta intatta");
+        controlla(CampiDati.tronca("ciao", 2).equals("ci"), "taglio ASCII");
+        controlla(CampiDati.tronca("èèè", 5).equals("èè"), "non spezza un carattere a 2 byte");
+        controlla(CampiDati.tronca("a😀b", 4).equals("a"), "non spezza una coppia di surrogati (4 byte)");
+        controlla(CampiDati.tronca("a😀b", 5).equals("a😀"), "coppia di surrogati intera");
+        controlla(CampiDati.tronca(null, 5).isEmpty(), "null diventa vuota");
+        String lunga = ripeti("€", 5000);
+        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+        CampiDati.scriviStringa(new java.io.DataOutputStream(bo), lunga, 100000);
+        controlla(bo.size() <= 2 + 0xffff, "stringa mai oltre u16");
+        DataInputStream di = new DataInputStream(new ByteArrayInputStream(bo.toByteArray()));
+        String letta = CampiDati.leggiStringa(di);
+        controlla(letta.getBytes("UTF-8").length <= 0xffff && lunga.startsWith(letta), "la stringa troncata si rilegge");
+
+        // regole
+        controlla(CampiDati.soloVerticale(1), "portrait = solo verticale");
+        controlla(CampiDati.soloVerticale(7) && CampiDati.soloVerticale(9) && CampiDati.soloVerticale(12), "sensor/reverse/user portrait");
+        controlla(CampiDati.soloVerticale(1) && CampiDati.soloVerticale(12), "verticale fisso e' solo verticale qualunque sia la ridimensionabilita' (regola vecchia: falso se ridimensionabile)");
+        controlla(!CampiDati.soloVerticale(-1) && !CampiDati.soloVerticale(0) && !CampiDati.soloVerticale(2) && !CampiDati.soloVerticale(3)
+                && !CampiDati.soloVerticale(4) && !CampiDati.soloVerticale(5) && !CampiDati.soloVerticale(6) && !CampiDati.soloVerticale(8)
+                && !CampiDati.soloVerticale(10) && !CampiDati.soloVerticale(11) && !CampiDati.soloVerticale(13) && !CampiDati.soloVerticale(14),
+                "non e' solo verticale: unspecified(-1), landscape(0), user(2), behind(3), sensor(4), nosensor(5), sensorLandscape(6), reverseLandscape(8), fullSensor(10), userLandscape(11), fullUser(13), locked(14)");
+        controlla(CampiDati.livelloWifi(-120) == 0 && CampiDati.livelloWifi(-100) == 0, "wifi molto debole = 0");
+        controlla(CampiDati.livelloWifi(-55) == 4 && CampiDati.livelloWifi(-30) == 4, "wifi forte = 4");
+        int prec = -1;
+        boolean cresce = true;
+        for (int r = -110; r <= -20; r++) {
+            int l = CampiDati.livelloWifi(r);
+            if (l < prec || l < 0 || l > 4) cresce = false;
+            prec = l;
+        }
+        controlla(cresce, "livello wifi monotono tra 0 e 4");
+
+        // elenco
+        List<CampiDati.App> app = new ArrayList<>();
+        app.add(new CampiDati.App("p.zeta", "zeta", false, false));
+        app.add(new CampiDati.App("p.b", "Èlite", true, true));
+        app.add(new CampiDati.App("p.a2", "Banana", false, false));
+        app.add(new CampiDati.App("p.a1", "banana", false, false));
+        app.add(new CampiDati.App("p.c", "Alfa", true, false));
+        CampiDati.ordinaApp(app);
+        controlla(app.get(0).nome.equals("Alfa") && app.get(1).pacchetto.equals("p.a1") && app.get(2).pacchetto.equals("p.a2")
+                && app.get(4).nome.equals("zeta"), "ordine senza distinguere maiuscole, a parita' per pacchetto");
+        controlla(app.get(3).nome.equals("Èlite") || app.get(3).nome.equals("zeta") == false, "accentata ordinata come la sua lettera");
+        byte[] e = CampiDati.codificaElenco(app);
+        DataInputStream in = new DataInputStream(new ByteArrayInputStream(e));
+        int n = in.readUnsignedShort();
+        boolean formaOk = n == 5;
+        for (int i = 0; i < n; i++) {
+            String p = CampiDati.leggiStringa(in), nome = CampiDati.leggiStringa(in);
+            int segni = in.readUnsignedByte();
+            if (!p.equals(app.get(i).pacchetto) || !nome.equals(app.get(i).nome)) formaOk = false;
+            int atteso = (app.get(i).sistema ? 1 : 0) | (app.get(i).soloVerticale ? 2 : 0);
+            if (segni != atteso) formaOk = false;
+        }
+        controlla(formaOk && in.available() == 0, "formato APP_ELENCO");
+        List<CampiDati.App> tante = new ArrayList<>();
+        for (int i = 0; i < 8000; i++) tante.add(new CampiDati.App(ripeti("p", 100) + i, ripeti("x", 150), false, false));
+        boolean rifiutata = false;
+        try {
+            CampiDati.codificaElenco(tante);
+        } catch (IllegalStateException ex) {
+            rifiutata = true;
+        }
+        controlla(rifiutata, "elenco oltre 1 MiB = errore");
+
+        // stato
+        CampiDati.Stato s = new CampiDati.Stato(87, 1, 2, 3, 0);
+        byte[] bs = CampiDati.codificaStato(s);
+        controlla(bs.length == 5 && bs[0] == 87 && bs[1] == 1 && bs[2] == 2 && bs[3] == 3 && bs[4] == 0, "formato STATO (5 byte)");
+        CampiDati.Stato fuori = new CampiDati.Stato(250, 7, 9, 99, 5);
+        controlla(fuori.batteria == 100 && fuori.inCarica == 1 && fuori.rete == 2 && fuori.segnale == 4 && fuori.bloccato == 1, "valori fuori limite riportati nei limiti");
+        controlla(!CampiDati.statoCambiato(s, new CampiDati.Stato(87, 1, 2, 0, 0)), "il segnale da solo non e' un cambio");
+        controlla(CampiDati.statoCambiato(s, new CampiDati.Stato(86, 1, 2, 3, 0)), "batteria -1 e' un cambio");
+        controlla(CampiDati.statoCambiato(s, new CampiDati.Stato(87, 1, 2, 3, 1)), "blocco e' un cambio");
+
+        // notifiche
+        List<CampiDati.Notifica> ns = new ArrayList<>();
+        ns.add(new CampiDati.Notifica("k1", "p.a", "T", "", 1234567890123L));
+        ns.add(new CampiDati.Notifica("k2", "p.b", ripeti("t", 1000), ripeti("x", 5000), 5L));
+        byte[] bn = CampiDati.codificaNotifiche(ns);
+        in = new DataInputStream(new ByteArrayInputStream(bn));
+        boolean okN = in.readUnsignedShort() == 2;
+        okN &= CampiDati.leggiStringa(in).equals("k1") && CampiDati.leggiStringa(in).equals("p.a")
+                && CampiDati.leggiStringa(in).equals("T") && CampiDati.leggiStringa(in).isEmpty() && in.readLong() == 1234567890123L;
+        okN &= CampiDati.leggiStringa(in).equals("k2") && CampiDati.leggiStringa(in).equals("p.b")
+                && CampiDati.leggiStringa(in).length() == CampiDati.MAX_TITOLO && CampiDati.leggiStringa(in).length() == CampiDati.MAX_TESTO
+                && in.readLong() == 5L;
+        controlla(okN && in.available() == 0, "formato NOTIFICHE, testo vuoto e stringhe troncate");
+        List<CampiDati.Notifica> vuote = new ArrayList<>();
+        controlla(CampiDati.codificaNotifiche(vuote).length == 2, "nessuna notifica = solo il numero (0)");
+        String f1 = CampiDati.firmaNotifiche(ns);
+        List<CampiDati.Notifica> ns2 = new ArrayList<>();
+        ns2.add(ns.get(1));
+        ns2.add(ns.get(0));
+        controlla(f1.equals(CampiDati.firmaNotifiche(ns2)), "firma indipendente dall'ordine");
+        ns2.set(0, new CampiDati.Notifica("k2", "p.b", ripeti("t", 1000), "diverso", 5L));
+        controlla(!f1.equals(CampiDati.firmaNotifiche(ns2)), "la firma cambia se cambia il testo");
+        controlla(!CampiDati.firmaNotifiche(ns).equals(CampiDati.firmaNotifiche(vuote)), "la firma cambia se sparisce una notifica");
+
+        // analisi del dump delle notifiche (testi finti, formato osservato)
+        String dump = "Current Notification Manager state:\n  Notification List:\n"
+                + registro("p.uno", "0|p.uno|1|null|100", "0|p.uno|1|null|100", "0", "String (Titolo uno)", "String (Testo uno\nsu due righe)", "false", 1000L)
+                + registro("p.due", "0|p.due|7|abc=\n|200", "0|p.due|g:gruppo", "0", "SpannableString (Titolo due)", null, "false", 2000L)
+                + registro("p.due", "0|p.due|8|null|200", "0|p.due|g:gruppo", "GROUP_SUMMARY", "String (Riepilogo)", null, "false", 2500L)
+                + registro("p.tre", "0|p.tre|3|null|300", "0|p.tre|g:solo", "GROUP_SUMMARY", "String (Riepilogo senza figli)", "String (x)", "false", 3000L)
+                + registro("p.quattro", "0|p.quattro|4|null|400", "0|p.quattro|4|null|400", "0", "String (Nascosta)", null, "true", 4000L)
+                + "  TimeoutPendingIntent:\n    NotificationRecord(0xfff: pkg=p.fuori user=U id=1 tag=null key=k)\n";
+        AnalisiNotifiche.Esito es = AnalisiNotifiche.analizza(dump);
+        controlla(es.sezioneTrovata && es.nonRiconosciuti == 0, "dump: sezione trovata, nessun record illeggibile");
+        controlla(es.notifiche.size() == 3, "dump: 3 notifiche (riepilogo con figli e nascosta saltati, altra sezione ignorata)");
+        CampiDati.Notifica n1 = es.notifiche.get(0);
+        controlla(n1.pacchetto.equals("p.uno") && n1.titolo.equals("Titolo uno") && n1.testo.equals("Testo uno\nsu due righe") && n1.ora == 1000L
+                && n1.chiave.equals("0|p.uno|1|null|100"), "dump: pacchetto, titolo, testo su piu' righe, ora, chiave");
+        CampiDati.Notifica n2 = es.notifiche.get(1);
+        controlla(n2.titolo.equals("Titolo due") && n2.testo.isEmpty() && n2.chiave.equals("0|p.due|7|abc=\n|200"), "dump: titolo SpannableString, testo assente, chiave con a-capo nella tag");
+        controlla(es.notifiche.get(2).pacchetto.equals("p.tre"), "dump: riepilogo senza figli resta");
+        controlla(!AnalisiNotifiche.analizza("niente di noto\n").sezioneTrovata, "dump senza sezione: formato sconosciuto");
+        es = AnalisiNotifiche.analizza("  Notification List:\n  Altra:\n");
+        controlla(es.sezioneTrovata && es.notifiche.isEmpty(), "sezione vuota = nessuna notifica vera");
+        es = AnalisiNotifiche.analizza("  Notification List:\n    NotificationRecord(0x1: senza pacchetto\n      uid=1\n  Altra:\n");
+        controlla(es.nonRiconosciuti > 0, "record illeggibile contato");
+
+        // casi del revisore: voci senza forma Classe (valore), array, testi con righe a due spazi, formati cambiati
+        String voci = "                android.title=String (T1)\n"
+                + "                android.text=String (Riga uno\n  - elenco a due spazi\n  - secondo\nfine)\n"
+                + "                android.infoText=null\n"
+                + "                android.messages=Parcelable[] (2)\n"
+                + "                    [0] Bundle[{text=FINTO1}]\n"
+                + "                    [1] Bundle[{text=FINTO2}]\n"
+                + "                android.subText=String (ALTRO)\n";
+        String d2 = "  Notification List:\n" + registroGrezzo("p.a", "k1", extras(voci), "5000", true)
+                + registroGrezzo("p.b", "k2", extras("                android.title=String (T2)\n                android.text=String (X)\n"), null, true)
+                + "  Altra:\n";
+        es = AnalisiNotifiche.analizza(d2);
+        controlla(es.nonRiconosciuti == 0 && es.notifiche.size() == 2, "extras con null, array e riga a due spazi: due notifiche, nessun dubbio");
+        controlla(es.notifiche.get(0).testo.equals("Riga uno\n  - elenco a due spazi\n  - secondo\nfine"), "testo su piu' righe con elenco a due spazi, senza le voci seguenti");
+        controlla(es.notifiche.get(0).titolo.equals("T1") && es.notifiche.get(0).ora == 5000L, "titolo e `when` come ora");
+        controlla(es.notifiche.get(1).ora == 777L && es.notifiche.get(1).titolo.equals("T2"), "senza `when` ora di creazione; la seconda notifica non sparisce");
+        String voci2 = "                android.infoText=null\n                android.messages=Parcelable[] (1)\n                    [0] Bundle[{text=FINTO}]\n"
+                + "                android.title=String (T)\n                android.text=String (Scritto)\n                android.subText=null\n"
+                + "                android.messages2=Parcelable[] (1)\n                    [0] Bundle[{text=FINTO}]\n";
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras(voci2), "1", true));
+        controlla(es.nonRiconosciuti == 0 && es.notifiche.get(0).testo.equals("Scritto") && es.notifiche.get(0).titolo.equals("T"), "voci in ordine diverso: il testo non ingloba altre voci");
+        es = AnalisiNotifiche.analizza(d2.replace("    NotificationRecord(", "    NotifRec("));
+        controlla(es.nonRiconosciuti > 0, "marcatore del record cambiato: errore, non elenco vuoto");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", "", "1", true));
+        controlla(es.nonRiconosciuti > 0, "record con notification= senza extras: non riconosciuto");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras(""), "1", true));
+        controlla(es.nonRiconosciuti > 0, "extras senza nessuna voce: non riconosciuto");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", "", "1", false));
+        controlla(es.nonRiconosciuti > 0, "record senza notification=: non riconosciuto");
+        es = AnalisiNotifiche.analizza("  Notification List:\nriga estranea prima dei record\n" + registroGrezzo("p.a", "k1", extras("                android.title=String (T)\n"), "1", true));
+        controlla(es.nonRiconosciuti > 0, "riga estranea nella sezione: non riconosciuta");
+
+        // testo con righe insidiose: `      x=5` e `  }` non chiudono blocco ne' sezione
+        String vociIns = "                android.title=String (Chat)\n"
+                + "                android.text=String (codice:\n      x=5\n  }\n  fine)\n"
+                + "                android.subText=String (S)\n";
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras(vociIns), "9", true)
+                + registroGrezzo("p.b", "k2", extras("                android.title=String (T2)\n"), "8", true) + "  Altra:\n");
+        controlla(es.nonRiconosciuti == 0 && es.notifiche.size() == 2 && es.notifiche.get(0).testo.equals("codice:\n      x=5\n  }\n  fine"),
+                "testo con `      x=5` e `  }`: elenco completo e testo intero");
+        String vociDoppie = "                android.title=String (Vero)\n                android.text=String (a\n                android.title=String (finto)\n)\n";
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras(vociDoppie), "9", true));
+        controlla(es.nonRiconosciuti > 0, "testo con una riga android.title: voce doppia = errore");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras("                android.title=String (T)\n"), "9", true).replace("      stats=x\n", ""));
+        controlla(es.nonRiconosciuti == 0 && es.notifiche.size() == 1, "senza stats= il blocco pubblico si chiude col campo dopo (mHidden)");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras("                android.title=String (T)\n"), "9", true)
+                .replace("      stats=x\n", "").replace("      mHidden==false\n      mCreationTimeMs=777(x)\n", ""));
+        controlla(es.nonRiconosciuti > 0, "blocco pubblico che non si chiude mai: errore");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras("                android.title=String (T)\n"), "9", true).replace("      publicNotification=\n            None\n", "      publicNotification=\n"));
+        controlla(es.nonRiconosciuti == 0 && es.notifiche.size() == 1, "blocco pubblico vuoto letto");
+
+        // regole del terzo giro
+        String vociX = "                android.title=String (Chat)\n                android.text=String (codice:\n                x=5\n                y = 1\n  fine)\n                android.subText=String (S)\n";
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras(vociX), "9", true));
+        controlla(es.nonRiconosciuti == 0 && es.notifiche.get(0).testo.equals("codice:\n                x=5\n                y = 1\n  fine"), "testo con la riga `                x=5`: identico");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras("                android.title=String (T)\n"), "9", true)
+                .replace("      publicNotification=\n            None\n", "      publicNotification=\n            None\n      publicNotification=\n"));
+        controlla(es.nonRiconosciuti > 0, "publicNotification= dentro il blocco pubblico: errore");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras("                android.title=String (T)\n                android.text=String (a\n      mHidden=true\n  }\nb)\n"), "9", true)
+                + registroGrezzo("p.b", "k2", extras("                android.title=String (T2)\n"), "8", true) + "  Altra:\n");
+        controlla(es.nonRiconosciuti == 0 && es.notifiche.size() == 2 && es.notifiche.get(0).testo.equals("a\n      mHidden=true\n  }\nb"), "testo con `      mHidden=true` e `  }`: identico ed elenco completo");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras("                android.title=String (T)\n"), "9", true)
+                .replace("      publicNotification=\n            None\n", ""));
+        controlla(es.nonRiconosciuti > 0, "record senza publicNotification=: errore, non chiusura con stats=");
+        es = AnalisiNotifiche.analizza("  Notification List:\n" + registroGrezzo("p.a", "k1", extras("                android.title=String (T)\n"), "9", true)
+                .replace("      publicNotification=\n            None\n", "")
+                + registroGrezzo("p.b", "k2", extras("                android.title=String (T2)\n"), "8", true) + "  Altra:\n");
+        controlla(es.nonRiconosciuti > 0, "record senza publicNotification= in mezzo all'elenco: errore");
+
+        // memoria in dettaglio e calendario (testi finti)
+        byte[] md = CampiDati.codificaMemoriaDettaglio(1L, 2L, CampiDati.NON_LEGGIBILE, 1L << 40);
+        in = new DataInputStream(new ByteArrayInputStream(md));
+        controlla(md.length == 32 && in.readLong() == 1L && in.readLong() == 2L && in.readLong() == -1L && in.readLong() == (1L << 40), "formato MEMORIA_DETTAGLIO (4 x u64)");
+        controlla(md[16] == (byte) 0xff && md[23] == (byte) 0xff, "valore non leggibile = 0xFFFFFFFFFFFFFFFF");
+        boolean fuori0 = false, fuori17 = false, dentro = true;
+        try {
+            CampiDati.controllaMassimoEventi(0);
+        } catch (IllegalArgumentException ex) {
+            fuori0 = true;
+        }
+        try {
+            CampiDati.controllaMassimoEventi(17);
+        } catch (IllegalArgumentException ex) {
+            fuori17 = true;
+        }
+        try {
+            CampiDati.controllaMassimoEventi(1);
+            CampiDati.controllaMassimoEventi(16);
+        } catch (IllegalArgumentException ex) {
+            dentro = false;
+        }
+        controlla(fuori0 && fuori17 && dentro, "massimo eventi: 0 e 17 rifiutati, 1 e 16 accettati");
+        List<CampiDati.Evento> ev = new ArrayList<>();
+        ev.add(new CampiDati.Evento("Riunione finta", 1000L, 2000L, false));
+        ev.add(new CampiDati.Evento(ripeti("t", 1000), 3000L, 4000L, true));
+        ev.add(new CampiDati.Evento(null, 5000L, 6000L, false));
+        byte[] ce = CampiDati.codificaCalendario(ev, 2);
+        in = new DataInputStream(new ByteArrayInputStream(ce));
+        boolean okC = in.readUnsignedShort() == 2;
+        okC &= CampiDati.leggiStringa(in).equals("Riunione finta") && in.readLong() == 1000L && in.readLong() == 2000L && in.readUnsignedByte() == 0;
+        okC &= CampiDati.leggiStringa(in).length() == CampiDati.MAX_TITOLO_EVENTO && in.readLong() == 3000L && in.readLong() == 4000L && in.readUnsignedByte() == 1;
+        controlla(okC && in.available() == 0, "formato CALENDARIO: massimo rispettato, titolo troncato, tutto il giorno");
+        in = new DataInputStream(new ByteArrayInputStream(CampiDati.codificaCalendario(ev, 16)));
+        controlla(in.readUnsignedShort() == 3, "CALENDARIO: tutti gli eventi sotto il massimo");
+        in = new DataInputStream(new ByteArrayInputStream(CampiDati.codificaCalendario(new ArrayList<CampiDati.Evento>(), 4)));
+        controlla(in.readUnsignedShort() == 0 && in.available() == 0, "CALENDARIO senza eventi: solo il numero 0");
+
+        // lettura singola con scadenza (calendario e memoria)
+        final LetturaUnica<String> lu = new LetturaUnica<>("prova", "occupata", "scaduta");
+        controlla(lu.esegui(new LetturaUnica.Lavoro<String>() {
+            @Override
+            public String esegui() {
+                return "valore";
+            }
+        }, 2000).equals("valore"), "lettura singola: restituisce il valore");
+        boolean fallita = false;
+        try {
+            lu.esegui(new LetturaUnica.Lavoro<String>() {
+                @Override
+                public String esegui() throws Exception {
+                    throw new java.io.IOException("x");
+                }
+            }, 2000);
+        } catch (LetturaUnica.Fallita ex) {
+            fallita = ex.getCause() instanceof java.io.IOException;
+        }
+        controlla(fallita, "lettura singola: l'errore del lavoro arriva con la sua causa");
+        final java.util.concurrent.CountDownLatch via = new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.atomic.AtomicInteger partite = new java.util.concurrent.atomic.AtomicInteger();
+        LetturaUnica.Lavoro<String> bloccato = new LetturaUnica.Lavoro<String>() {
+            @Override
+            public String esegui() throws Exception {
+                partite.incrementAndGet();
+                via.await();
+                return "tardi";
+            }
+        };
+        boolean scaduta = false, occupata = false;
+        try {
+            lu.esegui(bloccato, 50);
+        } catch (LetturaUnica.Scaduta ex) {
+            scaduta = true;
+        }
+        try {
+            lu.esegui(bloccato, 50);
+        } catch (LetturaUnica.Occupata ex) {
+            occupata = true;
+        }
+        controlla(scaduta && occupata && partite.get() == 1, "lettura bloccata: scade, la seconda risponde subito Occupata senza avviare un altro thread");
+        via.countDown();
+        String dopo = null;
+        long limite = System.nanoTime() + 5000000000L;
+        while (dopo == null && System.nanoTime() < limite) {
+            try {
+                dopo = lu.esegui(new LetturaUnica.Lavoro<String>() {
+                    @Override
+                    public String esegui() {
+                        return "ripartita";
+                    }
+                }, 2000);
+            } catch (LetturaUnica.Occupata ex) {
+                Thread.yield();
+            }
+        }
+        controlla("ripartita".equals(dopo), "finita la lettura bloccata se ne puo' avviare un'altra");
+
+        // ---- CALENDARIO_INTERVALLO, SVEGLIA, BATTERIA ----
+        final long GIORNO = 86400000L;
+        long base = 1800000000000L;
+        controlla(ok(base, base + 62 * GIORNO, 500) && ok(base, base + 1, 1), "intervallo: 62 giorni esatti e 1 ms accettati, massimo 1 e 500");
+        controlla(!ok(base, base, 10) && !ok(base + 1, base, 10), "intervallo vuoto o rovesciato: errore");
+        controlla(!ok(base, base + 62 * GIORNO + 1, 10), "intervallo oltre 62 giorni (di 1 ms): errore");
+        controlla(!ok(base, base + GIORNO, 0) && !ok(base, base + GIORNO, 501) && !ok(base, base + GIORNO, 65535), "massimo 0, 501 e 65535: errore");
+        controlla(!ok(-1L, base, 10) && !ok(base, Long.MIN_VALUE, 10), "istanti negativi (u64 oltre 2^63): errore");
+        // 62 giorni di calendario in ora legale: la durata in ms cambia di +-1 ora, il limite e' in ms
+        java.time.ZoneId roma = java.time.ZoneId.of("Europe/Rome");
+        java.time.ZonedDateTime d0 = java.time.ZonedDateTime.of(2026, 3, 1, 0, 0, 0, 0, roma);
+        java.time.ZonedDateTime d1 = d0.plusDays(62);
+        long ms1 = d1.toInstant().toEpochMilli() - d0.toInstant().toEpochMilli();
+        controlla(ms1 == 62 * GIORNO - 3600000L && ok(d0.toInstant().toEpochMilli(), d1.toInstant().toEpochMilli(), 10), "62 giorni a cavallo dell'ora legale (marzo): 1 ora in meno, accettato");
+        java.time.ZonedDateTime e0 = java.time.ZonedDateTime.of(2026, 10, 1, 0, 0, 0, 0, roma);
+        java.time.ZonedDateTime e1 = e0.plusDays(62);
+        long ms2 = e1.toInstant().toEpochMilli() - e0.toInstant().toEpochMilli();
+        controlla(ms2 == 62 * GIORNO + 3600000L && !ok(e0.toInstant().toEpochMilli(), e1.toInstant().toEpochMilli(), 10), "62 giorni a cavallo della fine dell'ora legale (ottobre): 1 ora in piu', rifiutato (limite in ms)");
+        controlla(CampiDati.sovrappone(base + 10, base + 20, base, base + 100), "evento dentro l'intervallo");
+        controlla(!CampiDati.sovrappone(base - 20, base, base, base + 100), "evento che finisce esattamente a `da`: fuori");
+        controlla(CampiDati.sovrappone(base - 20, base + 1, base, base + 100), "evento che finisce 1 ms dopo `da`: dentro");
+        controlla(!CampiDati.sovrappone(base + 100, base + 200, base, base + 100), "evento che inizia esattamente ad `a`: fuori");
+        controlla(CampiDati.sovrappone(base - 5 * GIORNO, base + 5 * GIORNO, base, base + GIORNO), "evento su piu' giorni che copre tutto l'intervallo");
+        controlla(CampiDati.sovrappone(base, base, base, base + 100) && !CampiDati.sovrappone(base - 1, base - 1, base, base + 100)
+                && !CampiDati.sovrappone(base + 100, base + 100, base, base + 100), "evento senza durata: conta se cade in [da, a)");
+        long mezzanotte = (base / GIORNO) * GIORNO;
+        controlla(CampiDati.sovrappone(mezzanotte, mezzanotte + GIORNO, mezzanotte + GIORNO - 1, mezzanotte + 2 * GIORNO)
+                && !CampiDati.sovrappone(mezzanotte, mezzanotte + GIORNO, mezzanotte + GIORNO, mezzanotte + 2 * GIORNO), "tutto il giorno (mezzanotte UTC): l'ultimo millisecondo conta, il giorno dopo no");
+        List<CampiDati.Evento> tanti = new ArrayList<>();
+        for (int i = 0; i < 600; i++) tanti.add(new CampiDati.Evento(ripeti("e", 1000), base + i, base + i + 5, i % 2 == 0));
+        byte[] ci = CampiDati.codificaCalendarioIntervallo(new CampiDati.Calendario(tanti, false, "com.finto.calendario"), 500);
+        in = new DataInputStream(new ByteArrayInputStream(ci));
+        boolean tr = in.readUnsignedByte() == 1;
+        boolean pk = CampiDati.leggiStringa(in).equals("com.finto.calendario");
+        int nn2 = in.readUnsignedShort();
+        boolean tit = true;
+        for (int i = 0; i < nn2; i++) {
+            tit &= CampiDati.leggiStringa(in).length() == CampiDati.MAX_TITOLO_EVENTO;
+            in.readLong();
+            in.readLong();
+            in.readUnsignedByte();
+        }
+        controlla(tr && pk && nn2 == 500 && tit && in.available() == 0 && ci.length < CampiDati.MAX_RISPOSTA, "intervallo: 600 eventi con massimo 500 = 500 eventi, troncato=1, titoli troncati, sotto 1 MiB");
+        in = new DataInputStream(new ByteArrayInputStream(CampiDati.codificaCalendarioIntervallo(new CampiDati.Calendario(new ArrayList<CampiDati.Evento>(), false, null), 10)));
+        controlla(in.readUnsignedByte() == 0 && CampiDati.leggiStringa(in).isEmpty() && in.readUnsignedShort() == 0 && in.available() == 0, "intervallo vuoto: non troncato, nessuna app, 0 eventi");
+        in = new DataInputStream(new ByteArrayInputStream(CampiDati.codificaCalendarioIntervallo(new CampiDati.Calendario(tanti.subList(0, 3), true, ""), 10)));
+        controlla(in.readUnsignedByte() == 1, "troncato dichiarato dalla lettura resta 1 anche con pochi eventi");
+        // sveglia
+        in = new DataInputStream(new ByteArrayInputStream(CampiDati.codificaSveglia(new CampiDati.Sveglia(false, 0, "x"))));
+        controlla(in.readUnsignedByte() == 0 && in.readLong() == 0L && CampiDati.leggiStringa(in).isEmpty() && in.available() == 0, "nessuna sveglia: c'e'=0, ora 0, pacchetto vuoto");
+        in = new DataInputStream(new ByteArrayInputStream(CampiDati.codificaSveglia(new CampiDati.Sveglia(true, base, "com.finto.sveglia"))));
+        controlla(in.readUnsignedByte() == 1 && in.readLong() == base && CampiDati.leggiStringa(in).equals("com.finto.sveglia") && in.available() == 0, "sveglia presente: ora e pacchetto");
+        in = new DataInputStream(new ByteArrayInputStream(CampiDati.codificaSveglia(new CampiDati.Sveglia(true, 0, "p"))));
+        controlla(in.readUnsignedByte() == 0 && in.readLong() == 0L, "sveglia con ora 0: trattata come assente, non inventata");
+        // batteria
+        CampiDati.Batteria bt = CampiDati.Batteria.daAndroid(91, 100, 2, 2, 2, 274, 4186, 55);
+        byte[] bb = CampiDati.codificaBatteria(bt);
+        in = new DataInputStream(new ByteArrayInputStream(bb));
+        controlla(bb.length == 1 + 1 + 1 + 2 + 1 + 2 + 4 + 4 && in.readUnsignedByte() == 91 && in.readUnsignedByte() == 1 && in.readUnsignedByte() == 2
+                && in.readShort() == 274 && in.readUnsignedByte() == 1 && in.readUnsignedShort() == 4186 && in.readInt() == 55 && in.readInt() == -1, "formato BATTERIA: in carica da USB, salute buona, 55 minuti, autonomia -1");
+        CampiDati.Batteria scarica = CampiDati.Batteria.daAndroid(40, 100, 3, 0, 2, Integer.MIN_VALUE, 0, 77);
+        controlla(scarica.stato == 2 && scarica.temperatura == 0x7fff && scarica.tensione == 0 && scarica.minutiCarica == -1 && scarica.minutiAutonomia == -1,
+                "in scarica: temperatura non nota 0x7fff, tensione 0, carica completa -1 anche se il sistema ne da' un valore");
+        controlla(CampiDati.Batteria.daAndroid(-1, 100, 3, 0, 2, 0, 0, -1) == null && CampiDati.Batteria.daAndroid(50, 0, 3, 0, 2, 0, 0, -1) == null, "livello o scala non validi: nessun valore");
+        controlla(CampiDati.Batteria.daAndroid(3, 4, 5, 15, 7, -50, 0, -1).livello == 75 && CampiDati.Batteria.daAndroid(3, 4, 5, 15, 7, -50, 0, -1).stato == 4
+                && CampiDati.Batteria.daAndroid(3, 4, 5, 15, 7, -50, 0, -1).salute == 5 && CampiDati.Batteria.daAndroid(3, 4, 5, 15, 7, -50, 0, -1).alimentazione == 15
+                && CampiDati.Batteria.daAndroid(3, 4, 5, 15, 7, -50, 0, -1).temperatura == -50, "scala diversa da 100, piena, troppo fredda, tutte le alimentazioni, temperatura negativa");
+        controlla(CampiDati.Batteria.daAndroid(50, 100, 1, 0, 1, 0, 0, -1).stato == 0 && CampiDati.Batteria.daAndroid(50, 100, 4, 0, 6, 0, 0, -1).stato == 3
+                && CampiDati.Batteria.daAndroid(50, 100, 4, 0, 6, 0, 0, -1).salute == 6 && CampiDati.Batteria.daAndroid(50, 100, 1, 0, 1, 0, 0, -1).salute == 0, "stato e salute sconosciuti e non in carica/errore");
+        String dumpB = "Current Battery Service state:\n  AC powered: false\n  USB powered: true\n  Wireless powered: false\n  Dock powered: false\n"
+                + "  Max charging current: 0\n  status: 2\n  health: 2\n  present: true\n  level: 87\n  scale: 100\n  voltage: 4100\n  temperature: 301\n  technology: Li-ion\n";
+        CampiDati.Batteria ab = AnalisiBatteria.analizza(dumpB, 30);
+        controlla(ab != null && ab.livello == 87 && ab.stato == 1 && ab.alimentazione == 2 && ab.tensione == 4100 && ab.temperatura == 301 && ab.salute == 1 && ab.minutiCarica == 30,
+                "dump della batteria analizzato (ripiego)");
+        controlla(AnalisiBatteria.analizza("niente di noto\n", -1) == null && AnalisiBatteria.analizza("  level: 50\n", -1) == null, "dump senza livello o scala: nessun valore inventato");
+        CampiDati.Batteria senzaTemp = AnalisiBatteria.analizza("  level: 10\n  scale: 100\n  status: 3\n", -1);
+        controlla(senzaTemp != null && senzaTemp.temperatura == 0x7fff && senzaTemp.tensione == 0 && senzaTemp.alimentazione == 0, "dump senza temperatura e tensione: non note");
+
+        // ---- POSIZIONE ----
+        controlla(LogicaPosizione.millesimi5(0.0024) == 0 && LogicaPosizione.millesimi5(0.0025) == 5 && LogicaPosizione.millesimi5(0.0026) == 5 && LogicaPosizione.millesimi5(0.0) == 0, "arrotondamento a 0,005: 0,0024 -> 0, 0,0025 -> 5");
+        controlla(LogicaPosizione.millesimi5(-0.0024) == 0 && LogicaPosizione.millesimi5(-0.0025) == -5 && LogicaPosizione.millesimi5(-0.0026) == -5, "arrotondamento negativi: a meta' lontano da zero");
+        controlla(LogicaPosizione.millesimi5(45.4567) == 45455 && LogicaPosizione.millesimi5(-45.4567) == -45455 && LogicaPosizione.millesimi5(9.1234) == 9125 && LogicaPosizione.millesimi5(0.0075) == 10, "arrotondamento al multiplo piu' vicino di 0,005 (positivi e negativi)");
+        controlla(LogicaPosizione.millesimi5(90.0) == 90000 && LogicaPosizione.millesimi5(-90.0) == -90000 && LogicaPosizione.millesimi5(180.0) == 180000 && LogicaPosizione.millesimi5(-180.0) == -180000, "bordi: poli e antimeridiano");
+        controlla(LogicaPosizione.millesimi5(89.9976) == 90000 && LogicaPosizione.millesimi5(-179.999) == -180000 && LogicaPosizione.millesimi5(89.9974) == 89995, "vicino ai bordi");
+        boolean mult5 = true;
+        for (double g = -180.0; g <= 180.0; g += 0.00137) {
+            int m = LogicaPosizione.millesimi5(g);
+            if (m % 5 != 0 || Math.abs(m) > 180000 || Math.abs(m - g * 1000.0) > 2.5 + 1e-6) mult5 = false;
+        }
+        controlla(mult5, "ogni valore e' un multiplo di 5, nei limiti, a non piu' di 2,5 millesimi dall'esatto");
+        controlla(LogicaPosizione.valida(90, 180) && LogicaPosizione.valida(-90, -180) && !LogicaPosizione.valida(90.001, 0) && !LogicaPosizione.valida(0, -180.001)
+                && !LogicaPosizione.valida(Double.NaN, 0) && !LogicaPosizione.valida(0, Double.POSITIVE_INFINITY), "coordinate valide: limiti, NaN e infinito");
+        List<LogicaPosizione.Candidata> cand = new ArrayList<>();
+        controlla(LogicaPosizione.scegli(cand) == null, "nessuna candidata: null");
+        cand.add(new LogicaPosizione.Candidata(1, 2, 5000, LogicaPosizione.FORNITORE_GPS));
+        cand.add(new LogicaPosizione.Candidata(3, 4, 1000, LogicaPosizione.FORNITORE_RETE));
+        cand.add(new LogicaPosizione.Candidata(5, 6, -1, LogicaPosizione.FORNITORE_PASSIVO));
+        cand.add(new LogicaPosizione.Candidata(Double.NaN, 0, 1, LogicaPosizione.FORNITORE_FUSO));
+        controlla(LogicaPosizione.scegli(cand).fornitore == LogicaPosizione.FORNITORE_RETE, "sceglie la piu' recente; scarta NaN; eta' ignota perde");
+        List<LogicaPosizione.Candidata> solo = new ArrayList<>();
+        solo.add(new LogicaPosizione.Candidata(5, 6, -1, LogicaPosizione.FORNITORE_PASSIVO));
+        solo.add(new LogicaPosizione.Candidata(7, 8, -1, LogicaPosizione.FORNITORE_GPS));
+        controlla(LogicaPosizione.scegli(solo).fornitore == LogicaPosizione.FORNITORE_PASSIVO, "solo eta' ignote: la prima");
+        List<LogicaPosizione.Candidata> pari = new ArrayList<>();
+        pari.add(new LogicaPosizione.Candidata(1, 1, 100, LogicaPosizione.FORNITORE_RETE));
+        pari.add(new LogicaPosizione.Candidata(2, 2, 100, LogicaPosizione.FORNITORE_GPS));
+        controlla(LogicaPosizione.scegli(pari).fornitore == LogicaPosizione.FORNITORE_RETE, "a parita' di eta' vale l'ordine");
+        LogicaPosizione.Candidata giovane = new LogicaPosizione.Candidata(1, 1, LogicaPosizione.SEI_ORE_MS, 0);
+        LogicaPosizione.Candidata vecchia = new LogicaPosizione.Candidata(1, 1, LogicaPosizione.SEI_ORE_MS + 1, 0);
+        LogicaPosizione.Candidata ignota = new LogicaPosizione.Candidata(1, 1, -1, 0);
+        controlla(!LogicaPosizione.serveRichiesta(true, giovane) && LogicaPosizione.serveRichiesta(true, vecchia), "regola delle 6 ore: esattamente 6 ore no, 1 ms oltre si'");
+        controlla(LogicaPosizione.serveRichiesta(true, null) && LogicaPosizione.serveRichiesta(true, ignota) && !LogicaPosizione.serveRichiesta(false, null)
+                && !LogicaPosizione.serveRichiesta(false, vecchia), "richiesta: senza posizione o eta' ignota si'; mai se il PC non la permette");
+        controlla(LogicaPosizione.etaSecondi(-1) == 0xffffffffL && LogicaPosizione.etaSecondi(0) == 0 && LogicaPosizione.etaSecondi(59999) == 59
+                && LogicaPosizione.etaSecondi(Long.MAX_VALUE) == 0xfffffffeL, "eta' in secondi: ignota, zero, troncata, limitata a u32");
+        LogicaPosizione.Risultato rn = LogicaPosizione.Risultato.nota(new LogicaPosizione.Candidata(45.4567, -9.1234, 90000, LogicaPosizione.FORNITORE_FUSO), "Luogo finto");
+        byte[] cp = LogicaPosizione.codifica(new LogicaPosizione.Risposta(rn, true));
+        in = new DataInputStream(new ByteArrayInputStream(cp));
+        controlla(in.readUnsignedByte() == 0 && in.readInt() == 45455 && in.readInt() == -9125 && in.readInt() == 90 && in.readUnsignedByte() == 2
+                && CampiDati.leggiStringa(in).equals("Luogo finto") && in.readUnsignedByte() == 1 && in.available() == 0, "OK posizione nota: millesimi gia' arrotondati (multipli di 5), eta', fornitore, localita', ricerca avviata");
+        controlla(cp.length == 17 + "Luogo finto".length(), "lunghezza dell'OK: 17 + n byte (stringa = 2 byte di lunghezza + n)");
+        byte[] lungaP = LogicaPosizione.codifica(new LogicaPosizione.Risposta(LogicaPosizione.Risultato.nota(new LogicaPosizione.Candidata(1, 1, 0, 0), ripeti("\u00e8", 200)), false));
+        controlla(lungaP.length == 17 + 126 && lungaP[lungaP.length - 1] == 0, "localita' troncata a 127 byte su confine di carattere (126 byte con le 'e' accentate)");
+        for (int esi = 1; esi <= 3; esi++) {
+            byte[] ep0 = LogicaPosizione.codifica(new LogicaPosizione.Risposta(LogicaPosizione.Risultato.senzaPosizione(esi), esi == 3));
+            in = new DataInputStream(new ByteArrayInputStream(ep0));
+            controlla(in.readUnsignedByte() == esi && in.readInt() == 0 && in.readInt() == 0 && in.readInt() == -1 && in.readUnsignedByte() == 0
+                    && CampiDati.leggiStringa(in).isEmpty() && in.readUnsignedByte() == (esi == 3 ? 1 : 0) && in.available() == 0, "OK senza posizione, esito " + esi + ": coordinate 0, eta' ignota, localita' vuota, 19 byte esatti");
+            controlla(ep0.length == 17, "OK senza posizione: 17 byte esatti");
+        }
+        // freno di 10 minuti sulle richieste nuove
+        LogicaPosizione.Freno fr = new LogicaPosizione.Freno();
+        long m10 = LogicaPosizione.INTERVALLO_RICHIESTE_MS;
+        controlla(fr.puoiChiedere(0) && LogicaPosizione.richiestaConsentita(true, null, fr, 5), "freno: la prima richiesta e' consentita");
+        fr.registra(1000);
+        controlla(!fr.puoiChiedere(1000) && !fr.puoiChiedere(1000 + m10 - 1) && !LogicaPosizione.richiestaConsentita(true, null, fr, 1000 + m10 - 1), "freno: 1 ms prima dei 10 minuti no");
+        controlla(fr.puoiChiedere(1000 + m10) && LogicaPosizione.richiestaConsentita(true, null, fr, 1000 + m10 + 5), "freno: 10 minuti esatti si'");
+        controlla(fr.puoiChiedere(500) && fr.puoiChiedere(-1), "freno: orologio che torna indietro = consentito (il segno non vale piu')");
+        fr.registra(500);
+        controlla(!fr.puoiChiedere(500 + m10 - 1) && fr.puoiChiedere(500 + m10), "freno: dopo un orologio all'indietro riparte dal nuovo segno");
+        controlla(!LogicaPosizione.richiestaConsentita(false, null, new LogicaPosizione.Freno(), 0) && !LogicaPosizione.richiestaConsentita(true, giovane, new LogicaPosizione.Freno(), 0),
+                "richiesta consentita solo se serve (PC la permette, posizione assente o vecchia) E il freno lo concede");
+        // ---- lavoro in sottofondo (stato in memoria) ----
+        final long m10b = LogicaPosizione.INTERVALLO_RICHIESTE_MS;
+        LogicaPosizione.Candidata vecchiaP = new LogicaPosizione.Candidata(10, 20, LogicaPosizione.SEI_ORE_MS + 1, 0);
+        LogicaPosizione.Candidata freschiP = new LogicaPosizione.Candidata(10, 20, 1000, 0);
+        LogicaPosizione.StatoPosizione sp = new LogicaPosizione.StatoPosizione();
+        controlla(sp.tentaAvvio(false, null, true, true, false, 0) == 0, "sottofondo: senza permesso del PC non parte");
+        controlla(sp.tentaAvvio(true, freschiP, true, true, true, 0) == 0, "sottofondo: posizione recente e nome noto: niente da fare");
+        controlla(sp.tentaAvvio(true, null, false, true, false, 0) == 0, "sottofondo: nessuna posizione ma rete non disponibile e nessun nome da calcolare: niente");
+        controlla(sp.tentaAvvio(true, freschiP, true, false, false, 0) == 0, "sottofondo: nome non abilitato: niente");
+        controlla(sp.tentaAvvio(true, freschiP, true, true, false, 0) == LogicaPosizione.StatoPosizione.SOLO_NOME, "sottofondo: posizione recente senza nome: solo il nome");
+        controlla(sp.inCorso() && sp.tentaAvvio(true, null, true, true, false, 10) == 0, "sottofondo: un solo lavoro alla volta (risposta immediata, ricerca = 0)");
+        controlla(sp.tentaAvvio(true, null, true, true, false, 5 * m10b) == 0, "sottofondo: anche passato il freno, se il lavoro e' ancora in corso non ne parte un altro");
+        sp.finito();
+        controlla(sp.tentaAvvio(true, freschiP, true, true, false, m10b - 1) == 0, "freno del nome: 1 ms prima dei 10 minuti no");
+        controlla(sp.tentaAvvio(true, null, true, true, false, 20) == LogicaPosizione.StatoPosizione.CERCA, "freni separati: un «solo nome» non consuma il freno delle ricerche di rete");
+        sp.finito();
+        controlla(sp.tentaAvvio(true, null, true, true, false, 30) == 0 && sp.tentaAvvio(true, null, true, true, false, 20 + m10b - 1) == 0, "freno delle ricerche: 1 ms prima dei 10 minuti no");
+        controlla(sp.tentaAvvio(true, null, true, true, false, 20 + m10b) == LogicaPosizione.StatoPosizione.CERCA, "freno delle ricerche: a 10 minuti esatti riparte");
+        sp.finito();
+        controlla(sp.tentaAvvio(true, vecchiaP, true, true, true, 20 + m10b + 1) == 0, "ricerca appena fatta e nome noto: niente (freno)");
+        LogicaPosizione.StatoPosizione sq = new LogicaPosizione.StatoPosizione();
+        controlla(sq.tentaAvvio(true, vecchiaP, true, true, true, 0) == LogicaPosizione.StatoPosizione.CERCA, "posizione piu' vecchia di 6 ore: ricerca");
+        sq.finito();
+        controlla(sq.tentaAvvio(true, vecchiaP, false, true, false, 1) == LogicaPosizione.StatoPosizione.SOLO_NOME, "vecchia ma rete non disponibile: solo il nome");
+        sq.finito();
+        controlla(sq.tentaAvvio(true, vecchiaP, true, true, false, 2) == 0, "ricerca e nome entrambi frenati: niente");
+        sq.finito();
+        LogicaPosizione.StatoPosizione sr = new LogicaPosizione.StatoPosizione();
+        controlla(sr.tentaAvvio(true, vecchiaP, true, true, true, 0) == LogicaPosizione.StatoPosizione.CERCA, "ricerca avviata");
+        sr.finito();
+        controlla(sr.tentaAvvio(true, vecchiaP, true, true, false, 5) == LogicaPosizione.StatoPosizione.SOLO_NOME, "ricerca frenata ma nome mancante: ripiega sul solo nome");
+        sr.finito();
+        // posizione trovata dalla ricerca e nome in memoria
+        LogicaPosizione.StatoPosizione sm = new LogicaPosizione.StatoPosizione();
+        controlla(sm.memorizzata(0) == null, "memoria: all'inizio nessuna posizione");
+        sm.memorizza(new LogicaPosizione.Candidata(45.4567, 9.1234, 0, LogicaPosizione.FORNITORE_RETE), 1000);
+        LogicaPosizione.Candidata mem = sm.memorizzata(61000);
+        controlla(mem != null && mem.etaMs == 60000 && mem.fornitore == 0 && sm.memorizzata(500).etaMs == 0, "memoria: l'eta' cresce con l'orologio, mai negativa se torna indietro");
+        sm.impostaNome(45455, 9125, "Citta Finta");
+        controlla("Citta Finta".equals(sm.nomePer(45455, 9125)) && sm.nomePer(45455, 9130).isEmpty() && sm.nomePer(45460, 9125).isEmpty(), "nome: vale solo per le stesse coordinate arrotondate; se la posizione cambia non vale piu'");
+        sm.impostaNome(45460, 9125, "");
+        controlla(sm.nomePer(45455, 9125).isEmpty() && sm.nomePer(45460, 9125).isEmpty(), "nome vuoto: cancella il vecchio");
+        sm.impostaNome(45455, 9125, "Altra");
+        sm.chiudi();
+        sm.impostaNome(1, 1, "Dopo");
+        sm.memorizza(new LogicaPosizione.Candidata(1, 1, 0, 0), 5);
+        controlla(sm.chiuso() && "Altra".equals(sm.nomePer(45455, 9125)) && sm.nomePer(1, 1).isEmpty() && sm.memorizzata(100).lat > 40, "chiusura: i risultati in ritardo si ignorano");
+        controlla(sm.tentaAvvio(true, null, true, true, false, 99 * m10b) == 0, "chiusura: nessun lavoro nuovo dopo la chiusura del servizio");
+        // memoria arrotondata
+        LogicaPosizione.StatoPosizione sa = new LogicaPosizione.StatoPosizione();
+        sa.memorizza(new LogicaPosizione.Candidata(45.456789, -9.123456, 0, LogicaPosizione.FORNITORE_RETE), 0);
+        LogicaPosizione.Candidata ma = sa.memorizzata(0);
+        controlla(ma.lat == 45.455 && ma.lon == -9.125 && ma.lat != 45.456789, "memoria: la posizione precisa non resta, solo quella arrotondata a 0,005 gradi");
+        controlla(LogicaPosizione.millesimi5(ma.lat) == LogicaPosizione.millesimi5(45.456789) && LogicaPosizione.millesimi5(ma.lon) == LogicaPosizione.millesimi5(-9.123456), "memoria: arrotondare di nuovo da' gli stessi millesimi (il risultato codificato non cambia)");
+        byte[] c1 = LogicaPosizione.codifica(new LogicaPosizione.Risposta(LogicaPosizione.Risultato.nota(new LogicaPosizione.Candidata(45.456789, -9.123456, 5000, 0), ""), false));
+        byte[] c2 = LogicaPosizione.codifica(new LogicaPosizione.Risposta(LogicaPosizione.Risultato.nota(sa.memorizzata(5000), ""), false));
+        controlla(java.util.Arrays.equals(c1, c2), "memoria: la risposta codificata e' identica con la posizione esatta e con quella tenuta in memoria");
+        // chiusura tra tentaAvvio e avvio del thread
+        LogicaPosizione.StatoPosizione sc = new LogicaPosizione.StatoPosizione();
+        final int[] eseguito = new int[1];
+        controlla(sc.tentaAvvio(true, null, true, true, false, 0) == LogicaPosizione.StatoPosizione.CERCA && sc.inCorso(), "chiusura: il lavoro e' partito");
+        sc.chiudi();
+        sc.eseguiLavoro(new Runnable() {
+            @Override
+            public void run() {
+                eseguito[0]++;
+            }
+        });
+        controlla(eseguito[0] == 0 && !sc.inCorso(), "chiusura tra tentaAvvio e avvio: il lavoro non fa nulla e lo stato si libera");
+        LogicaPosizione.StatoPosizione sd = new LogicaPosizione.StatoPosizione();
+        sd.tentaAvvio(true, null, true, true, false, 0);
+        boolean propagato = false;
+        try {
+            sd.eseguiLavoro(new Runnable() {
+                @Override
+                public void run() {
+                    throw new IllegalStateException("x");
+                }
+            });
+        } catch (IllegalStateException ex) {
+            propagato = true;
+        }
+        controlla(propagato && !sd.inCorso(), "un lavoro che lancia libera comunque lo stato");
+        LogicaPosizione.StatoPosizione se = new LogicaPosizione.StatoPosizione();
+        se.tentaAvvio(true, null, true, true, false, 0);
+        se.eseguiLavoro(new Runnable() {
+            @Override
+            public void run() {
+                eseguito[0] += 10;
+            }
+        });
+        controlla(eseguito[0] == 10 && !se.inCorso(), "lavoro normale: eseguito e stato libero");
+        String senzaCtl = LogicaPosizione.nomeLocalita(new LetturaUnica<String>("c2", "", ""), new LogicaPosizione.Cercatore() {
+            @Override
+            public String cerca(int la, int lo) {
+                return "Ci\u0000tta\n Fin\u007fta\u0085";
+            }
+        }, 1, 1, 2000);
+        controlla(senzaCtl.equals("Citta Finta"), "localita': NUL e caratteri di controllo tolti");
+        // localita'
+        final int[] viste = new int[2];
+        LogicaPosizione.Cercatore buono = new LogicaPosizione.Cercatore() {
+            @Override
+            public String cerca(int la, int lo) {
+                viste[0] = la;
+                viste[1] = lo;
+                return "  Citta Finta  ";
+            }
+        };
+        LetturaUnica<String> lg = new LetturaUnica<>("g", "", "");
+        controlla("Citta Finta".equals(LogicaPosizione.nomeLocalita(lg, buono, 45455, -9125, 2000)) && viste[0] == 45455 && viste[1] == -9125, "localita': presente (ripulita) e chiesta con le coordinate arrotondate");
+        controlla(LogicaPosizione.nomeLocalita(lg, new LogicaPosizione.Cercatore() {
+            @Override
+            public String cerca(int la, int lo) {
+                return null;
+            }
+        }, 1, 1, 2000).isEmpty(), "localita': assente = vuota");
+        controlla(LogicaPosizione.nomeLocalita(lg, new LogicaPosizione.Cercatore() {
+            @Override
+            public String cerca(int la, int lo) throws Exception {
+                throw new java.io.IOException("coordinate 12.34 56.78");
+            }
+        }, 1, 1, 2000).isEmpty(), "localita': Geocoder che lancia = vuota, nessun errore");
+        controlla(LogicaPosizione.nomeLocalita(lg, new LogicaPosizione.Cercatore() {
+            @Override
+            public String cerca(int la, int lo) {
+                return ripeti("x", 1000);
+            }
+        }, 1, 1, 2000).length() == LogicaPosizione.MAX_LOCALITA, "localita' troppo lunga: troncata");
+        final java.util.concurrent.CountDownLatch lento = new java.util.concurrent.CountDownLatch(1);
+        LetturaUnica<String> lg2 = new LetturaUnica<>("g2", "", "");
+        LogicaPosizione.Cercatore bloccato2 = new LogicaPosizione.Cercatore() {
+            @Override
+            public String cerca(int la, int lo) throws Exception {
+                lento.await();
+                return "Tardi";
+            }
+        };
+        controlla(LogicaPosizione.nomeLocalita(lg2, bloccato2, 1, 1, 50).isEmpty() && LogicaPosizione.nomeLocalita(lg2, bloccato2, 1, 1, 50).isEmpty(),
+                "localita': Geocoder lento oltre il limite = vuota; la seconda richiesta non avvia un altro thread");
+        lento.countDown();
+
+        System.out.println(falliti == 0 ? "tutte le prove superate" : falliti + " prove fallite");
+        if (falliti != 0) System.exit(1);
+    }
+}

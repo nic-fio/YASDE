@@ -1,0 +1,116 @@
+# Corrispondenza «pacchetto Android -> icona del tema Kora» per le app note.
+# Formato: una riga per app, «<pacchetto> <nome-icona-kora>» separati da UN solo
+# spazio (il nome è il file di kora/apps/scalable/ senza «.svg»). Righe vuote
+# ammesse; commenti solo su righe intere che iniziano con «#». Righe ordinate
+# per pacchetto, un pacchetto una sola volta.
+# Regola: SOLO corrispondenze certe, cioè l'icona rappresenta proprio quell'app
+# o servizio (stesso marchio). Niente icone generiche per le app di sistema e
+# niente corrispondenze per somiglianza: le altre app restano con l'icona del
+# telefono.
+# Le icone NON stanno nel repository: sono il tema Kora di bikass (GPL-3),
+# incluso come file separati nel pacchetto.
+
+app.organicmaps app.organicmaps.desktop
+ch.protonmail.android proton-mail
+ch.protonvpn.android proton-vpn-logo
+com.Slack slack
+com.amazon.mShop.android.shopping amazon
+com.android.chrome google-chrome
+com.android.vending google-play
+com.anydesk.anydeskandroid anydesk
+com.aspiro.tidal tidal
+com.automattic.simplenote simplenote
+com.binance.dev binance
+com.brave.browser brave
+com.brave.browser_beta brave-browser-beta
+com.chrome.beta google-chrome-beta
+com.chrome.dev google-chrome-dev
+com.discord discord
+com.dropbox.android dropbox
+com.duckduckgo.mobile.android duckduckgo
+com.duolingo duolingo
+com.evernote evernote
+com.facebook.katana facebook
+com.github.android github
+com.google.android.apps.books google-play-books
+com.google.android.apps.docs google-drive
+com.google.android.apps.docs.editors.docs google-docs
+com.google.android.apps.docs.editors.sheets google-sheets
+com.google.android.apps.docs.editors.slides google-slides
+com.google.android.apps.dynamite google-chat
+com.google.android.apps.maps google-maps
+com.google.android.apps.photos google-photos
+com.google.android.apps.tachyon google-meet
+com.google.android.apps.tasks google-tasks-desktop
+com.google.android.apps.translate google-translate
+com.google.android.apps.youtube.music youtube-music
+com.google.android.calendar google-calendar
+com.google.android.gm gmail
+com.google.android.keep google-keep
+com.google.android.youtube youtube
+com.google.earth google-earth
+com.instagram.android instagram
+com.lastpass.lpandroid lastpass
+com.microsoft.emmx microsoft-edge
+com.microsoft.office.excel ms-excel
+com.microsoft.office.officehubrow microsoft-365
+com.microsoft.office.onenote ms-onenote
+com.microsoft.office.outlook ms-outlook
+com.microsoft.office.powerpoint ms-powerpoint
+com.microsoft.office.word ms-word
+com.microsoft.skydrive ms-onedrive
+com.microsoft.teams teams
+com.mojang.minecraftpe minecraft
+com.netflix.mediaclient netflix
+com.nextcloud.client nextcloud
+com.nutomic.syncthingandroid syncthing
+com.onepassword.android 1password
+com.onlyoffice.documents onlyoffice
+com.opera.browser opera
+com.opera.browser.beta opera-beta
+com.plexapp.android plex
+com.reddit.frontpage reddit
+com.soundcloud.android soundcloud
+com.spotify.music spotify
+com.standardnotes standard-notes
+com.tencent.mm wechat
+com.tinder tinder
+com.todoist todoist
+com.trello trello
+com.twitter.android twitter-x
+com.valvesoftware.android.steam.community steam
+com.valvesoftware.steamlink steamlink
+com.viber.voip viber
+com.vimeo.android.videoapp vimeo
+com.vivaldi.browser vivaldi
+com.whatsapp whatsapp
+com.wire wire
+com.x8bit.bitwarden bitwarden
+com.yahoo.mobile.client.android.mail yahoo-mail
+com.zhiliaoapp.musically tiktok
+deezer.android.app deezer
+im.vector.app element
+is.xyz.mpv mpv
+md.obsidian obsidian
+me.proton.android.drive protondrive
+net.cozic.joplin joplin-desktop
+net.mullvad.mullvadvpn mullvad-vpn
+net.openvpn.openvpn openvpn
+net.thunderbird.android thunderbird
+network.loki.messenger session-desktop
+notion.id notion
+org.dolphinemu.dolphinemu dolphin-emu
+org.jellyfin.mobile jellyfin
+org.jitsi.meet jitsi-meet
+org.mozilla.firefox firefox
+org.mozilla.firefox_beta firefox-beta
+org.mozilla.focus firefox-focus
+org.telegram.messenger telegram
+org.telegram.messenger.web telegram
+org.thoughtcrime.securesms signal-desktop
+org.torproject.torbrowser tor-browser
+org.videolan.vlc vlc
+org.wikipedia wikipedia
+org.xbmc.kodi kodi
+proton.android.pass proton-pass
+us.zoom.videomeetings zoom-desktop

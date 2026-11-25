@@ -1,0 +1,132 @@
+/* Stile del pezzo shell-trasferimento (F-09): solo classi con prefisso ph-trasferimento-.
+ * Colori: SOLO le variabili di src/shell/ossatura/base.css (--ph-*), perche' i
+ * pannelli sono vetro chiaro (il fondo lo dà la classe di vetro). Misure: i
+ * valori del mockup (righe 286-403 di Main.dc.html). Eventuali colori scritti a
+ * mano vanno con un commento "colore-dato" sulla stessa riga (lo controlla la
+ * prova). Caricato da ph_shell_stile_carica nel proprio _installa. */
+
+/* Zona di trascinamento: bordo 2 px tratteggiato, raggio 12, imbottitura 16. */
+.ph-trasferimento-zona {
+  border: 2px dashed var(--ph-bordo-forte);
+  border-radius: 12px;
+  padding: 16px;
+}
+.ph-trasferimento-zona-testo { font-size: 13px; }
+
+/* Riga con la cartella di destinazione: fondo .06, raggio 8, imbottitura 6 8. */
+.ph-trasferimento-dest {
+  background-color: var(--ph-voce);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+/* Cartelle usate spesso: raggio 6, imbottitura 5 12, 12 px 600; l'attuale con l'accento. */
+button.ph-trasferimento-rapido {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  min-height: 0;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: none;
+  background: var(--ph-voce);
+  color: var(--ph-testo);
+}
+button.ph-trasferimento-rapido.ph-trasferimento-rapido-attuale {
+  background: var(--ph-accento);
+  color: var(--ph-su-accento);
+}
+
+/* Pulsanti pieni con l'accento: "background" (non solo il colore) per togliere
+ * il gradiente del tema di GTK. */
+button.ph-trasferimento-pieno {
+  background: var(--ph-accento);
+  color: var(--ph-su-accento);
+}
+button.ph-trasferimento-pieno:disabled {
+  background: var(--ph-accento-spento);
+  color: var(--ph-su-accento-spento);
+}
+
+/* Riquadro dei selettori di cartelle: bordo .14, raggio 10, imbottitura 8. */
+.ph-trasferimento-selettore {
+  border: 1px solid var(--ph-bordo-forte);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+/* "Su" inattivo alla radice: opacita' .4. */
+button.ph-trasferimento-su:disabled { opacity: 0.4; }
+
+/* Casella dei file da scaricare: 16x16, raggio 4, bordo 2 px; scelta = accento. */
+.ph-trasferimento-casella {
+  min-width: 16px;
+  min-height: 16px;
+  border-radius: 4px;
+  border: 2px solid var(--ph-testo-3);
+}
+.ph-trasferimento-casella.ph-trasferimento-casella-scelta {
+  background-color: var(--ph-accento);
+  border-color: var(--ph-accento);
+}
+
+/* Messaggio al posto di un elenco vuoto (12 px, colore terziario). */
+.ph-trasferimento-vuoto { padding: 8px; }
+.ph-trasferimento-vuoto-s { padding: 6px 8px; }
+
+/* Pulsante largo "Scarica N file": 13 px 600, imbottitura 9 12, raggio 8. */
+button.ph-trasferimento-scarica {
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+/* Voce della coda: imbottitura 8 10, 12 px; nome 600; barra di 4 px. */
+.ph-trasferimento-voce {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.ph-trasferimento-nome { font-weight: 600; }
+button.ph-trasferimento-x {
+  padding: 0 6px;
+  min-height: 0;
+  min-width: 0;
+  font-size: 14px;
+}
+progressbar.ph-trasferimento-barra trough {
+  min-height: 4px;
+  min-width: 0;
+  margin: 0;
+  border-radius: 2px;
+  border: none;
+  background: var(--ph-avanzamento-fondo);
+}
+progressbar.ph-trasferimento-barra progress {
+  min-height: 4px;
+  min-width: 0;
+  margin: 0;
+  border-radius: 2px;
+  border: none;
+  background: var(--ph-accento);
+}
+
+/* Riquadro "Rilascia per inviare al telefono": velo scuro a tutta area (NON e'
+ * vetro), bordo 3 px tratteggiato, raggio 16. Sta sempre sopra lo sfondo del
+ * desktop: i colori non cambiano col tema (base.css non ha una variabile scura
+ * traslucida adatta: --ph-velo e' troppo opaca). */
+.ph-trasferimento-rilascio {
+  border: 3px dashed rgba(255, 255, 255, 0.7); /* colore-dato: sempre sul velo scuro, non cambia col tema */
+  border-radius: 16px;
+  background-color: rgba(14, 21, 31, 0.55); /* colore-dato: velo sempre scuro sopra il desktop, non cambia col tema */
+}
+.ph-trasferimento-rilascio label {
+  color: #ffffff; /* colore-dato: testo sempre bianco sul velo scuro */
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Il tema di GTK impone un'altezza minima a pulsanti e campi: dentro i nostri
+ * pannelli valgono le misure del mockup. */
+.ph-trasferimento-pannello button,
+.ph-trasferimento-pannello entry {
+  min-height: 0;
+}

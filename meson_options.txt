@@ -1,0 +1,2 @@
+option('pezzo', type: 'string', value: 'tutto',
+  description: 'Compila un solo pezzo (adb, file, scoperta, abbinamento, componente, video, audio, dati, finestre, config, trasferimenti) oppure tutto')

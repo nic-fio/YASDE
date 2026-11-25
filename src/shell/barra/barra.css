@@ -1,0 +1,117 @@
+/* Stile del pezzo shell-barra (F-03): solo classi con prefisso ph-barra-.
+ * Colori e misure: mockup Main.dc.html (barra) e variabili --ph-* di
+ * src/shell/ossatura/base.css. I pulsanti sono button.ph-tb e il separatore
+ * .ph-separatore di base.css. */
+
+/* Contenitore: 48 px (la misura si da' nel codice), imbottitura 0 8 px. Fondo
+ * e filo di luce in alto li da' la classe ph-vetro-scuro (registrata in
+ * ph_barra_installa). */
+.ph-barra-radice {
+  padding: 0 8px;
+}
+
+/* Voce di una finestra aperta: quadratino 26x26 raggio 7. */
+.ph-barra-tessera {
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 7px;
+}
+
+/* Quadratino dello specchio dello schermo (mockup isPhone): "Tl" su grigio.
+ * Colori fissi: e' un'icona (dato, non tema) e sta sempre sulla barra scura. */
+.ph-barra-specchio {
+  background-color: #475569; /* colore-dato: icona dello specchio, uguale su ogni vetro */
+  color: #ffffff; /* colore-dato: iniziali sull'icona dello specchio */
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 7px;
+}
+
+/* Voce attiva: fondo come il passaggio del mouse. */
+button.ph-tb.ph-barra-attiva { background-color: var(--ph-sopra); }
+
+/* Voce minimizzata: opacita' .65 (anche sull'indicatore, come nel mockup). */
+.ph-barra-voce-min { opacity: 0.65; }
+
+/* Indicatore sotto la voce: 16x3 raggio 2. */
+.ph-barra-indicatore {
+  min-width: 16px;
+  min-height: 3px;
+  border-radius: 2px;
+  background-color: transparent;
+}
+.ph-barra-ind-aperta { background-color: var(--ph-testo-3); }
+.ph-barra-ind-attiva { background-color: var(--ph-accento); }
+/* Minimizzata: trasparente con bordo 1 px; il bordo sta fuori dalla misura
+ * minima, quindi si toglie 2 px per restare 16x3 in tutto. */
+.ph-barra-ind-min {
+  min-width: 14px;
+  min-height: 1px;
+  border: 1px solid var(--ph-testo-3);
+}
+
+/* Puntino dei trasferimenti: 7x7 tondo, color accento. */
+.ph-barra-puntino {
+  min-width: 7px;
+  min-height: 7px;
+  border-radius: 4px;
+  background-color: var(--ph-accento);
+}
+
+/* Orologio: ora un pulsante (ph-tb) con la scritta a 15 px peso 500, per stare
+ * accanto alle icone da 26 px. */
+.ph-barra-orologio {
+  color: var(--ph-testo);
+  font-size: 15px;
+  font-weight: 500;
+}
+button.ph-tb.ph-barra-orologio-bottone { padding: 0 12px; }
+
+/* Popup del calendario (calendario del PC): superficie di vetro chiaro. */
+.ph-barra-calendario { padding: 12px; }
+.ph-barra-data {
+  color: var(--ph-testo);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 0 4px 4px 4px;
+}
+.ph-barra-mese { color: var(--ph-testo); font-weight: 600; font-size: 14px; }
+button.ph-barra-freccia {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ph-testo);
+  font-size: 18px;
+}
+button.ph-barra-freccia:hover { background-color: var(--ph-sopra); }
+.ph-barra-nome-giorno {
+  color: var(--ph-testo-3);
+  font-size: 12px;
+  min-height: 28px;
+}
+.ph-barra-giorno {
+  min-width: 34px;
+  min-height: 30px;
+  border-radius: 6px;
+  color: var(--ph-testo);
+}
+/* Oggi: sul colore dell'accento. */
+.ph-barra-giorno-oggi {
+  background-color: var(--ph-accento);
+  color: var(--ph-su-accento);
+  font-weight: 700;
+}
+
+/* Sfumature ai bordi della zona scorrevole delle voci: dal fondo della barra al
+ * trasparente (variabili del vetro scuro, con e senza sfocatura). */
+.ph-barra-fade-sx, .ph-barra-fade-dx { min-width: 28px; }
+.ph-barra-fade-sx {
+  background-image: linear-gradient(to right, var(--ph-barra-sfuma), var(--ph-barra-sfuma-0));
+}
+.ph-barra-fade-dx {
+  background-image: linear-gradient(to left, var(--ph-barra-sfuma), var(--ph-barra-sfuma-0));
+}

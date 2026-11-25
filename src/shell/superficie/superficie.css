@@ -1,0 +1,10 @@
+/* Stile del pezzo shell-superficie (4.2, 4.3, 4.5, 5.5): solo classi con prefisso ph-superficie-.
+ * Schermo protetto (5.5): fondo #111827, testo #e6eaf2 13 px. Il nero delle
+ * bande e il velo scuro della connessione persa sono disegnati nel codice
+ * (snapshot), non dal CSS. */
+.ph-superficie-protetto {
+  background-color: #111827;
+  color: #e6eaf2;
+  font-size: 13px;
+  padding: 16px;
+}

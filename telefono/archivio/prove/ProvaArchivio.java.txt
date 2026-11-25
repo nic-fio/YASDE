@@ -1,0 +1,165 @@
+package it.yasde;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+
+/** Prova su JVM di ConfrontoNomi e Percorrenza (stesso package per vedere le classi private). */
+public class ProvaArchivio {
+    static int errori = 0;
+    static String[] esclusiProva = new String[0];
+
+    static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok    " : "ERRORE ") + nome);
+        if (!ok) errori++;
+    }
+
+    static void file(File f) throws IOException {
+        f.getParentFile().mkdirs();
+        new FileOutputStream(f).close();
+    }
+
+    static List<String> cerca(File radice, String testo, boolean soloCartelle, int max, int maxCart,
+            long maxMs, Percorrenza.Interruzione stop, int[] esito) throws IOException {
+        final List<String> out = new ArrayList<String>();
+        Percorrenza p = new Percorrenza(ConfrontoNomi.normalizza(testo), soloCartelle, max, maxCart, maxMs, stop,
+                esclusiProva);
+        esito[0] = p.cerca(radice.getPath(), new Percorrenza.Ricevitore() {
+            @Override
+            public void trovato(String percorso, boolean cartella) {
+                out.add(percorso + (cartella ? "/" : ""));
+            }
+        });
+        return out;
+    }
+
+    static final Percorrenza.Interruzione MAI = new Percorrenza.Interruzione() {
+        @Override
+        public boolean fermati() {
+            return false;
+        }
+    };
+
+    public static void main(String[] a) throws Exception {
+        controlla(ConfrontoNomi.normalizza("Città È ÜBER").equals("citta e uber"), "normalizza accenti e maiuscole");
+        controlla(ConfrontoNomi.contiene("Relazione Perché.TXT", ConfrontoNomi.normalizza("PERCHE")), "contiene senza accenti");
+        controlla(!ConfrontoNomi.contiene("abc", "abd"), "non contiene");
+        controlla(ConfrontoNomi.contiene("a b", "a b"), "spazi");
+
+        File t = Files.createTempDirectory("yasde-archivio").toFile();
+        try {
+            file(new File(t, "foto estate.jpg"));
+            file(new File(t, ".nascosto-foto"));
+            file(new File(t, "sub/Citta foto.png"));
+            file(new File(t, "sub/profonda/altra foto.txt"));
+            file(new File(t, ".cartella/foto-dentro"));
+            new File(t, "cartella foto").mkdirs();
+            int[] e = new int[1];
+
+            List<String> r = cerca(t, "FOTO", false, 100, 1000, 10000, MAI, e);
+            controlla(e[0] == Percorrenza.FINITA && r.size() == 4, "trova 4 (senza nomi con punto): " + r.size());
+            controlla(r.get(r.size() - 1).endsWith("altra foto.txt"), "ampiezza: il piu' profondo per ultimo");
+            controlla(r.indexOf(t + "/sub/Citta foto.png") > r.indexOf(t + "/foto estate.jpg"), "ampiezza: livello 1 prima di 2");
+            for (String x : r) controlla(!x.contains("/."), "nessun nome con punto: " + x.substring(t.getPath().length()));
+
+            r = cerca(t, "foto", true, 100, 1000, 10000, MAI, e);
+            controlla(r.size() == 1 && r.get(0).endsWith("cartella foto/"), "solo cartelle");
+
+            r = cerca(t, "CITTA", false, 100, 1000, 10000, MAI, e);
+            controlla(r.size() == 1, "maiuscole ignorate nella ricerca");
+
+            r = cerca(t, "foto", false, 2, 1000, 10000, MAI, e);
+            controlla(r.size() == 2 && e[0] == Percorrenza.LIMITE, "massimo risultati -> LIMITE");
+
+            r = cerca(t, "zzz", false, 100, 1, 10000, MAI, e);
+            controlla(e[0] == Percorrenza.LIMITE, "tetto cartelle -> LIMITE");
+
+            // collegamento ciclico: non si segue
+            Files.createSymbolicLink(new File(t, "sub/ciclo").toPath(), t.toPath());
+            r = cerca(t, "estate", false, 100, 1000, 10000, MAI, e);
+            controlla(e[0] == Percorrenza.FINITA && r.size() == 1, "ciclo di symlink non seguito");
+
+            // cartelle escluse scendendo (come /proc e /sys sul telefono) ma permesse come partenza
+            file(new File(t, "finto-proc/foto dentro"));
+            esclusiProva = new String[] {t + "/finto-proc"};
+            r = cerca(t, "dentro", false, 100, 1000, 10000, MAI, e);
+            controlla(r.isEmpty() && e[0] == Percorrenza.FINITA, "cartella esclusa: non attraversata scendendo");
+            r = cerca(new File(t, "finto-proc"), "dentro", false, 100, 1000, 10000, MAI, e);
+            controlla(r.size() == 1, "cartella esclusa ma usata come partenza: si cerca");
+            // radici "brutte": la normalizzazione (fatta da Cerca) le riporta al percorso esatto
+            for (String brutta : new String[] {t + "//", t + "/./", t + "/sub/.."}) {
+                String norma = new File(brutta).toPath().normalize().toString();
+                r = cerca(new File(norma), "dentro", false, 100, 1000, 10000, MAI, e);
+                controlla(r.isEmpty() && norma.equals(t.getPath()), "radice normalizzata + esclusione: " + brutta.substring(t.getPath().length()));
+            }
+            esclusiProva = new String[0];
+            rimuovi(new File(t, "finto-proc"));
+
+            // cartella non leggibile. ATTENZIONE: nel container si gira come root e il permesso non
+            // vale, quindi questa parte di solito viene saltata; la copre la prova sul telefono vero
+            // (ricerca da /data e da /, dove molte cartelle non sono leggibili per l'utente shell).
+            File chiusa = new File(t, "chiusa");
+            chiusa.mkdirs();
+            file(new File(chiusa, "foto segreta"));
+            chiusa.setReadable(false);
+            chiusa.setExecutable(false);
+            if (!chiusa.canRead()) {
+                r = cerca(t, "segreta", false, 100, 1000, 10000, MAI, e);
+                controlla(e[0] == Percorrenza.FINITA && r.isEmpty(), "cartella non leggibile saltata");
+            } else {
+                System.out.println("salta  cartella non leggibile (siamo root)");
+            }
+            chiusa.setReadable(true);
+            chiusa.setExecutable(true);
+
+            r = cerca(new File("/non/esiste/mai"), "x", false, 10, 10, 1000, MAI, e);
+            controlla(e[0] == Percorrenza.FINITA && r.isEmpty(), "radice inesistente: nessun errore");
+
+            // interruzione: scatta al primo risultato
+            final int[] letture = new int[1];
+            r = cerca(t, "foto", false, 100, 1000, 10000, new Percorrenza.Interruzione() {
+                @Override
+                public boolean fermati() {
+                    return ++letture[0] > 2;
+                }
+            }, e);
+            controlla(e[0] == Percorrenza.INTERROTTA, "interruzione");
+
+            // tempo: 0 ms -> LIMITE subito
+            r = cerca(t, "foto", false, 100, 1000, 0, MAI, e);
+            controlla(e[0] == Percorrenza.LIMITE, "tetto di tempo -> LIMITE");
+
+            // cartella con molte voci: l'interruzione scatta entro poche voci
+            File grande = new File(t, "grande");
+            grande.mkdirs();
+            for (int i = 0; i < 5000; i++) new FileOutputStream(new File(grande, "f" + i)).close();
+            final int[] c = new int[1];
+            r = cerca(grande, "f", false, 100000, 1000, 10000, new Percorrenza.Interruzione() {
+                @Override
+                public boolean fermati() {
+                    c[0]++;
+                    return c[0] > 3;
+                }
+            }, e);
+            controlla(e[0] == Percorrenza.INTERROTTA && r.size() < 200, "voci tante: interrotta dopo " + r.size());
+        } finally {
+            rimuovi(t);
+        }
+        if (errori != 0) {
+            System.out.println("PROVE FALLITE: " + errori);
+            System.exit(1);
+        }
+        System.out.println("prove archivio: tutte ok");
+    }
+
+    static void rimuovi(File f) {
+        File[] fs = f.listFiles();
+        if (fs != null && !Files.isSymbolicLink(f.toPath())) for (File x : fs) rimuovi(x);
+        f.setReadable(true);
+        f.setExecutable(true);
+        f.delete();
+    }
+}

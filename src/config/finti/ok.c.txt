@@ -1,0 +1,15 @@
+/* Caso finto: tutti i testi sono tradotti. Non e' un sorgente del progetto. */
+// ph_t("testo in un commento, non conta")
+#include "config/lingua.h"
+static const char *esempio = "ph_t(\"dentro una stringa, non conta\")";
+void f(void)
+{
+    const char *a = ph_t("Ciao");
+    const char *b = ph_t(  "Copiati {numero} file di {nome}"  );
+    const char *c = ph_t("Una riga" " spezzata su " "piu' pezzi");
+    const char *d = ph_t("Con \"virgolette\" e\ttabulazione");
+    const char *e = ph_t("Graffe {{letterali}} e {valore}");
+    char x = 'ph_t("nel carattere")'; /* non e' valido C ma il lettore lo salta */
+    int ph_tx = 0, xph_t = 1; /* nomi diversi: non sono chiamate */
+    (void)ph_tx;
+}

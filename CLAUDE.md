@@ -1,0 +1,45 @@
+# YASDE
+
+Nome: il prodotto si chiama **YASDE** («Yet Another Samsung Dex Emulator», progetto indipendente non affiliato a Samsung), versione corrente 2.1. È un progetto nuovo, senza legami con progetti precedenti: nessun altro nome di prodotto deve comparire in codice, documenti, script, pacchetto o attrezzatura (i controlli di `pacchetto/dentro.sh` e di `docs/sources/build.py` lo fanno rispettare). App e documenti pubblici solo in inglese (sostituisce «it/en» della specifica).
+
+Scopo: app Linux (AppImage) con una sola finestra che è un desktop emulato; le app di un telefono Android 14+ girano come finestre interne. Fonte di verità: `yasde-specification.md` e `mockup/project/Main.dc.html`. Niente funzioni oltre a quelle.
+
+- Codice tutto nuovo: niente codice di terzi copiato (AOSP si legge come documentazione).
+- PC: C, Meson, Vulkan. Telefono: Java minimo, lanciato con `app_process`; solo API di Android puro, nessuna dipendenza da un produttore.
+- Niente installato sul telefono, niente root; ogni modifica al telefono ha il suo ripristino.
+- Lingua: italiano per nomi, commenti e documenti interni; inglese per tutto ciò che l'utente vede (app e documenti pubblici).
+- Manuali (`docs/`, in inglese, generati): seguono SEMPRE il codice, mai il contrario. Se cambi un comportamento, aggiorna il capitolo che lo descrive in `docs/sources/technical/` (e in `docs/sources/user/` se l'utente lo vede), poi `python3 docs/sources/build.py` e `python3 docs/sources/build.py --controlla`.
+- Piano di lavoro e ondate: `PIANO.md`. Un pezzo = una cartella = un agente.
+
+## Dove si lavora
+- Sorgenti, git e prove a schermo: questa cartella, sul tablet.
+- Compilazioni e test: sul server di compilazione (nome o indirizzo nella variabile d'ambiente `YASDE_SERVER`, che gli script pretendono; mai scriverlo nei file), in `/media/YASDE`, dentro il container podman `yasde-sviluppo` (`podman --root /media/YASDE/containers --cgroup-manager=cgroupfs`). Mai compilare sul tablet, mai file grossi in `/tmp`.
+- Test sempre in background con l'output su file in `/media/YASDE/log`.
+- Dal 25 nov 2026 l'ambiente sul server NON esiste: il committente ha fatto eliminare `/media/YASDE` dopo la consegna della 2.1. Prima di compilare va ricreato (immagine da `strumenti/Containerfile`, SDK con `strumenti/sdk.sh`: i comandi sono in testa a quello script), e solo se il committente lo chiede.
+
+## Dati personali
+Repository pubblico: mai numeri di serie, indirizzi, nomi di reti o persone nei file. Nei test valori finti (es. `R5CT0000000`).
+
+## Regole per chi scrive un pezzo
+- Tocca solo la cartella del tuo pezzo. Gli header di contratto (`src/*/*.h` già presenti), `docs/protocollo.md`, `telefono/contratto/`, `meson.build` di radice e `strumenti/` non si modificano: se un contratto è sbagliato o incompleto, scrivilo nel rapporto finale e prosegui sul resto.
+- Compila e prova solo con `strumenti/prova.sh <pezzo>` (gira sul server, stampa le ultime righe; l'ultima è `uscita N`). Pezzi: `adb`, `file`, `scoperta`, `abbinamento`, `componente`, `video`, `audio`, `dati`, `finestre`, `config`, `trasferimenti`, `collegamento`, `telefono-base`, `telefono-video`, `telefono-audio`, `telefono-dati`, `telefono-archivio`, `telefono-appunti`, `telefono-pannello`, `telefono`, `tutto`, `veloce` (tutto insieme, ottimizzato, senza controlli di memoria e senza test: per le misure di velocità).
+- Ogni pezzo C ha il suo `meson.build` che definisce `<pezzo>_dep` e i suoi `test(...)`. Con `-Dpezzo=<nome>` gli altri pezzi non ci sono: nei test, ciò da cui dipendi si sostituisce con un finto scritto nella tua cartella.
+- C17, avvisi come errori, test con AddressSanitizer. Ogni valore di ritorno si controlla; errori con `PhErrore` (`src/comune/errore.h`). Nessun dato che arriva dal telefono o dalla rete può far leggere o scrivere fuori da un buffer.
+- Commenti in italiano che spiegano il perché. Niente `git commit`.
+- Il telefono di prova è uno solo e le prove vanno una alla volta (socket e file sono unici). Prima di usarlo prendi il turno con `mkdir ~/.cache/yasde-sviluppo/telefono.occupato` (se la cartella esiste già, un altro lo sta usando: aspetta e riprova ogni 20–30 s); finito, `rmdir` subito, anche se la prova fallisce. Tieni il turno il meno possibile. Sul telefono: nessuna impostazione cambiata senza ripristino, niente avviato sullo schermo reale, pulizia completa alla fine, e mai numero di serie o indirizzo in un file.
+- Per provare il jar sul telefono usa lo strumento `adb` standard del tablet (già abbinato; indirizzo da `adb devices`) e uno script Python tuo nella cartella `prove/` del tuo pezzo, sull'esempio di `telefono/base/prove/prova_telefono.py`. Il jar si prende dal server: `/media/YASDE/lavoro/<pezzo>/telefono/yasde.jar`; copie locali in `~/.cache/yasde-sviluppo/<tuo pezzo>/`, mai in `/tmp`.
+- Java: livello sorgente 8 contro `android.jar` → niente lambda né riferimenti a metodo (classi anonime). Le classi di prova per la JVM non devono finire nel jar (file `.java.txt` copiati da `prove.sh`, come fa `telefono/base/`).
+- Un pezzo C è finito solo se passa anche `strumenti/prova.sh veloce` (tutto insieme con `-O3`): l'ottimizzazione fa emergere avvisi che la compilazione di prova non mostra. Se `veloce` fallisce in una cartella non tua, riporta l'errore esatto senza toccarla.
+
+## Difetti già visti: non ripeterli
+Regole nate dalle revisioni. Valgono per ogni pezzo; il revisore le controlla per prime.
+- **Chiusura in parallelo.** Ogni funzione pubblica che usa un oggetto deve reggere una `…_chiudi` chiamata da un altro thread nello stesso momento: o finisce prima, o torna errore; mai uso di memoria liberata. Un controllo «è chiuso?» fatto e poi abbandonato (lock rilasciato) non protegge: serve un contatore d'uso che la chiusura aspetta.
+- **Callback.** Dopo il ritorno di una `…_chiudi` nessuna callback è in corso e nessuna arriverà. Mai chiamare una callback tenendo un lock che chi la riceve potrebbe voler prendere. Scrivi nel contratto che cosa una callback può chiamare.
+- **Attese.** Nessuna attesa senza limite, tranne dove il contratto lo dichiara. Nessun lock tenuto durante un comando esterno, una scrittura in rete o una pausa.
+- **Fallimenti a metà.** Se un'operazione in più passi fallisce a metà, ciò che è già stato fatto si annulla; quando una funzione torna errore, il contratto dice che cosa è stato toccato (di norma: nulla).
+- **Telefono.** Il ripristino si registra PRIMA della modifica e si toglie solo DOPO averla annullata davvero; se `Guardiano.imposta` torna false la modifica non si fa. Un'azione fallita che lascerebbe il telefono in uno stato anomalo (schermo spento, volume cambiato) si ritenta, non si abbandona. Un thread che muore per un errore imprevisto (`Throwable`) deve lasciare il telefono com'era.
+- **Test.** Un test deve fallire se si toglie il codice che prova: verificalo. Mai `dormi(N)` per «dare tempo» a un altro thread: si aspetta un segnale, con una scadenza. Ogni ramo d'errore nuovo ha il suo test. Un fallimento intermittente non si ignora e non si aggira allargando una tolleranza: si cattura e si spiega.
+- **Turno del telefono.** `rmdir` del turno SOLO se la tua `mkdir` è riuscita in quella stessa esecuzione (controlla il codice di uscita; negli script: variabile «turno mio» e `trap`/`finally` che toglie solo il proprio). Se la `mkdir` fallisce o scade, lo script ESCE: mai proseguire sul telefono senza turno, mai togliere il turno di un altro. Mai risvegliare, sbloccare o ricollegare il telefono: se non è `Awake` e collegato ci si ferma e lo si riferisce.
+- **Prove sul telefono.** Una prova tocca SOLO ciò che ha creato lei: annota i pid dei processi che lancia e i nomi dei file che scrive, e in pulizia uccide e cancella solo quelli (mai «il primo `it.yasde` che trovo», mai `yasde-custode-*` con l'asterisco). Prima di toccare qualunque cosa, in sola lettura: se sul telefono c'è già un `it.yasde` o un file `yasde-custode-*` (un'altra prova o YASDE vero), esce. Mai scrivere un volume o un'impostazione dell'utente «per preparare» la prova; i valori di partenza si salvano e alla fine si confrontano riga per riga. Ogni comando `adb` ha una scadenza; la pulizia gira in un `finally`. Nessun suono udibile senza il consenso esplicito dell'utente.
+- **Compilazione d'insieme.** `tutto` e `veloce` si lanciano solo a lavoro finito, mai con file a metà: gli altri compilano il tuo albero. Mai `rm` in `data/` o in cartelle non tue.
+- **Rapporto.** Dì che cosa NON hai verificato. Mai dichiarare pulito ciò che non hai visto passare.

@@ -1,0 +1,442 @@
+/* Stile di base della shell: colori e misure del mockup (Main.dc.html).
+ * Di proprieta' dell'ossatura (CONTRATTI.md §6): gli altri pezzi non lo
+ * modificano, usano queste variabili e queste classi e mettono le proprie
+ * (con prefisso ph-<pezzo>-) nel CSS del loro pezzo.
+ * Le variabili valgono dentro la radice della shell (classe ph-shell). */
+
+.ph-shell {
+  /* Colori del mockup */
+  --ph-bianco: #ffffff;
+  --ph-titolo-host: #2b3242;          /* barra del titolo della finestra host */
+  --ph-fondo-host: #1c2330;
+  --ph-barra: rgba(15, 23, 32, 0.95);
+  --ph-titolo-attivo: #2a3344;             /* titolo della finestra attiva */
+  --ph-titolo-inattivo: #171c26;
+  --ph-velo: rgba(6, 10, 16, 0.92);
+  --ph-ombra-finestra: 0 14px 40px rgba(0, 0, 0, 0.5);
+
+  /* Finestre interne delle app, stile "Vetro liquido" (docs/DESIGN_FINESTRE.md).
+   * Valori del documento, salvo quelli segnati "proposta". */
+  --ph-vetro-riempimento: rgba(233, 238, 241, 0.94);  /* senza sfocatura (disegno via processore) */
+  --ph-vetro-riempimento-sfocato: rgba(255, 255, 255, 0.58); /* velo sul titolo, con la sfocatura dietro */
+  --ph-vetro-riempimento-sfocato-inattivo: rgba(255, 255, 255, 0.42); /* idem, finestra non attiva (proposta del documento) */
+  --ph-vetro-riempimento-inattivo: rgba(233, 238, 241, 0.94); /* finestra non attiva SENZA sfocatura: uguale all'attiva (con 0.80 si vede nitido cio' che sta dietro il titolo) */
+  --ph-vetro-bordo: rgba(255, 255, 255, 0.7);
+  --ph-vetro-luce: rgba(255, 255, 255, 0.8);          /* filo di luce interno in alto */
+  --ph-vetro-ombra: 0 30px 60px -20px rgba(8, 24, 40, 0.6);
+  --ph-vetro-ombra-inattiva: 0 18px 40px -20px rgba(8, 24, 40, 0.4); /* proposta */
+  --ph-vetro-raggio: 24px;
+  --ph-vetro-testo: #10202E;
+  --ph-vetro-testo-2: #2F4558;
+  --ph-vetro-testo-inattivo: rgba(16, 32, 46, 0.45);  /* proposta: simboli e nome non attivi */
+  --ph-vetro-puls-hover: rgba(255, 255, 255, 0.75);
+  --ph-vetro-puls-hover-luce: #ffffff;
+  --ph-vetro-puls-hover-ombra: rgba(8, 24, 40, 0.2);
+  --ph-vetro-puls-premuto: rgba(255, 255, 255, 0.4);
+  --ph-vetro-chiudi-simbolo: #ffffff;                 /* simbolo di chiudi su corallo */
+  --ph-vetro-corallo: #E8604C;                        /* chiudi, hover */
+  --ph-vetro-corallo-premuto: #C94A38;
+  --ph-vetro-rec: #C0392B;                            /* proposta: REC leggibile su fondo chiaro */
+  --ph-vetro-fuoco: #10202E;                          /* fuoco da tastiera */
+  --ph-vetro-scuro-luce: rgba(255, 255, 255, 0.1);    /* filo di luce in alto sulle superfici scure (barra) */
+
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--ph-testo);
+}
+
+/* Variabili di CONTENUTO (testo, bordi, hover, campi, accento, ombre, fondi dei
+ * popup): i valori dello scuro. Valgono nella radice e dentro ogni superficie
+ * ph-vetro-scuro, cosi' una superficie scura dentro una chiara rimette i valori
+ * scuri (vale la superficie piu' vicina: le variabili si ereditano). */
+.ph-shell,
+.ph-vetro-scuro {
+  --ph-accento: #2dd4bf;              /* props.accent */
+  --ph-su-accento: #0b1220;           /* testo sopra l'accento */
+  --ph-testo: #e6eaf2;
+  --ph-testo-2: #cbd5e1;              /* secondario */
+  --ph-testo-3: #9aa4b5;              /* terziario, segnaposto dei campi */
+  --ph-pannello: rgba(20, 27, 38, 0.98);   /* popup e pannelli */
+  --ph-launcher: rgba(14, 21, 31, 0.96);
+  --ph-dialogo: rgba(14, 21, 31, 0.98);
+  --ph-bordo: rgba(255, 255, 255, 0.14);
+  --ph-bordo-forte: rgba(255, 255, 255, 0.18);
+  --ph-bordo-dialogo: rgba(255, 255, 255, 0.16);
+  --ph-separatore: rgba(255, 255, 255, 0.18);
+  --ph-sopra: rgba(255, 255, 255, 0.14);   /* hover dei pulsanti della barra */
+  --ph-sopra-riga: rgba(255, 255, 255, 0.10);
+  --ph-sopra-ghost: rgba(255, 255, 255, 0.12);
+  --ph-voce: rgba(255, 255, 255, 0.06);    /* fondo delle voci nei pannelli */
+  --ph-campo: rgba(255, 255, 255, 0.08);
+  --ph-pillola-spenta: rgba(255, 255, 255, 0.14);
+  --ph-chiudi-sopra: #c2410c;              /* hover del pulsante chiudi */
+  --ph-rec: #fca5a5;
+  --ph-widget: rgba(12, 20, 30, 0.62);
+  --ph-ombra-pannello: 0 18px 50px rgba(0, 0, 0, 0.55);
+  --ph-ombra-dialogo: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --ph-ombra-menu: 0 14px 40px rgba(0, 0, 0, 0.55);
+  --ph-fuoco: #ffffff;                     /* fuoco da tastiera */
+  --ph-testo-campo: #ffffff;               /* testo scritto nei campi */
+  --ph-bordo-ghost: rgba(255, 255, 255, 0.2);   /* bordo di ph-ghost.ph-bordato */
+  --ph-accento-spento: rgba(255, 255, 255, 0.25); /* fondo di ph-accento disabilitato */
+  --ph-avanzamento-fondo: rgba(255, 255, 255, 0.16); /* binario della barra di avanzamento */
+  --ph-errore: #fca5a5;                    /* testo d'errore */
+  --ph-avviso: #fcd34d;                    /* testo di avviso (dati non aggiornati) */
+  --ph-accento-testo: #2dd4bf;             /* accento usato come TESTO o collegamento */
+  --ph-su-accento-spento: #0b1220;         /* testo sopra --ph-accento-spento */
+  color: var(--ph-testo);
+}
+
+/* Fuoco da tastiera visibile (mockup: outline 2px, offset 1px; colore in
+ * --ph-fuoco: bianco sullo scuro, #10202E sul chiaro). */
+.ph-shell button:focus-visible,
+.ph-shell entry:focus-visible,
+.ph-shell text:focus-visible {
+  outline: 2px solid var(--ph-fuoco);
+  outline-offset: 1px;
+}
+
+/* Velo trasparente sotto i popup (mockup: z 4500, senza colore). */
+.ph-velo-popup {
+  background: transparent;
+}
+
+/* Contenitore di un popup / pannello (mockup: notifiche, telefono, volume,
+ * invio, ricezione). Larghezza e posizione le mette il pezzo. */
+.ph-pannello {
+  background-color: var(--ph-pannello);
+  border: 1px solid var(--ph-bordo);
+  border-radius: 14px;
+  padding: 14px;
+  color: var(--ph-testo);
+  box-shadow: var(--ph-ombra-pannello);
+}
+
+.ph-dialogo {
+  background-color: var(--ph-dialogo);
+  border: 1px solid var(--ph-bordo-dialogo);
+  border-radius: 16px;
+  padding: 20px;
+  color: var(--ph-testo);
+  box-shadow: var(--ph-ombra-dialogo);
+}
+
+.ph-menu {
+  background-color: var(--ph-pannello);
+  border: 1px solid var(--ph-bordo);
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 200px;
+  box-shadow: var(--ph-ombra-menu);
+}
+
+/* Titolo di un pannello (14px 600) e di un dialogo (16px 600). */
+.ph-titolo-pannello { font-size: 14px; font-weight: 600; }
+.ph-titolo-dialogo { font-size: 16px; font-weight: 600; }
+.ph-testo-2 { color: var(--ph-testo-2); }
+.ph-testo-3 { color: var(--ph-testo-3); }
+.ph-piccolo { font-size: 12px; }
+.ph-minimo { font-size: 11px; }
+
+/* Etichetta di sezione: 11px maiuscolo, #9aa4b5, spaziatura .06em. */
+.ph-sezione {
+  font-size: 11px;
+  color: var(--ph-testo-3);
+  text-transform: uppercase;
+  letter-spacing: 0.66px;
+}
+
+/* .tb del mockup: pulsanti della barra. */
+button.ph-tb {
+  background-image: none;
+  min-height: 40px;
+  min-width: 40px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ph-testo);
+  padding: 0 8px;
+  font-size: 12px;
+  box-shadow: none;
+}
+button.ph-tb:hover { background-color: var(--ph-sopra); }
+
+/* .lrow del mockup: righe di elenchi e voci di menu. */
+button.ph-riga {
+  background-image: none;
+  border: none;
+  background: transparent;
+  color: var(--ph-testo);
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: none;
+}
+button.ph-riga:hover { background-color: var(--ph-sopra-riga); }
+
+/* .pbtn del mockup: pulsanti larghi dei pannelli (con pillola a destra). */
+button.ph-pbtn {
+  background-image: none;
+  border: 1px solid var(--ph-bordo);
+  background-color: var(--ph-voce);
+  color: var(--ph-testo);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  box-shadow: none;
+}
+button.ph-pbtn:hover { background-color: var(--ph-sopra-ghost); }
+
+/* .ghost del mockup: pulsanti di testo leggeri ("Nascondi", "Fatto", "Su"). */
+button.ph-ghost {
+  background-image: none;
+  border: none;
+  background: transparent;
+  color: var(--ph-testo-2);
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+button.ph-ghost:hover { background-color: var(--ph-sopra-ghost); }
+button.ph-ghost.ph-bordato { border: 1px solid var(--ph-bordo-ghost); }
+
+/* Pulsante pieno con l'accento ("Usa questa cartella", "Scarica N file"). */
+button.ph-accento {
+  background-image: none;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ph-su-accento);
+  background-color: var(--ph-accento);
+  box-shadow: none;
+}
+button.ph-accento:disabled {
+  background-color: var(--ph-accento-spento);
+  color: var(--ph-su-accento-spento);
+}
+
+/* Il tema GTK aggiunge ai button un gradiente chiaro (background-image),
+ * ombre e ombre del testo in ogni stato: si tolgono per tutte le nostre classi
+ * e in tutti gli stati, cosi' contano solo i colori del mockup. */
+button.ph-tb,
+button.ph-tb:hover,
+button.ph-tb:active,
+button.ph-tb:checked,
+button.ph-tb:disabled,
+button.ph-tb:focus,
+button.ph-tb:focus-visible,
+button.ph-riga,
+button.ph-riga:hover,
+button.ph-riga:active,
+button.ph-riga:checked,
+button.ph-riga:disabled,
+button.ph-riga:focus,
+button.ph-riga:focus-visible,
+button.ph-pbtn,
+button.ph-pbtn:hover,
+button.ph-pbtn:active,
+button.ph-pbtn:checked,
+button.ph-pbtn:disabled,
+button.ph-pbtn:focus,
+button.ph-pbtn:focus-visible,
+button.ph-ghost,
+button.ph-ghost:hover,
+button.ph-ghost:active,
+button.ph-ghost:checked,
+button.ph-ghost:disabled,
+button.ph-ghost:focus,
+button.ph-ghost:focus-visible,
+button.ph-accento,
+button.ph-accento:hover,
+button.ph-accento:active,
+button.ph-accento:checked,
+button.ph-accento:disabled,
+button.ph-accento:focus,
+button.ph-accento:focus-visible {
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+  -gtk-icon-shadow: none;
+}
+
+/* Il tema impone un'altezza minima a pulsanti, campi e righe (~10 px piu' dei
+ * pulsanti del mockup): le altezze le danno le imbottiture. ph-tb ha il suo
+ * min-height esplicito di 40 px. */
+button.ph-riga,
+button.ph-pbtn,
+button.ph-ghost,
+button.ph-accento,
+entry.ph-campo,
+entry.ph-campo > text {
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Pillola di stato (Acceso/Spento, Visibile/Nascosto, Attivo/Disattivo). */
+.ph-pillola {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 2px 9px;
+  background-color: var(--ph-pillola-spenta);
+  color: var(--ph-testo);
+}
+.ph-pillola.ph-acceso {
+  background-color: var(--ph-accento);
+  color: var(--ph-su-accento);
+}
+
+/* Separatore verticale della barra: 1x24, margini 0 4px. */
+.ph-separatore {
+  min-width: 1px;
+  min-height: 24px;
+  margin: 0 4px;
+  background-color: var(--ph-separatore);
+}
+
+/* Campi di testo (percorsi, ricerche). */
+entry.ph-campo {
+  background-color: var(--ph-campo);
+  border: 1px solid var(--ph-bordo-forte);
+  color: var(--ph-testo-campo);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  box-shadow: none;
+  min-height: 0;
+}
+entry.ph-campo.ph-ricerca {
+  border-radius: 20px;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+entry.ph-campo placeholder,
+entry.ph-campo text placeholder { color: var(--ph-testo-3); }
+
+/* Voce di un elenco nei pannelli (notifiche, trasferimenti). */
+.ph-voce {
+  background-color: var(--ph-voce);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+/* Barra di avanzamento sottile (trasferimenti 4px, widget 6px). */
+.ph-avanzamento { min-height: 4px; border-radius: 2px; background-color: var(--ph-avanzamento-fondo); }
+.ph-avanzamento-pieno { min-height: 4px; border-radius: 2px; background-color: var(--ph-accento); }
+
+/* ---- Vetro (fase 5, 2.1) -------------------------------------------------
+ * Le classi ph-vetro-chiaro / ph-vetro-scuro si mettono SOLO con
+ * ph_shell_vetro_registra (shell.h): il C disegna dietro il widget lo sfondo
+ * sfocato e mette ph-vetro-attivo sulla radice quando c'e' la scheda grafica.
+ * Le forme ph-pannello / ph-dialogo / ph-menu hanno il fondo scuro solo finche'
+ * il widget non e' una superficie di vetro: quelle regole (1 classe) perdono
+ * contro le regole del vetro qui sotto (2 o 3 classi). */
+
+/* Chiaro: variabili di contenuto ridefinite per tutto cio' che sta dentro. */
+.ph-vetro-chiaro {
+  --ph-accento: #1F7A8C;
+  --ph-su-accento: #ffffff;
+  --ph-testo: #10202E;
+  --ph-testo-2: #2F4558;
+  --ph-testo-3: #3A4D5F;
+  --ph-bordo: rgba(16, 32, 46, 0.12);        /* bordi interni: scuri, i bianchi non si vedono sul chiaro */
+  --ph-bordo-forte: rgba(16, 32, 46, 0.2);
+  --ph-bordo-dialogo: rgba(16, 32, 46, 0.12);
+  --ph-separatore: rgba(16, 32, 46, 0.14);
+  --ph-sopra: rgba(255, 255, 255, 0.75);
+  --ph-sopra-riga: rgba(255, 255, 255, 0.75);
+  --ph-sopra-ghost: rgba(255, 255, 255, 0.75);
+  --ph-voce: rgba(255, 255, 255, 0.45);
+  --ph-campo: rgba(255, 255, 255, 0.7);
+  --ph-pillola-spenta: rgba(16, 32, 46, 0.2);
+  --ph-chiudi-sopra: #E8604C;
+  --ph-rec: #C0392B;
+  --ph-fuoco: #10202E;
+  --ph-testo-campo: #10202E;
+  --ph-bordo-ghost: rgba(16, 32, 46, 0.2);
+  --ph-accento-spento: rgba(16, 32, 46, 0.12);
+  --ph-su-accento-spento: #3A4D5F;
+  --ph-errore: #8B1A12;
+  --ph-avviso: #5F3D00;
+  --ph-accento-testo: #0E4F5C;
+  --ph-avanzamento-fondo: rgba(16, 32, 46, 0.14);
+  --ph-ombra-pannello: var(--ph-vetro-ombra);
+  --ph-ombra-dialogo: var(--ph-vetro-ombra);
+  --ph-ombra-menu: var(--ph-vetro-ombra);
+  /* fondi dei popup: se un pezzo li usa ancora dentro il chiaro, restano chiari */
+  --ph-pannello: rgba(233, 238, 241, 0.94);
+  --ph-launcher: rgba(233, 238, 241, 0.94);
+  --ph-dialogo: rgba(233, 238, 241, 0.94);
+  --ph-widget: rgba(233, 238, 241, 0.94);
+  color: var(--ph-testo);
+}
+
+/* Fondo chiaro SENZA sfocatura: quasi opaco; bordo chiaro e filo di luce come
+ * ombre interne (non spostano i figli), ombra lunga delle finestre. */
+.ph-shell .ph-vetro-chiaro {
+  background-color: var(--ph-vetro-riempimento);
+  border-color: transparent;   /* il bordo esterno lo da' il vetro (box-shadow): misura invariata */
+  box-shadow: inset 0 0 0 1px var(--ph-vetro-bordo),
+              inset 0 1px 0 var(--ph-vetro-luce),
+              var(--ph-vetro-ombra);
+}
+
+/* Con la sfocatura dietro: velo bianco 58 %. */
+.ph-shell.ph-vetro-attivo .ph-vetro-chiaro {
+  background-color: var(--ph-vetro-riempimento-sfocato);
+}
+
+/* Scuro (la barra): stesse variabili della radice (blocco sopra). Il fondo
+ * e' anche in --ph-barra-sfuma (e --ph-barra-sfuma-0, stesso colore con alfa 0)
+ * per le sfumature laterali della barra: un gradiente non puo' togliere l'alfa
+ * a una variabile. */
+.ph-shell .ph-vetro-scuro {
+  --ph-barra-sfuma: rgba(15, 23, 32, 0.95);
+  --ph-barra-sfuma-0: rgba(15, 23, 32, 0);
+  background-color: var(--ph-barra-sfuma);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 var(--ph-vetro-scuro-luce);
+}
+.ph-shell.ph-vetro-attivo .ph-vetro-scuro {
+  --ph-barra-sfuma: rgba(8, 24, 40, 0.42);
+  --ph-barra-sfuma-0: rgba(8, 24, 40, 0);
+}
+
+/* Cursori, caselle e interruttori di GTK dentro le superfici: colori dalle
+ * variabili, non dal tema di GTK. Il cursore del volume (sistema.css) ha le sue
+ * regole piu' specifiche per highlight e slider: qui non le duplico. */
+.ph-vetro-chiaro scale trough,
+.ph-vetro-scuro scale trough {
+  background-color: var(--ph-avanzamento-fondo);
+  background-image: none;
+  border: none;
+}
+.ph-vetro-chiaro scale highlight,
+.ph-vetro-scuro scale highlight,
+.ph-vetro-chiaro scale slider,
+.ph-vetro-scuro scale slider {
+  background-image: none;
+  background-color: var(--ph-accento);
+  border: none;
+}
+.ph-vetro-chiaro checkbutton check:checked,
+.ph-vetro-scuro checkbutton check:checked,
+.ph-vetro-chiaro switch:checked,
+.ph-vetro-scuro switch:checked {
+  background-image: none;
+  background-color: var(--ph-accento);
+  color: var(--ph-su-accento);
+}
+.ph-vetro-chiaro text selection,
+.ph-vetro-scuro text selection {
+  background-color: var(--ph-accento);
+  color: var(--ph-su-accento);
+}
+.ph-vetro-chiaro text placeholder,
+.ph-vetro-scuro text placeholder,
+.ph-vetro-chiaro placeholder,
+.ph-vetro-scuro placeholder {
+  color: var(--ph-testo-3);
+}

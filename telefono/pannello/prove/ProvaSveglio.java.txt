@@ -1,0 +1,311 @@
+package it.yasde;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * Prova su JVM della guardia e della logica di TieniSveglio (blocco, sblocco, 30 minuti, orologio, segni di vita,
+ * ritentativo, chiusura): la presa vera e' sostituita da un finto. Si aspetta sempre un evento con scadenza, mai
+ * una pausa «per dare tempo».
+ */
+public final class ProvaSveglio {
+    private static final long L = Registro.PC_ASSENTE_MS;
+    private static int falliti;
+
+    private ProvaSveglio() {}
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    /** Presa finta: ogni chiamata riuscita mette un evento («P» presa, «R» rilascio) nella coda. */
+    private static final class Finta implements TieniSveglio.Presa {
+        final AtomicInteger prese = new AtomicInteger();
+        final AtomicInteger rilasci = new AtomicInteger();
+        final LinkedBlockingQueue<String> eventi = new LinkedBlockingQueue<String>();
+        volatile int fallisciPrime; // le prime N prese falliscono
+        volatile boolean errore; // ... con un Error invece di un'eccezione
+        volatile int fallisciRilasci; // i primi N rilasci falliscono
+        volatile CountDownLatch blocca; // se non nullo, prendi() aspetta qui
+        final CountDownLatch dentro = new CountDownLatch(1);
+        volatile boolean preso;
+
+        @Override
+        public void prendi() {
+            int n = prese.incrementAndGet();
+            dentro.countDown();
+            CountDownLatch b = blocca;
+            if (b != null) {
+                try {
+                    if (!b.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("prova bloccata");
+                } catch (InterruptedException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+            if (n <= fallisciPrime) {
+                if (errore) throw new AssertionError("errore finto");
+                throw new IllegalStateException("presa finta fallita");
+            }
+            preso = true;
+            eventi.add("P");
+        }
+
+        @Override
+        public void rilascia() {
+            int n = rilasci.incrementAndGet();
+            if (n <= fallisciRilasci) throw new IllegalStateException("rilascio finto fallito");
+            preso = false;
+            eventi.add("R");
+        }
+
+        /** Aspetta il prossimo evento (con scadenza) e dice se e' quello atteso. */
+        boolean atteso(String e) throws InterruptedException {
+            return e.equals(eventi.poll(5, TimeUnit.SECONDS));
+        }
+    }
+
+    private static TieniSveglio nuovo(Finta f, long attesaMs) {
+        return new TieniSveglio(f, 5, attesaMs, L, TieniSveglio.MONOTONO, 5000, 20);
+    }
+
+    /** Guardia con tutto in regola all'istante t (segno di vita di adesso). */
+    private static void vivo(TieniSveglio t, long adesso) {
+        t.aggiorna(true, Boolean.FALSE, adesso, adesso);
+    }
+
+    public static void main(String[] args) throws Exception {
+        // ---- la guardia, pura ----
+        controlla(TieniSveglio.tieni(true, Boolean.FALSE, 1000, 1000, L), "guardia: tutto in regola -> tieni");
+        controlla(!TieniSveglio.tieni(false, Boolean.FALSE, 1000, 1000, L), "guardia: canale non aperto/salutato -> non tieni");
+        controlla(!TieniSveglio.tieni(true, Boolean.TRUE, 1000, 1000, L), "guardia: telefono bloccato -> non tieni");
+        controlla(!TieniSveglio.tieni(true, null, 1000, 1000, L), "guardia: blocco illeggibile -> non tieni (verso sicuro)");
+        controlla(TieniSveglio.tieni(true, Boolean.FALSE, 5000 + L - 1, 5000, L), "guardia: 1 ms prima dei 30 minuti -> tieni");
+        controlla(!TieniSveglio.tieni(true, Boolean.FALSE, 5000 + L, 5000, L), "guardia: 30 minuti esatti -> non tieni");
+        controlla(!TieniSveglio.tieni(true, Boolean.FALSE, 5000 + L + 1, 5000, L), "guardia: oltre i 30 minuti -> non tieni");
+        controlla(!TieniSveglio.tieni(true, Boolean.FALSE, 999, 1000, L), "guardia: segno di vita piu' recente dell'ora (orologio incoerente) -> non tieni");
+        controlla(TieniSveglio.tieni(true, Boolean.FALSE, Long.MAX_VALUE, Long.MAX_VALUE - 1, L), "guardia: numeri grandi senza overflow -> tieni");
+
+        // ---- presa e rilascio su guardia ----
+        Finta f = new Finta();
+        TieniSveglio t = nuovo(f, 2000);
+        t.avvia();
+        controlla(f.prese.get() == 0, "senza aggiorna() nessuna presa (il thread aspetta la guardia)");
+        vivo(t, 1000);
+        controlla(f.atteso("P"), "guardia vera: il wake lock si prende");
+        vivo(t, 1001);
+        vivo(t, 1002);
+        t.chiudi();
+        controlla(f.atteso("R") && f.rilasci.get() == 1 && f.prese.get() == 1, "chiusura da preso: una sola presa, un rilascio");
+        t.chiudi();
+        controlla(f.rilasci.get() == 1, "seconda chiudi: nulla");
+        vivo(t, 2000);
+        controlla(t.attendiFine(5000) && f.prese.get() == 1, "dopo chiudi aggiorna() non fa piu' nulla");
+
+        // blocco col tasto -> rilascio; sblocco -> ripresa
+        f = new Finta();
+        t = nuovo(f, 2000);
+        vivo(t, 1000);
+        controlla(f.atteso("P"), "blocco: parte preso");
+        t.aggiorna(true, Boolean.TRUE, 2000, 2000);
+        controlla(f.atteso("R"), "blocco col tasto: il wake lock si rilascia");
+        t.aggiorna(true, Boolean.TRUE, 3000, 3000);
+        t.aggiorna(true, null, 4000, 4000);
+        vivo(t, 5000);
+        controlla(f.atteso("P") && f.prese.get() == 2 && f.rilasci.get() == 1, "sblocco: il wake lock si riprende (una sola volta, senza rilasci in piu')");
+        t.chiudi();
+        controlla(f.atteso("R"), "chiusura dopo la ripresa: rilasciato");
+
+        // blocco illeggibile -> rilascio
+        f = new Finta();
+        t = nuovo(f, 2000);
+        vivo(t, 1000);
+        f.atteso("P");
+        t.aggiorna(true, null, 2000, 2000);
+        controlla(f.atteso("R"), "stato del blocco illeggibile: si rilascia");
+        t.chiudi();
+
+        // 30 minuti
+        f = new Finta();
+        t = nuovo(f, 2000);
+        t.aggiorna(true, Boolean.FALSE, 10000 + L - 1, 10000);
+        controlla(f.atteso("P"), "30 minuti: a 1 ms dal limite il lock si prende/tiene");
+        t.aggiorna(true, Boolean.FALSE, 10000 + L, 10000);
+        controlla(f.atteso("R"), "30 minuti esatti senza segni di vita: rilascio");
+        // segno di vita che torna -> ripresa
+        t.aggiorna(true, Boolean.FALSE, 10000 + L + 5000, 10000 + L + 4000);
+        controlla(f.atteso("P"), "un segno di vita nuovo: ripresa");
+        t.chiudi();
+        controlla(f.atteso("R"), "chiusura dopo la ripresa: rilasciato");
+
+        // canale non salutato / caduto
+        f = new Finta();
+        t = nuovo(f, 2000);
+        vivo(t, 1000);
+        f.atteso("P");
+        t.aggiorna(false, Boolean.FALSE, 1500, 1500);
+        controlla(f.atteso("R"), "canale comandi chiuso: rilascio");
+        t.chiudi();
+
+        // orologio che torna indietro -> rilascio, poi ripresa quando e' coerente
+        f = new Finta();
+        t = nuovo(f, 2000);
+        vivo(t, 100000);
+        f.atteso("P");
+        t.aggiorna(true, Boolean.FALSE, 50000, 50000);
+        controlla(f.atteso("R"), "orologio tornato indietro: rilascio (verso sicuro)");
+        vivo(t, 50100);
+        controlla(f.atteso("P"), "orologio di nuovo coerente: ripresa");
+        t.chiudi();
+
+        // aggiorna() non aspetta una presa bloccata nel sistema
+        f = new Finta();
+        f.blocca = new CountDownLatch(1);
+        t = nuovo(f, 100);
+        vivo(t, 1000);
+        controlla(f.dentro.await(5, TimeUnit.SECONDS), "presa bloccata nel sistema: entrata");
+        long a = System.currentTimeMillis();
+        for (int i = 0; i < 100; i++) vivo(t, 1001 + i);
+        controlla(System.currentTimeMillis() - a < 2000, "aggiorna() non aspetta la presa bloccata");
+        a = System.currentTimeMillis();
+        t.chiudi();
+        controlla(System.currentTimeMillis() - a < 4000, "chiudi non aspetta senza limite una presa bloccata");
+        f.blocca.countDown();
+        controlla(t.attendiFine(5000), "la presa finisce e il thread esce");
+        controlla(f.prese.get() == 1 && !f.preso, "presa completata dopo la rinuncia: rilasciata dal thread");
+
+        // chiudi mentre la presa e' in corso e finisce entro l'attesa
+        f = new Finta();
+        f.blocca = new CountDownLatch(1);
+        t = nuovo(f, 5000);
+        vivo(t, 1000);
+        f.dentro.await(5, TimeUnit.SECONDS);
+        final TieniSveglio t7 = t;
+        final CountDownLatch chiusa = new CountDownLatch(1);
+        new Thread() {
+            @Override
+            public void run() {
+                t7.chiudi();
+                chiusa.countDown();
+            }
+        }.start();
+        controlla(!chiusa.await(200, TimeUnit.MILLISECONDS), "chiudi aspetta la presa in corso");
+        f.blocca.countDown();
+        controlla(chiusa.await(5, TimeUnit.SECONDS), "chiudi torna quando la presa e' finita");
+        controlla(t.attendiFine(5000) && !f.preso && f.rilasci.get() == 1, "preso durante la chiusura: rilasciato una volta sola");
+
+        // presa che fallisce due volte (eccezione, Error) e poi riesce
+        f = new Finta();
+        f.fallisciPrime = 2;
+        t = nuovo(f, 2000);
+        vivo(t, 1000);
+        controlla(f.atteso("P") && f.prese.get() == 3, "presa fallita due volte: si ritenta e riesce");
+        t.chiudi();
+        f = new Finta();
+        f.fallisciPrime = 1;
+        f.errore = true;
+        t = nuovo(f, 2000);
+        vivo(t, 1000);
+        controlla(f.atteso("P"), "un Error nella presa non ferma i tentativi");
+        t.chiudi();
+
+        // presa che non riesce mai: la chiusura ferma i tentativi
+        f = new Finta();
+        f.fallisciPrime = 1000000;
+        t = nuovo(f, 2000);
+        vivo(t, 1000);
+        long limite = System.currentTimeMillis() + 5000;
+        while (f.prese.get() < 3 && System.currentTimeMillis() < limite) t.attendiFine(1);
+        t.chiudi();
+        int prima = f.prese.get(); // letto a chiusura avvenuta: da qui non puo' partire nessuna presa nuova
+        controlla(t.attendiFine(5000) && prima >= 3, "chiudi ferma il ritentativo (il thread finisce)");
+        controlla(f.prese.get() == prima, "nessun tentativo dopo la chiusura (conteggio dopo la fine uguale a quello alla chiusura)");
+
+        // rilascio che fallisce: si ritenta; chiudi non lancia
+        f = new Finta();
+        f.fallisciRilasci = 2;
+        t = nuovo(f, 2000);
+        vivo(t, 1000);
+        f.atteso("P");
+        t.aggiorna(true, Boolean.TRUE, 2000, 2000);
+        controlla(f.atteso("R") && f.rilasci.get() == 3, "rilascio fallito due volte: si ritenta e riesce");
+        t.chiudi();
+        f = new Finta();
+        f.fallisciRilasci = 1000000;
+        t = nuovo(f, 2000);
+        vivo(t, 1000);
+        f.atteso("P");
+        boolean lanciato = false;
+        try {
+            t.chiudi();
+        } catch (Throwable e) {
+            lanciato = true;
+        }
+        controlla(!lanciato && f.rilasci.get() >= 1, "rilascio che fallisce sempre: chiudi non lancia");
+
+        // chiusura in ogni stato rimasto: mai voluto, chiusa prima di avvia
+        f = new Finta();
+        t = nuovo(f, 2000);
+        t.avvia();
+        t.chiudi();
+        controlla(t.attendiFine(5000) && f.prese.get() == 0, "chiusura senza mai aver voluto il lock: nessuna presa");
+        f = new Finta();
+        t = nuovo(f, 2000);
+        t.chiudi();
+        t.avvia();
+        vivo(t, 1000);
+        controlla(t.attendiFine(1000) && f.prese.get() == 0 && f.rilasci.get() == 0, "chiusa prima di avviare: niente presa, niente da rilasciare");
+
+        // avvia due volte / aggiorna ripetuto: una sola presa
+        f = new Finta();
+        t = nuovo(f, 2000);
+        t.avvia();
+        t.avvia();
+        for (int i = 0; i < 50; i++) vivo(t, 1000 + i);
+        controlla(f.atteso("P"), "avvia() due volte e molti aggiorna()");
+        t.chiudi();
+        controlla(f.atteso("R") && f.prese.get() == 1, "una sola presa in tutto");
+
+        // ripresa dopo l'assenza del PC con il telefono bloccato: il lock non si prende finche' e' bloccato
+        f = new Finta();
+        t = nuovo(f, 2000);
+        vivo(t, 1000);
+        f.atteso("P");
+        t.aggiorna(true, Boolean.FALSE, 1000 + L, 1000);
+        controlla(f.atteso("R"), "assenza del PC: wake lock rilasciato");
+        t.aggiorna(true, Boolean.TRUE, 1000 + L + 10, 1000 + L + 5);
+        t.aggiorna(true, Boolean.TRUE, 1000 + L + 20, 1000 + L + 5);
+        t.aggiorna(true, Boolean.FALSE, 1000 + L + 30, 1000 + L + 5);
+        controlla(f.atteso("P") && f.prese.get() == 2, "segno di vita tornato a telefono bloccato: lock ripreso solo allo sblocco");
+        t.chiudi();
+
+        controlla(TieniSveglio.SCADENZA_STATO_MS == 30000, "scadenza dello stato di 30 s (tetto di sicurezza: 30 minuti + 30 s)");
+        // lo stato voluto scade da solo: dopo UNA sola aggiorna() e nessun'altra chiamata il lock si rilascia
+        final long[] ora = {0};
+        TieniSveglio.Orologio finto = new TieniSveglio.Orologio() {
+            @Override
+            public long ms() {
+                return ora[0];
+            }
+        };
+        f = new Finta();
+        t = new TieniSveglio(f, 5, 2000, L, finto, 5000, 5);
+        vivo(t, 1000);
+        controlla(f.atteso("P"), "scadenza dello stato: preso con una sola aggiorna()");
+        ora[0] = 5000; // il controllo periodico e' morto: nessun'altra aggiorna()
+        controlla(f.atteso("R"), "nessuna aggiorna() per la scadenza: il lock si rilascia da solo (controllo morto o fermo)");
+        vivo(t, 1001);
+        controlla(f.atteso("P") && f.prese.get() == 2, "una nuova aggiorna(): il lock si riprende");
+        ora[0] = 4000; // l'orologio proprio che torna indietro: verso sicuro
+        controlla(f.atteso("R"), "orologio proprio all'indietro: si rilascia");
+        t.chiudi();
+
+        if (falliti > 0) {
+            System.out.println("falliti: " + falliti);
+            System.exit(1);
+        }
+        System.out.println("tutte ok");
+    }
+}

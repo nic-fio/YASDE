@@ -1,0 +1,7 @@
+/* Caso finto: la traduzione ha un segnaposto diverso (errore 1) e un altro
+ * testo con la graffa non chiusa (errore 2). */
+void f(void)
+{
+    const char *a = ph_t("Copiati {numero} file di {nome}");
+    const char *b = ph_t("Graffa {isolata");
+}

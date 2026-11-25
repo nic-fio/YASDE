@@ -1,0 +1,99 @@
+package it.yasde;
+
+import android.media.AudioAttributes;
+import android.media.AudioFormat;
+import android.media.AudioTrack;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+/**
+ * Prova isolata, senza servizio:
+ *   CLASSPATH=/data/local/tmp/prova-audio.jar app_process / it.yasde.ProvaAudio [secondi] [Hz] [N]
+ * Cattura per N secondi (default 6) mentre un altro processo suona un tono (default
+ * 440 Hz) dal secondo 1 in poi, scrive i pacchetti in /data/local/tmp/prova-audio.bin (formato di §2.5) e
+ * stampa pacchetti, byte, durata. Con N > 0 scarta un blocco PCM ogni N (prova del salto nei tempi). Il tono parte solo a cattura attiva: il telefono e' muto.
+ *   ... ProvaAudio tono [secondi] [Hz]   suona soltanto il tono (basso e breve), senza catturare.
+ */
+public final class ProvaAudio {
+    private static final String FILE = "/data/local/tmp/prova-audio.bin";
+
+    private ProvaAudio() {}
+
+    /** Tono sinusoidale a bassa ampiezza, per `secondi` secondi, su un AudioTrack di uso media. */
+    private static void tono(int secondi, int hz, double ampiezza) throws InterruptedException {
+        int campioni = Cattura.FREQUENZA / 10; // blocchi da 100 ms
+        AudioTrack t = new AudioTrack.Builder()
+            .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
+            .setAudioFormat(new AudioFormat.Builder().setSampleRate(Cattura.FREQUENZA)
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
+            .setBufferSizeInBytes(campioni * 4 * 4).build();
+        try {
+            t.play();
+            short[] blocco = new short[campioni * 2];
+            long n = 0;
+            for (int b = 0; b < secondi * 10; b++) {
+                for (int i = 0; i < campioni; i++, n++) {
+                    short v = (short) (Math.sin(2 * Math.PI * hz * n / Cattura.FREQUENZA) * ampiezza * 32767);
+                    blocco[2 * i] = v;
+                    blocco[2 * i + 1] = v;
+                }
+                t.write(blocco, 0, blocco.length);
+            }
+            t.stop();
+        } finally {
+            t.release();
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        if (args.length > 0 && args[0].equals("tono")) {
+            tono(args.length > 1 ? Integer.parseInt(args[1]) : 1, args.length > 2 ? Integer.parseInt(args[2]) : 440,
+                0.1);
+            System.exit(0);
+        }
+        int secondi = args.length > 0 ? Integer.parseInt(args[0]) : 6;
+        final int hz = args.length > 1 ? Integer.parseInt(args[1]) : 440;
+        Cattura.scartaUnOgni = args.length > 2 ? Integer.parseInt(args[2]) : 0;
+        System.out.println("API mancanti: " + NascosteAudio.verifica());
+        final FileOutputStream f = new FileOutputStream(FILE);
+        final long[] ultimo = {-1};
+        final long[] saltiTempo = {0};
+        final long[] passiExtra = {0}; // quanti passi da 20 ms in piu' nei tempi
+        Cattura.senzaGuardianoConsentito = true; // prova isolata: nessun servizio, nessun guardiano
+        Cattura c = Cattura.avvia(new Cattura.Uscita() {
+            @Override
+            public void pacchetto(long tempoUs, byte[] dati) throws IOException {
+                if (ultimo[0] >= 0 && tempoUs - ultimo[0] != 20000) {
+                    saltiTempo[0]++;
+                    passiExtra[0] += (tempoUs - ultimo[0]) / 20000 - 1;
+                }
+                ultimo[0] = tempoUs;
+                f.write(Audio.imballa(tempoUs, dati));
+            }
+        }, null);
+        long t0 = System.nanoTime();
+        System.out.println("cattura avviata");
+        // Il tono gira in un altro processo: in questo il contesto mascherato da shell fa presentare
+        // anche l'AudioTrack come «android», che AudioFlinger rifiuta per l'uid 2000.
+        Thread.sleep(1000);
+        ProcessBuilder pb = new ProcessBuilder("app_process", "/", "it.yasde.ProvaAudio", "tono",
+            String.valueOf(Math.max(1, secondi - 2)), String.valueOf(hz));
+        pb.environment().put("CLASSPATH", System.getProperty("java.class.path"));
+        pb.redirectErrorStream(true);
+        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        Process suono = pb.start();
+        Thread.sleep((secondi - 1) * 1000L);
+        suono.destroy();
+        c.ferma();
+        long ms = (System.nanoTime() - t0) / 1000000;
+        f.close();
+        System.out.println("RIEPILOGO pacchetti=" + c.pacchetti + " byte=" + c.byteTotali + " durataPacchetti="
+            + c.campioni * 1000L / Cattura.FREQUENZA + "ms durataReale=" + ms + "ms intestazioniScartate="
+            + c.configurazioni + " non20ms=" + c.non20ms + " saltiDiTempo=" + saltiTempo[0] + " passiExtra=" + passiExtra[0]
+            + " blocchiScartati=" + c.scartati + " errore=" + c.errore
+            + " file=" + FILE);
+        System.exit(0);
+    }
+}

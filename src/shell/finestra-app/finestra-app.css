@@ -1,0 +1,189 @@
+/* Stile del pezzo shell-finestra-app: solo classi con prefisso ph-finestra-app-.
+ * Stile "Vetro liquido" con controlli "solo glifi" (docs/DESIGN_FINESTRE.md). Tutti i
+ * colori sono le variabili --ph-vetro-* di ossatura/base.css: qui niente colori sparsi.
+ * GTK CSS non ha backdrop-filter: la sfocatura dietro il titolo la disegna il codice
+ * (finestra_app.c, "Vetro") e accende la classe -vetro; senza, riempimento quasi opaco.
+ * Il "premuto" scala tutto il pulsante con transform (GTK4 lo supporta). Caricato da
+ * ph_shell_stile_carica nel proprio _installa. */
+
+/* La cornice (nodo CSS "ph-finestra-app"): raggio 24, riempimento e ombra lunga; il
+ * contenuto e' ritagliato sul raggio. NIENTE border: in GTK4 il bordo entra nella
+ * allocazione e sposterebbe i figli di 1 px rispetto a cio' che dice finestre.h. Bordo e
+ * filo di luce sono nel figlio sovrapposto .ph-finestra-app-filo. Stato non attivo: ombra
+ * piu' leggera. */
+ph-finestra-app {
+  background-color: var(--ph-vetro-riempimento-inattivo);
+  border-radius: var(--ph-vetro-raggio);
+  box-shadow: var(--ph-vetro-ombra-inattiva);
+  /* Il ritaglio del contenuto sul raggio lo fa il codice (GTK_OVERFLOW_HIDDEN):
+   * GTK non ha la proprieta' CSS overflow. */
+  color: var(--ph-vetro-testo);
+}
+
+ph-finestra-app.ph-finestra-app-attiva {
+  background-color: var(--ph-vetro-riempimento);
+  box-shadow: var(--ph-vetro-ombra);
+}
+
+/* Con la sfocatura (classe -vetro, messa dal codice quando disegna la scheda grafica):
+ * la cornice non ha riempimento suo; dietro il titolo il codice disegna, sfocato, cio'
+ * che sta sotto la finestra, e il titolo ci mette sopra il velo bianco del documento.
+ * Senza la classe resta il riempimento quasi opaco qui sopra: mai il velo al 58% senza
+ * sfocatura. */
+ph-finestra-app.ph-finestra-app-vetro,
+ph-finestra-app.ph-finestra-app-vetro.ph-finestra-app-attiva {
+  background-color: transparent;
+}
+
+ph-finestra-app.ph-finestra-app-vetro .ph-finestra-app-titolo {
+  background-color: var(--ph-vetro-riempimento-sfocato-inattivo);
+}
+
+ph-finestra-app.ph-finestra-app-vetro.ph-finestra-app-attiva .ph-finestra-app-titolo {
+  background-color: var(--ph-vetro-riempimento-sfocato);
+}
+
+/* Bordo (1 px interno) e filo di luce in alto, SOPRA il contenuto, senza entrare
+ * nell'allocazione: figlio a tutta la cornice, non cliccabile (finestra_app.c). */
+.ph-finestra-app-filo {
+  border-radius: var(--ph-vetro-raggio);
+  box-shadow:
+    inset 0 0 0 1px var(--ph-vetro-bordo),
+    inset 0 1px 0 var(--ph-vetro-luce);
+}
+
+/* Fuoco da tastiera: Tab va al telefono, quindi sulla finestra attiva deve vedersi.
+ * Contorno scuro (#10202E) e non bianco: sul vetro chiaro il bianco sparirebbe; scuro e'
+ * visibile sia sul vetro sia sullo sfondo (scuro o colorato) attorno, perche' l'offset
+ * negativo lo tiene dentro la cornice, sopra il bordo chiaro. */
+ph-finestra-app:focus-visible {
+  outline: 2px solid var(--ph-vetro-fuoco);
+  outline-offset: -4px;
+}
+
+/* Ingrandita o agganciata: raggio 0, niente ombra, niente bordo. */
+ph-finestra-app.ph-finestra-app-piena {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+ph-finestra-app.ph-finestra-app-piena .ph-finestra-app-filo {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Titolo: nessun fondo e nessuna linea di separazione dal contenuto; altezza minima 50. */
+.ph-finestra-app-titolo {
+  background-color: transparent;
+  min-height: 50px;
+}
+
+/* Nome dell'app: 13 px peso 600, una riga, tagliato con i puntini. Non attiva: attenuato. */
+.ph-finestra-app-nome {
+  color: var(--ph-vetro-testo-inattivo);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 6px;
+}
+
+ph-finestra-app.ph-finestra-app-attiva .ph-finestra-app-nome {
+  color: var(--ph-vetro-testo);
+}
+
+/* Indicatore REC (solo durante la registrazione): rosso scuro, leggibile su fondo chiaro. */
+.ph-finestra-app-rec {
+  color: var(--ph-vetro-rec);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 6px;
+}
+
+/* Pulsanti del titolo: cerchio 30x30, trasparenti a riposo (si vede solo il simbolo). */
+button.ph-finestra-app-puls {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ph-vetro-testo-inattivo);
+  transition: all 0.15s;
+}
+
+ph-finestra-app.ph-finestra-app-attiva button.ph-finestra-app-puls {
+  color: var(--ph-vetro-testo);
+}
+
+/* Hover: anche sulla finestra non attiva il pulsante torna pieno. */
+button.ph-finestra-app-puls:hover,
+ph-finestra-app button.ph-finestra-app-puls:hover {
+  background-color: var(--ph-vetro-puls-hover);
+  color: var(--ph-vetro-testo);
+  box-shadow:
+    inset 0 1px 0 var(--ph-vetro-puls-hover-luce),
+    0 1px 3px var(--ph-vetro-puls-hover-ombra);
+}
+
+button.ph-finestra-app-puls:active,
+ph-finestra-app button.ph-finestra-app-puls:active {
+  background-color: var(--ph-vetro-puls-premuto);
+  /* Premuto: si rimpicciolisce tutto il pulsante, cerchio e simbolo insieme. */
+  transform: scale(0.92);
+}
+
+button.ph-finestra-app-puls.ph-finestra-app-chiudi:hover {
+  background-color: var(--ph-vetro-corallo);
+  color: var(--ph-vetro-chiudi-simbolo);
+}
+
+button.ph-finestra-app-puls.ph-finestra-app-chiudi:active {
+  background-color: var(--ph-vetro-corallo-premuto);
+  color: var(--ph-vetro-chiudi-simbolo);
+}
+
+button.ph-finestra-app-puls:focus-visible {
+  outline: 2px solid var(--ph-vetro-fuoco);
+  outline-offset: 2px;
+}
+
+/* Comando non disponibile (per esempio Ingrandisci su un'app solo verticale):
+ * visibile ma spento, senza effetto al passaggio del mouse. */
+button.ph-finestra-app-puls:disabled {
+  opacity: 0.35;
+}
+
+button.ph-finestra-app-puls:disabled:hover {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Voce del menu non disponibile (Ruota su un'app solo verticale): visibile ma spenta. */
+button.ph-finestra-app-voce:disabled {
+  opacity: 0.4;
+}
+
+/* Fondo del contenuto dietro la superficie: quello delle bande a riposo
+ * (superficie.css), per il margine dell'immagine 1:1. */
+.ph-finestra-app-fondo {
+  background-color: #111827; /* colore-dato: sta SEMPRE dietro il video (fondo delle bande), scuro come il video, non e' tema */
+}
+
+/* Voce a spunta "Compatibilita'" del menu (superficie di vetro chiaro): come le altre voci (testo pieno,
+ * 13 px) e la spiegazione sotto, piu' piccola e di testo terziario, allineata al testo. */
+checkbutton.ph-finestra-app-compat {
+  color: var(--ph-testo);
+  font-size: 13px;
+  padding: 6px 8px 0 8px;
+}
+
+checkbutton.ph-finestra-app-compat:disabled {
+  opacity: 0.4;
+}
+
+.ph-finestra-app-spiegazione {
+  color: var(--ph-testo-3);
+  font-size: 11px;
+  padding: 0 8px 6px 34px;
+}

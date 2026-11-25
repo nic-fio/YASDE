@@ -1,0 +1,194 @@
+package it.yasde;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+/** Prova su JVM della geometria e della macchina a stati del PIZZICO (nessun Android, nessuna attesa reale). */
+public final class ProvaPizzico {
+    private static int falliti;
+    private static final int W = 720, H = 1280;
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    private static int distanza(Pizzico.Mossa m) {
+        return m.x1 - m.x0;
+    }
+
+    private static Pizzico.Mossa ultima(List<Pizzico.Mossa> l) {
+        return l.get(l.size() - 1);
+    }
+
+    private static List<Integer> tipi(List<Pizzico.Mossa> l) {
+        List<Integer> r = new ArrayList<Integer>();
+        for (Pizzico.Mossa m : l) r.add(m.tipo);
+        return r;
+    }
+
+    /** Tutte le mosse di un gesto: inizio, poi le scadenze fino a quando si e' chiuso. */
+    private static List<Pizzico.Mossa> tutto(Pizzico p, List<Pizzico.Mossa> primo, long da) {
+        List<Pizzico.Mossa> out = new ArrayList<Pizzico.Mossa>(primo);
+        for (long t = da; p.aperto() && t < da + 5000; t++) out.addAll(p.scadenze(t));
+        return out;
+    }
+
+    public static void main(String[] args) {
+        // distanza iniziale: 25% del lato minore (720 -> 180)
+        Pizzico p = new Pizzico();
+        List<Pizzico.Mossa> in = p.inizio(1000, W, H, 360, 640, 0);
+        controlla(tipi(in).toString().equals("[0, 1]") && distanza(ultima(in)) == 180
+                && ultima(in).y0 == 640 && ultima(in).y1 == 640 && ultima(in).x0 + ultima(in).x1 == 720,
+                "inizio: due dita sulla retta orizzontale per il centro, simmetriche, distanza 25% del lato minore");
+        controlla(in.get(0).dita == 1 && in.get(1).dita == 2 && in.get(0).downTime == in.get(1).downTime
+                && in.get(0).tempo == in.get(0).downTime && in.get(1).tempo > in.get(0).tempo,
+                "DOWN con un dito poi POINTER_DOWN con due; downTime unico, tempi crescenti");
+
+        // +120 moltiplica per 1,25 ; -120 divide
+        List<Pizzico.Mossa> m = tutto(p, p.continua(1010, 360, 640, 120), 1010);
+        int ultimaD = 0, nMuovi = 0;
+        for (Pizzico.Mossa x : m) if (x.tipo == Pizzico.MUOVI) {
+            ultimaD = distanza(x);
+            nMuovi++;
+        }
+        controlla(nMuovi == 4 && ultimaD == 225, "passo +120: distanza 180 x 1,25 = 225 (in 4 movimenti da 30)");
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 0);
+        List<Pizzico.Mossa> d = tutto(p, p.continua(10, 360, 640, -120), 10);
+        int finale = 0;
+        for (Pizzico.Mossa x : d) if (x.tipo == Pizzico.MUOVI) finale = distanza(x);
+        controlla(finale == 144, "passo -120: distanza 180 / 1,25 = 144");
+
+        // limiti 5% e 90%, senza accumulo oltre i limiti
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 1200);
+        List<Pizzico.Mossa> g = tutto(p, new ArrayList<Pizzico.Mossa>(), 0);
+        int massimo = 0;
+        for (Pizzico.Mossa x : g) massimo = Math.max(massimo, distanza(x));
+        controlla(massimo <= (int) Math.round(0.90 * 720) && massimo >= (int) (0.90 * 720) - 2, "distanza limitata al 90% del lato minore (648)");
+        p = new Pizzico();
+        List<Pizzico.Mossa> a = p.inizio(0, W, H, 360, 640, -1200);
+        List<Pizzico.Mossa> a2 = tutto(p, a, 0);
+        int minimo = 1000;
+        for (Pizzico.Mossa x : a2) if (x.dita == 2) minimo = Math.min(minimo, distanza(x));
+        controlla(minimo >= (int) (0.05 * 720) - 1, "distanza limitata al 5% del lato minore (36)");
+        // dopo aver toccato il limite, un passo opposto riparte subito (nessun accumulo)
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 0);
+        for (int i = 0; i < 6; i++) p.continua(i, 360, 640, 1200);
+        List<Pizzico.Mossa> ritorno = tutto(p, p.continua(20, 360, 640, -120), 20);
+        int primoDopo = -1, ultimoMax = 0;
+        for (Pizzico.Mossa x : ritorno) if (x.tipo == Pizzico.MUOVI) {
+            if (primoDopo < 0) primoDopo = distanza(x);
+            ultimoMax = distanza(x);
+        }
+        controlla(primoDopo > 0 && ultimoMax < 648 && ultimoMax > 440, "dopo il limite massimo un passo opposto restringe subito (nessun accumulo)");
+
+        // vicino ai bordi il centro si sposta verso l'interno e lo spostamento resta
+        p = new Pizzico();
+        List<Pizzico.Mossa> bordo = p.inizio(0, W, H, 5, 640, 0);
+        controlla(bordo.get(1).x0 >= 0 && bordo.get(1).x1 - bordo.get(1).x0 == 180 && bordo.get(1).x0 == 0,
+                "centro vicino al bordo sinistro: spostato verso l'interno, le dita dentro lo schermo");
+        List<Pizzico.Mossa> br = p.continua(8, 5, 640, 0);
+        controlla(br.isEmpty(), "centro invariato e passo 0: nessun movimento");
+        List<Pizzico.Mossa> bc = tutto(p, p.continua(10, 5, 640, 60), 10);
+        boolean dentro = true;
+        for (Pizzico.Mossa x : bc) dentro &= x.x0 >= 0 && x.x1 <= W - 1;
+        controlla(dentro, "allargando il pizzico vicino al bordo le dita restano dentro [0, larghezza-1]");
+        p = new Pizzico();
+        Pizzico.Mossa lontano = ultima(p.inizio(0, W, H, 715, 1279, 0));
+        controlla(lontano.x1 <= W - 1 && lontano.y1 <= H - 1, "bordo destro e basso: dita dentro lo schermo");
+
+        // passi lunghi divisi in movimenti da al piu' 30, a 8 ms
+        p = new Pizzico();
+        List<Pizzico.Mossa> lungo = p.inizio(0, W, H, 360, 640, 100);
+        controlla(tipi(lungo).toString().equals("[0, 1, 2]"), "passo 100: il primo movimento subito, gli altri in coda");
+        controlla(p.prossimaScadenza() == 8, "il secondo movimento a 8 ms");
+        List<Pizzico.Mossa> resto = new ArrayList<Pizzico.Mossa>();
+        for (long t = 1; t <= 30; t++) resto.addAll(p.scadenze(t));
+        controlla(resto.size() == 3 && resto.get(0).tempo > 0, "in tutto 4 movimenti da <= 30 (100 = 25 x 4), a 8, 16, 24 ms");
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 5000); // limitato a 1200
+        int totale = 1;
+        for (long t = 0; t < 1000; t++) for (Pizzico.Mossa x : p.scadenze(t)) if (x.tipo == Pizzico.MUOVI) totale++;
+        controlla(totale <= 40, "passo limitato a 1200: al piu' 40 movimenti");
+
+        // fine: riassume i movimenti in coda, POINTER_UP poi UP
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 1000);
+        List<Pizzico.Mossa> f = p.fine(1);
+        controlla(tipi(f).toString().equals("[2, 3, 4]") && f.get(1).dita == 2 && f.get(2).dita == 1 && !p.aperto(),
+                "fine: un solo movimento riassuntivo, POINTER_UP con due dita, UP con una");
+        controlla(p.fine(5).isEmpty() && p.continua(6, 1, 1, 1).isEmpty() && p.scadenze(7).isEmpty(),
+                "continua/fine/scadenze senza gesto aperto: scartati");
+
+        // annulla
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 100);
+        List<Pizzico.Mossa> an = p.annulla(3);
+        controlla(tipi(an).toString().equals("[5]") && an.get(0).dita == 2 && !p.aperto() && p.scadenze(100).isEmpty(),
+                "annulla: ACTION_CANCEL con due dita, i movimenti in coda spariscono");
+
+        // inizio senza fine: chiusura a 400 ms
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 0);
+        controlla(p.scadenze(399).isEmpty() && p.aperto() && p.prossimaScadenza() == 400, "a 399 ms il gesto e' ancora aperto");
+        List<Pizzico.Mossa> auto = p.scadenze(400);
+        controlla(tipi(auto).toString().equals("[3, 4]") && !p.aperto(), "dopo 400 ms senza passi il gesto si chiude da solo (fine)");
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 0);
+        p.continua(300, 360, 640, 0);
+        controlla(p.scadenze(600).isEmpty() && p.aperto() && !p.scadenze(700).isEmpty(), "un continua rinnova la scadenza di 400 ms");
+
+        // un nuovo inizio con un gesto aperto lo chiude prima
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 0);
+        List<Pizzico.Mossa> due = p.inizio(50, W, H, 100, 100, 0);
+        controlla(tipi(due).toString().equals("[3, 4, 0, 1]"), "nuovo inizio con gesto aperto: prima fine, poi il nuovo gesto");
+
+        // valori fuori misura scartati
+        p = new Pizzico();
+        controlla(p.inizio(0, W, H, 720, 10, 0).isEmpty() && !p.aperto() && p.inizio(0, W, H, 10, 1280, 0).isEmpty(),
+                "x >= larghezza o y >= altezza: scartato");
+        p = new Pizzico();
+        p.inizio(0, W, H, 360, 640, 0);
+        controlla(p.continua(1, 720, 0, 10).isEmpty(), "continua con centro fuori misura: scartato");
+
+        // prova a caso: sempre dentro lo schermo, tempi strettamente crescenti, sequenza di tipi valida, gesto sempre chiuso
+        Random r = new Random(7);
+        boolean ok = true;
+        for (int giro = 0; giro < 300 && ok; giro++) {
+            Pizzico q = new Pizzico();
+            long t = r.nextInt(100);
+            List<Pizzico.Mossa> tutte = new ArrayList<Pizzico.Mossa>(q.inizio(t, W, H, r.nextInt(W), r.nextInt(H), r.nextInt(2401) - 1200));
+            for (int k = 0; k < 20; k++) {
+                t += r.nextInt(60);
+                int scelta = r.nextInt(10);
+                if (scelta < 6) tutte.addAll(q.continua(t, r.nextInt(W), r.nextInt(H), r.nextInt(2401) - 1200));
+                else if (scelta < 8) tutte.addAll(q.scadenze(t));
+                else if (scelta == 8) tutte.addAll(q.annulla(t));
+                else tutte.addAll(q.fine(t));
+            }
+            tutte.addAll(q.scadenze(t + 100000));
+            long prec = Long.MIN_VALUE;
+            int stato = 0; // 0 nessuno, 1 un dito, 2 due dita
+            for (Pizzico.Mossa x : tutte) {
+                ok &= x.x0 >= 0 && x.x1 <= W - 1 && x.y0 >= 0 && x.y0 <= H - 1 && x.y1 == x.y0 && x.x0 <= x.x1;
+                ok &= x.tempo > prec;
+                prec = x.tempo;
+                if (x.tipo == Pizzico.GIU) { ok &= stato == 0; stato = 1; }
+                else if (x.tipo == Pizzico.DITO2_GIU) { ok &= stato == 1; stato = 2; }
+                else if (x.tipo == Pizzico.MUOVI) { ok &= stato == 2; }
+                else if (x.tipo == Pizzico.DITO2_SU) { ok &= stato == 2; stato = 1; }
+                else if (x.tipo == Pizzico.SU) { ok &= stato == 1; stato = 0; }
+                else if (x.tipo == Pizzico.ANNULLA) { ok &= stato >= 1; stato = 0; }
+            }
+            ok &= stato == 0 && !q.aperto(); // nessun dito resta giu'
+        }
+        controlla(ok, "300 gesti a caso: dita sempre dentro lo schermo, tempi crescenti, sequenza valida, gesto sempre chiuso");
+        System.out.println("falliti: " + falliti);
+        if (falliti > 0) System.exit(1);
+    }
+}

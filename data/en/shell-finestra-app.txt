@@ -1,0 +1,18 @@
+# Testi nuovi di shell-finestra-app (F-05), non presenti nel mockup.
+# Quelli del mockup (Indietro, Screenshot, Altri comandi, ...) sono in shell-comune.txt.
+# Formato: "testo italiano come nel codice" = "English text"
+
+"Non riesco ad aprire l'app" = "I cannot open the app"
+"Il flusso dell'app si e' interrotto: la finestra e' stata chiusa." = "The app stream stopped: the window was closed."
+"Screenshot non salvato" = "Screenshot not saved"
+"Screenshot non copiato" = "Screenshot not copied"
+"Screenshot copiato negli appunti" = "Screenshot copied to the clipboard"
+"{cartella} e copiato negli appunti" = "{cartella} and copied to the clipboard"
+"Registrazione salvata" = "Recording saved"
+"Registrazione interrotta" = "Recording interrupted"
+"Registrazione non riuscita" = "Recording failed"
+"Nessuna immagine registrata." = "No image was recorded."
+"Compatibilità" = "Compatibility"
+"Per le app che si vedono troppo piccole" = "For apps that look too small"
+"Non riesco a cambiare la compatibilità di questa app." = "I cannot change the compatibility setting of this app."
+"Non riesco ad avviare il video dell'app." = "I cannot start the app's video."

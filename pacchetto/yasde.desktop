@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=YASDE
+Comment=Yet Another Samsung Dex Emulator - use your Android phone's apps in windows on your Linux desktop
+Exec=yasde
+Icon=yasde
+Categories=Utility;
+Terminal=false
+X-AppImage-Integrate=false

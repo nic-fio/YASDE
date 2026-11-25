@@ -1,0 +1,9 @@
+build*/
+*.o
+*.jar
+*.dex
+*.class
+yasde-prova.*
+!strumenti/yasde-prova.c
+__pycache__/
+.nomi-vietati

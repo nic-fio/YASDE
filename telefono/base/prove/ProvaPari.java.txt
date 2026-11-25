@@ -1,0 +1,22 @@
+import it.yasde.Pari;
+
+/** Prova di Pari sulla JVM normale. Non entra nel jar (.txt). */
+public class ProvaPari {
+    static int errori = 0;
+
+    static void verifica(boolean ok, String nome) {
+        if (!ok) {
+            errori++;
+            System.out.println("FALLITA: " + nome);
+        }
+    }
+
+    public static void main(String[] a) {
+        verifica(Pari.ammesso(2000), "shell (2000) ammesso");
+        verifica(Pari.ammesso(0), "root (0) ammesso");
+        int[] no = {10000, 10123, 1000, 1001, 1, 1999, 2001, 99999, -1, Integer.MIN_VALUE, Integer.MAX_VALUE};
+        for (int uid : no) verifica(!Pari.ammesso(uid), "uid " + uid + " rifiutato");
+        System.out.println(errori == 0 ? "ProvaPari: tutto ok" : "ProvaPari: " + errori + " errori");
+        System.exit(errori == 0 ? 0 : 1);
+    }
+}

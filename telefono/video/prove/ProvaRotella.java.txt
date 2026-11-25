@@ -1,0 +1,58 @@
+package it.yasde;
+
+import android.view.InputDevice;
+import android.view.MotionEvent;
+
+/**
+ * Indagine sulla rotella (NON produzione): inietta 5 scatti di rotella con una variante dell'evento su uno
+ * schermo dato. Uso: app_process / it.yasde.ProvaRotella <schermo> <variante> <x> <y>
+ * A = come l'Iniettore; B = con HOVER_MOVE prima; C = B con l'id di un vero dispositivo puntatore;
+ * D = B con Ctrl premuto (META_CTRL_ON).
+ */
+public final class ProvaRotella {
+    private static MotionEvent evento(int azione, int tipoStrumento, int sorgente, int deviceId, int meta, int x, int y,
+            float vscroll) {
+        MotionEvent.PointerProperties pp = new MotionEvent.PointerProperties();
+        pp.id = 0;
+        pp.toolType = tipoStrumento;
+        MotionEvent.PointerCoords pc = new MotionEvent.PointerCoords();
+        pc.x = x;
+        pc.y = y;
+        if (azione == MotionEvent.ACTION_SCROLL) pc.setAxisValue(MotionEvent.AXIS_VSCROLL, vscroll);
+        long t = android.os.SystemClock.uptimeMillis();
+        return MotionEvent.obtain(t, t, azione, 1, new MotionEvent.PointerProperties[] {pp},
+                new MotionEvent.PointerCoords[] {pc}, meta, 0, 1f, 1f, deviceId, 0, sorgente, 0);
+    }
+
+    private static void manda(MotionEvent e, int schermo) {
+        NascosteVideo.schermoEvento(e, schermo);
+        NascosteVideo.inietta(e);
+        e.recycle();
+    }
+
+    public static void main(String[] args) throws Exception {
+        int schermo = Integer.parseInt(args[0]);
+        String v = args[1];
+        int x = Integer.parseInt(args[2]), y = Integer.parseInt(args[3]);
+        int dev = 0;
+        if (v.equals("C")) {
+            for (int id : InputDevice.getDeviceIds()) {
+                InputDevice d = InputDevice.getDevice(id);
+                if (d != null && (d.getSources() & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE && id > 0) {
+                    dev = id;
+                    break;
+                }
+            }
+            System.out.println("dispositivo puntatore: " + (dev != 0 ? "trovato" : "nessuno (si resta su 0)"));
+        }
+        int meta = v.equals("D") ? (android.view.KeyEvent.META_CTRL_ON | android.view.KeyEvent.META_CTRL_LEFT_ON) : 0;
+        for (int i = 0; i < 5; i++) {
+            if (!v.equals("A")) {
+                manda(evento(MotionEvent.ACTION_HOVER_MOVE, MotionEvent.TOOL_TYPE_MOUSE, InputDevice.SOURCE_MOUSE, dev, meta, x, y, 0), schermo);
+            }
+            manda(evento(MotionEvent.ACTION_SCROLL, MotionEvent.TOOL_TYPE_MOUSE, InputDevice.SOURCE_MOUSE, dev, meta, x, y, 1f), schermo);
+            Thread.sleep(150);
+        }
+        System.exit(0);
+    }
+}

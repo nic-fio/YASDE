@@ -1,0 +1,12 @@
+# Traduzioni inglesi del pezzo shell-sistema (testi non presenti nel mockup).
+"Android {versione}" = "Android {versione}"
+"Il telefono non ha acceso il pannello fisico" = "The phone did not turn the physical panel on"
+"Riprova tra poco." = "Try again in a moment."
+"Il telefono non ha spento il pannello fisico" = "The phone did not turn the physical panel off"
+"Può essere bloccato, in chiamata o senza un modo sicuro di ripristinarlo." = "It may be locked, on a call, or unable to restore it safely."
+"Il telefono è bloccato." = "The phone is locked."
+"C'è una chiamata in corso." = "A call is in progress."
+"Non c'è un modo sicuro di ripristinarlo ora." = "There is no safe way to restore it right now."
+"Il telefono non lo permette." = "The phone does not allow it."
+"Decodifica video hardware non disponibile" = "Hardware video decoding unavailable"
+"Il video usa il processore: le app sono meno fluide. Installa i driver video VA-API o Vulkan." = "Video uses the CPU: apps are less smooth. Install VA-API or Vulkan video drivers."

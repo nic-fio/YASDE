@@ -1,0 +1,157 @@
+import it.yasde.GestoreComandi;
+import it.yasde.Protocollo;
+import it.yasde.Registro;
+import it.yasde.Smistatore;
+
+import java.io.DataInputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+/** Prova di Smistatore e dei segni di vita sulla JVM normale. Non entra nel jar (.txt). */
+public class ProvaSmistatore {
+    static int errori = 0;
+
+    static void verifica(boolean ok, String nome) {
+        if (!ok) {
+            errori++;
+            System.out.println("FALLITA: " + nome);
+        }
+    }
+
+    static Protocollo.Messaggio msg(int tipo, byte[] corpo) throws Exception {
+        // si passa dal formato di rete, come fa il servizio
+        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+        Protocollo.scrivi(bo, tipo, corpo);
+        return Protocollo.leggi(new DataInputStream(new java.io.ByteArrayInputStream(bo.toByteArray())));
+    }
+
+    public static void main(String[] a) throws Exception {
+        final AtomicLong ora = new AtomicLong(1000);
+        final AtomicInteger chiamate = new AtomicInteger();
+        Smistatore s = new Smistatore(
+            new Smistatore.Orologio() {
+                public long ora() {
+                    return ora.get();
+                }
+            },
+            new Smistatore.Saluto() {
+                public byte[] rispondi(byte[] corpo) {
+                    return new byte[] {7};
+                }
+            });
+        Registro.registraSegnoDiVita(new Runnable() {
+            public void run() {
+                chiamate.incrementAndGet();
+            }
+        });
+        // un ascoltatore che lancia (eccezione ed Error) non deve fermare gli altri ne' il canale
+        Registro.registraSegnoDiVita(new Runnable() {
+            public void run() {
+                throw new IllegalStateException("prova");
+            }
+        });
+        Registro.registraSegnoDiVita(new Runnable() {
+            public void run() {
+                throw new AssertionError("prova");
+            }
+        });
+        final AtomicInteger dopoGliErrori = new AtomicInteger();
+        Registro.registraSegnoDiVita(new Runnable() {
+            public void run() {
+                dopoGliErrori.incrementAndGet();
+            }
+        });
+        Registro.registraComandi(0x70, 0x7d, new GestoreComandi() {
+            public byte[] gestisci(int tipo, DataInputStream corpo) {
+                return new byte[] {(byte) tipo};
+            }
+        });
+
+        verifica(Registro.ultimoSegnoDiVita() == 0, "nessun segno prima del primo messaggio");
+
+        // ogni tipo aggiorna il segno di vita, sconosciuto compreso (anche se poi e' un errore)
+        int[] tipi = {Protocollo.SALUTO, Protocollo.PRESENZA, Protocollo.CHIUDI, 0x70, 0x7e, 0x7f, 0x30};
+        int attese = 0;
+        for (int t : tipi) {
+            ora.addAndGet(10);
+            try {
+                s.tratta(msg(t, new byte[0]));
+            } catch (IllegalArgumentException e) {
+                verifica(e.getMessage().equals("tipo sconosciuto") && (t == 0x7e || t == 0x7f || t == 0x30),
+                    "solo i tipi senza gestore danno 'tipo sconosciuto' (tipo " + t + ")");
+            }
+            attese++;
+            verifica(Registro.ultimoSegnoDiVita() == ora.get(), "segno di vita aggiornato dal tipo " + t);
+            verifica(chiamate.get() == attese, "ascoltatore chiamato dal tipo " + t);
+            verifica(dopoGliErrori.get() == attese, "ascoltatore dopo quelli che lanciano chiamato (tipo " + t + ")");
+        }
+
+        // PRESENZA: OK vuoto; con corpo -> errore, ma e' comunque un segno di vita
+        verifica(s.tratta(msg(Protocollo.PRESENZA, new byte[0])).length == 0, "PRESENZA -> OK vuoto");
+        ora.addAndGet(10);
+        try {
+            s.tratta(msg(Protocollo.PRESENZA, new byte[] {1}));
+            verifica(false, "PRESENZA con corpo deve dare errore");
+        } catch (IllegalArgumentException e) {
+            verifica(true, "PRESENZA con corpo -> errore");
+        }
+        verifica(Registro.ultimoSegnoDiVita() == ora.get(), "anche PRESENZA malformata e' un segno di vita");
+        verifica(s.tratta(msg(Protocollo.SALUTO, new byte[] {0, 1}))[0] == 7, "SALUTO passa dal Saluto");
+        verifica(s.tratta(msg(0x71, new byte[0]))[0] == 0x71, "tipo con gestore smistato");
+
+        // concorrenza: segnoDiVita e registraSegnoDiVita insieme, nessuna eccezione, nessun blocco
+        final int N = 8, GIRI = 300;
+        final CountDownLatch via = new CountDownLatch(1);
+        final CountDownLatch fine = new CountDownLatch(2 * N);
+        final AtomicInteger problemi = new AtomicInteger();
+        final AtomicInteger stabile = new AtomicInteger();
+        Registro.registraSegnoDiVita(new Runnable() {
+            public void run() {
+                stabile.incrementAndGet();
+            }
+        });
+        List<Thread> th = new ArrayList<Thread>();
+        for (int i = 0; i < N; i++) {
+            th.add(new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        via.await();
+                        for (int k = 0; k < GIRI; k++) Registro.segnoDiVita(5000 + k);
+                    } catch (Throwable t) {
+                        problemi.incrementAndGet();
+                    }
+                    fine.countDown();
+                }
+            }));
+            th.add(new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        via.await();
+                        for (int k = 0; k < 200; k++) {
+                            Registro.registraSegnoDiVita(new Runnable() {
+                                public void run() {
+                                }
+                            });
+                        }
+                    } catch (Throwable t) {
+                        problemi.incrementAndGet();
+                    }
+                    fine.countDown();
+                }
+            }));
+        }
+        for (Thread t : th) t.start();
+        via.countDown();
+        verifica(fine.await(60, TimeUnit.SECONDS), "concorrenza: tutti i thread finiscono");
+        verifica(problemi.get() == 0, "concorrenza: nessuna eccezione (" + problemi.get() + ")");
+        verifica(stabile.get() == N * GIRI, "concorrenza: l'ascoltatore gia' registrato e' chiamato ogni volta");
+        verifica(Registro.ultimoSegnoDiVita() >= 5000, "concorrenza: ultimo segno aggiornato");
+
+        System.out.println(errori == 0 ? "ProvaSmistatore: tutto ok" : "ProvaSmistatore: " + errori + " errori");
+        System.exit(errori == 0 ? 0 : 1);
+    }
+}

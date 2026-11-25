@@ -1,0 +1,2 @@
+# Caso finto per il generatore: file valido.
+"Ciao {nome}" = "Hello {nome}"

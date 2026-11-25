@@ -1,0 +1,8 @@
+/* Caso finto: il giro completo. I testi si marcano con PH_T_ in una tabella
+ * (controllati: due chiamate, entrambe tradotte) e si traducono con ph_tv(), che
+ * la scansione non controlla. Nessun errore atteso. */
+static const char *tabella[] = {PH_T_("Ciao"), PH_T_("Una riga spezzata su piu' pezzi")};
+void f(int i)
+{
+    const char *t = ph_tv(tabella[i]);
+}

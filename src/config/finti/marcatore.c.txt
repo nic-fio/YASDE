@@ -1,0 +1,4 @@
+/* Caso finto: il marcatore PH_T_ vale come ph_t: il primo testo e' tradotto, il
+ * secondo no (un errore); PH_T_ senza parentesi (la definizione) si ignora. */
+#define ALIAS PH_T_
+static const char *tabella[] = {PH_T_("Ciao"), PH_T_("Testo di tabella senza traduzione")};

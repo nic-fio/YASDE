@@ -1,0 +1,2 @@
+# Traduzioni inglesi dei testi del pezzo config.
+"Troppe app in compatibilità." = "Too many apps in compatibility mode."

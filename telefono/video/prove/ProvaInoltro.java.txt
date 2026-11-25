@@ -1,0 +1,91 @@
+package it.yasde;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+/** Prova su JVM delle regole di invio (Inoltro): niente Android. */
+public final class ProvaInoltro {
+    private static int falliti;
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    /** Uscita finta: scrive in una lista, oppure scarta (come il filtro durante la pausa). */
+    private static final class Finta implements Codificatore.Uscita {
+        boolean scarta;
+        final List<String> scritti = new ArrayList<String>();
+
+        @Override
+        public boolean pacchetto(int genere, int segni, int l, int a, long us, byte[] dati) throws IOException {
+            if (scarta) return false;
+            scritti.add(genere == Codificatore.CONFIGURAZIONE ? "C" : ((segni & 1) != 0 ? "K" : "F"));
+            return true;
+        }
+    }
+
+    private static void manda(Inoltro i, Codificatore.Uscita u, String tipo) throws IOException {
+        i.pacchetto(u, tipo.equals("C"), tipo.equals("K"), 720, 1280, 0, new byte[] {1});
+    }
+
+    public static void main(String[] args) throws IOException {
+        Inoltro i = new Inoltro();
+        Finta u = new Finta();
+        manda(i, u, "C");
+        manda(i, u, "F");
+        manda(i, u, "K");
+        manda(i, u, "F");
+        controlla(u.scritti.toString().equals("[C, K, F]"), "CONFIGURAZIONE, poi chiave; il fotogramma prima della chiave e' scartato: " + u.scritti);
+
+        // Il difetto visto in revisione: pacchetti scartati dal filtro non devono contare come inviati.
+        i = new Inoltro();
+        u = new Finta();
+        manda(i, u, "C");
+        manda(i, u, "K");
+        manda(i, u, "F");
+        u.scarta = true; // pausa
+        manda(i, u, "K");
+        manda(i, u, "F");
+        u.scarta = false; // ripresa, stesso oggetto (peggior caso)
+        manda(i, u, "F");
+        controlla(u.scritti.toString().equals("[C, K, F]"), "dopo uno scarto in pausa un fotogramma normale non esce prima della chiave: " + u.scritti);
+        manda(i, u, "K");
+        manda(i, u, "F");
+        controlla(u.scritti.toString().equals("[C, K, F, K, F]"), "poi la prossima chiave riparte: " + u.scritti);
+
+        // Ripresa con uscita nuova: ricomincia da CONFIGURAZIONE e chiave.
+        i = new Inoltro();
+        u = new Finta();
+        manda(i, u, "C");
+        manda(i, u, "K");
+        Finta v = new Finta();
+        manda(i, v, "F");
+        manda(i, v, "F");
+        manda(i, v, "K");
+        manda(i, v, "F");
+        controlla(v.scritti.toString().equals("[C, K, F]"), "uscita nuova: CONFIGURAZIONE, chiave, poi fotogrammi: " + v.scritti);
+
+        // Configurazione scartata: non conta come inviata, esce alla prima occasione, prima della chiave.
+        i = new Inoltro();
+        u = new Finta();
+        u.scarta = true;
+        manda(i, u, "C");
+        manda(i, u, "K");
+        u.scarta = false;
+        manda(i, u, "K");
+        controlla(u.scritti.toString().equals("[C, K]"), "configurazione scartata rimandata prima della chiave: " + u.scritti);
+
+        // Senza canale nulla esce ne' si ricorda.
+        i = new Inoltro();
+        manda(i, null, "C");
+        manda(i, null, "K");
+        u = new Finta();
+        manda(i, u, "F");
+        manda(i, u, "K");
+        controlla(u.scritti.toString().equals("[C, K]"), "canale aperto dopo: configurazione tenuta da parte, poi chiave: " + u.scritti);
+        System.out.println("falliti: " + falliti);
+        if (falliti > 0) System.exit(1);
+    }
+}

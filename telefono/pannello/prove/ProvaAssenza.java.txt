@@ -1,0 +1,331 @@
+package it.yasde;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/** Prova su JVM dell'assenza del PC (AssenzaPc): orologio finto, azioni finte che registrano l'ordine. */
+public final class ProvaAssenza {
+    private static final long L = 30L * 60L * 1000L;
+    private static int falliti;
+
+    private ProvaAssenza() {}
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    private static final class Finte implements AssenzaPc.Azioni {
+        final List<String> registro = new ArrayList<String>();
+        int falliscono; // i prossimi N passi/riprese falliscono (false)
+        int lanciano; // i prossimi N lanciano (Error)
+
+        private boolean esito(String nome) {
+            registro.add(nome);
+            if (lanciano > 0) {
+                lanciano--;
+                throw new AssertionError("errore finto in " + nome);
+            }
+            if (falliscono > 0) {
+                falliscono--;
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public boolean riaccendi() {
+            return esito("riaccendi");
+        }
+
+        @Override
+        public boolean ripristinaFrequenza() {
+            return esito("frequenza");
+        }
+
+        @Override
+        public boolean ripristinaTimeout() {
+            return esito("timeout");
+        }
+
+        @Override
+        public void eventoAssente() {
+            registro.add("evento");
+        }
+
+        @Override
+        public boolean riprendi() {
+            return esito("riprendi");
+        }
+
+        String vedi() {
+            return registro.toString();
+        }
+    }
+
+    public static void main(String[] args) {
+        long u = 5000;
+
+        Finte f = new Finte();
+        AssenzaPc a = new AssenzaPc(f, L);
+        a.valuta(u + 10 * L, 0);
+        controlla(f.registro.isEmpty() && !a.assente(), "nessun segno di vita ancora (0): niente da fare, qualunque ora");
+        a.valuta(u + L - 1, u);
+        controlla(f.registro.isEmpty() && !a.assente(), "1 ms prima dei 30 minuti: niente");
+        a.valuta(u + L, u);
+        controlla(f.vedi().equals("[riaccendi, frequenza, timeout, evento]") && a.assente(),
+            "30 minuti esatti: riaccendi, frequenza, timeout, poi l'evento (ordine) " + f.vedi());
+        a.valuta(u + L + 1000, u);
+        a.valuta(u + 3 * L, u);
+        controlla(f.registro.size() == 4, "nessuna doppia riaccensione ne' secondo evento mentre l'assenza dura");
+
+        // ripresa
+        a.valuta(u + 3 * L + 10, u + 3 * L);
+        controlla(f.vedi().endsWith("riprendi]") && !a.assente(), "primo segno di vita: ripresa, assenza finita");
+        int n = f.registro.size();
+        a.valuta(u + 3 * L + 1000, u + 3 * L);
+        controlla(f.registro.size() == n, "dopo la ripresa nessuna azione finche' i segni di vita arrivano");
+        a.valuta(u + 4 * L + 10, u + 3 * L);
+        controlla(f.vedi().endsWith("riaccendi, frequenza, timeout, evento]") && a.assente(), "una nuova assenza: tutto da capo (stesso ordine, un solo evento)");
+
+        // ripresa che fallisce: si ritenta
+        f = new Finte();
+        a = new AssenzaPc(f, L);
+        a.valuta(u + L, u);
+        f.falliscono = 2;
+        a.valuta(u + L + 5, u + L);
+        controlla(a.assente(), "ripresa fallita: ancora in assenza");
+        a.valuta(u + L + 6, u + L);
+        a.valuta(u + L + 7, u + L);
+        controlla(!a.assente() && f.registro.size() == 7, "ripresa ritentata fino a riuscire (tre chiamate)");
+
+        // un passo che fallisce: si ferma li', niente evento, ritenta senza rifare i passi riusciti
+        f = new Finte();
+        a = new AssenzaPc(f, L);
+        f.falliscono = 0;
+        f.registro.clear();
+        final Finte g = f;
+        AssenzaPc b = new AssenzaPc(new AssenzaPc.Azioni() {
+            int tentativiFreq;
+
+            @Override
+            public boolean riaccendi() {
+                g.registro.add("riaccendi");
+                return true;
+            }
+
+            @Override
+            public boolean ripristinaFrequenza() {
+                g.registro.add("frequenza");
+                return ++tentativiFreq >= 3;
+            }
+
+            @Override
+            public boolean ripristinaTimeout() {
+                g.registro.add("timeout");
+                return true;
+            }
+
+            @Override
+            public void eventoAssente() {
+                g.registro.add("evento");
+            }
+
+            @Override
+            public boolean riprendi() {
+                return true;
+            }
+        }, L);
+        b.valuta(u + L, u);
+        controlla(g.vedi().equals("[riaccendi, frequenza]") && !b.assente(), "frequenza non ripristinata: si ferma, niente timeout ne' evento");
+        b.valuta(u + L + 1, u);
+        b.valuta(u + L + 2, u);
+        controlla(g.vedi().equals("[riaccendi, frequenza, frequenza, frequenza, timeout, evento]") && b.assente(),
+            "ritentativo solo del passo fallito (la riaccensione non si rifa), poi timeout ed evento " + g.vedi());
+
+        // Throwable in un passo: il telefono resta com'era, si ritenta
+        f = new Finte();
+        a = new AssenzaPc(f, L);
+        f.lanciano = 1;
+        a.valuta(u + L, u);
+        controlla(!a.assente() && f.vedi().equals("[riaccendi]"), "un Error nel primo passo non esce dal controllo ne' manda l'evento");
+        a.valuta(u + L + 1, u);
+        controlla(a.assente() && f.vedi().equals("[riaccendi, riaccendi, frequenza, timeout, evento]"), "ritentato al giro dopo, poi completo");
+        f = new Finte();
+        a = new AssenzaPc(f, L);
+        a.valuta(u + L, u);
+        f.lanciano = 1;
+        a.valuta(u + 2 * L, u + L + 10);
+        controlla(f.vedi().endsWith("riprendi]") && a.assente(), "un Error nella ripresa non esce dal controllo: ancora in assenza");
+        a.valuta(u + 2 * L + 1, u + L + 10);
+        controlla(!a.assente(), "ripresa ritentata dopo l'Error");
+
+        // orologio che torna indietro rispetto all'ultimo segno: scaduto (verso sicuro)
+        f = new Finte();
+        a = new AssenzaPc(f, L);
+        a.valuta(100, 200);
+        controlla(a.assente() && f.vedi().equals("[riaccendi, frequenza, timeout, evento]"), "segno di vita piu' recente dell'ora: si tratta come scaduto");
+
+        // segno di vita che torna a meta' dell'uscita: si ricomincia pulito
+        final Finte h = new Finte();
+        a = new AssenzaPc(h, L);
+        h.falliscono = 0;
+        AssenzaPc c = new AssenzaPc(new AssenzaPc.Azioni() {
+            boolean primaVolta = true;
+
+            @Override
+            public boolean riaccendi() {
+                h.registro.add("riaccendi");
+                return true;
+            }
+
+            @Override
+            public boolean ripristinaFrequenza() {
+                h.registro.add("frequenza");
+                boolean ok = !primaVolta;
+                primaVolta = false;
+                return ok;
+            }
+
+            @Override
+            public boolean ripristinaTimeout() {
+                h.registro.add("timeout");
+                return true;
+            }
+
+            @Override
+            public void eventoAssente() {
+                h.registro.add("evento");
+            }
+
+            @Override
+            public boolean riprendi() {
+                h.registro.add("riprendi");
+                return true;
+            }
+        }, L);
+        c.valuta(u + L, u);
+        c.valuta(u + L + 1, u + L); // segno di vita nuovo a meta' uscita
+        controlla(!c.assente() && h.vedi().equals("[riaccendi, frequenza, riprendi, evento]"),
+            "segno di vita a meta' uscita (pannello gia' riacceso): timeout di nuovo al massimo e evento con lo stato vero " + h.vedi());
+        c.valuta(u + 2 * L + 1, u + L); // di nuovo assente: l'uscita riparte dal primo passo
+        int riaccensioni = 0;
+        for (String r : h.registro) if (r.equals("riaccendi")) riaccensioni++;
+        controlla(c.assente() && riaccensioni == 2, "dopo il segno di vita a meta' uscita la nuova uscita riparte dal primo passo");
+        // ripresa a meta' uscita che fallisce: si ritenta, l'evento solo a ripresa riuscita
+        f = new Finte();
+        a = new AssenzaPc(f, L);
+        a.valuta(u + L, u); // assente completo
+        a = new AssenzaPc(f, L);
+        f = new Finte();
+        a = new AssenzaPc(f, L);
+        f.falliscono = 0;
+        final Finte k = f;
+        AssenzaPc d = new AssenzaPc(new AssenzaPc.Azioni() {
+            int riprese;
+            int freq;
+
+            @Override
+            public boolean riaccendi() {
+                k.registro.add("riaccendi");
+                return true;
+            }
+
+            @Override
+            public boolean ripristinaFrequenza() {
+                k.registro.add("frequenza");
+                return ++freq > 1;
+            }
+
+            @Override
+            public boolean ripristinaTimeout() {
+                k.registro.add("timeout");
+                return true;
+            }
+
+            @Override
+            public void eventoAssente() {
+                k.registro.add("evento");
+            }
+
+            @Override
+            public boolean riprendi() {
+                k.registro.add("riprendi");
+                return ++riprese > 1;
+            }
+        }, L);
+        d.valuta(u + L, u);
+        d.valuta(u + L + 1, u + L);
+        controlla(k.vedi().equals("[riaccendi, frequenza, riprendi]"), "ripresa a meta' uscita fallita: nessun evento ancora " + k.vedi());
+        d.valuta(u + L + 2, u + L);
+        controlla(k.vedi().equals("[riaccendi, frequenza, riprendi, riprendi, evento]") && !d.assente(), "ripresa ritentata, poi l'evento " + k.vedi());
+
+        // ordine delle letture: prima il segno di vita, poi l'ora. Un messaggio del PC che arriva TRA le due letture
+        // non deve risultare piu' recente dell'ora (altrimenti scatterebbe l'uscita completa con il PC presente)
+        final long[] orologio = {1000};
+        final long[] segno = {1000};
+        final boolean[] primaLettura = {true};
+        AssenzaPc.Fonte fonte = new AssenzaPc.Fonte() {
+            private void dopoLaPrimaLettura() {
+                if (primaLettura[0]) {
+                    primaLettura[0] = false;
+                    orologio[0] += 1; // arriva un messaggio: l'orologio avanza e il segno e' datato con la nuova ora
+                    segno[0] = orologio[0];
+                }
+            }
+
+            @Override
+            public long ultimoSegno() {
+                long v = segno[0];
+                dopoLaPrimaLettura();
+                return v;
+            }
+
+            @Override
+            public long ora() {
+                long v = orologio[0];
+                dopoLaPrimaLettura();
+                return v;
+            }
+        };
+        AssenzaPc.Lettura l = AssenzaPc.leggi(fonte);
+        controlla(l.ultimoSegno <= l.ora, "segno di vita arrivato tra le due letture: non e' mai dal futuro");
+        f = new Finte();
+        a = new AssenzaPc(f, L);
+        a.valuta(l.ora, l.ultimoSegno);
+        controlla(f.registro.isEmpty() && !a.assente(), "con quelle letture il PC presente non fa scattare l'assenza");
+
+        // limite: una sola fonte, solo per accorciare; vale solo prima di registra()
+        controlla(Pannello.limiteAttuale() == Registro.PC_ASSENTE_MS, "limite di partenza: 30 minuti");
+        Pannello.limitePerProve(Long.MAX_VALUE);
+        controlla(Pannello.limiteAttuale() == Registro.PC_ASSENTE_MS, "un valore piu' grande di 30 minuti resta 30 minuti");
+        boolean rifiutato = false;
+        try {
+            Pannello.limitePerProve(0);
+        } catch (IllegalArgumentException e) {
+            rifiutato = true;
+        }
+        try {
+            Pannello.limitePerProve(-5);
+        } catch (IllegalArgumentException e) {
+            rifiutato &= true;
+        }
+        controlla(rifiutato && Pannello.limiteAttuale() == Registro.PC_ASSENTE_MS, "valori <= 0 rifiutati, limite invariato");
+        Pannello.limitePerProve(20000);
+        controlla(Pannello.limiteAttuale() == 20000, "un valore piu' breve accorcia il limite");
+        Pannello.segnaRegistrato(); // il primo passo di registra()
+        boolean tardi = false;
+        try {
+            Pannello.limitePerProve(10000);
+        } catch (IllegalStateException e) {
+            tardi = true;
+        }
+        controlla(tardi && Pannello.limiteAttuale() == 20000, "dopo registra() il limite non si cambia piu'");
+
+        if (falliti > 0) {
+            System.out.println("falliti: " + falliti);
+            System.exit(1);
+        }
+        System.out.println("tutte ok");
+    }
+}

@@ -1,0 +1,210 @@
+package it.yasde;
+
+import android.content.Context;
+import android.content.ContextWrapper;
+import android.media.MediaMetadata;
+import android.media.session.MediaController;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
+import android.os.Handler;
+import android.os.Looper;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * SONDA DELLA FASE 0, solo lettura (non fa parte del jar di produzione): sessioni multimediali attive.
+ * Non manda comandi alle sessioni, non cattura audio. Stampa SOLO esiti, lunghezze e il nome del
+ * pacchetto: mai titolo, artista o altro testo dei metadati.
+ */
+public final class SondaRiproduzione {
+    private static final String SHELL = "com.android.shell";
+    private static Context ctx;
+
+    private static final class ContestoShell extends ContextWrapper {
+        ContestoShell(Context b) {
+            super(b);
+        }
+
+        @Override
+        public String getPackageName() {
+            return SHELL;
+        }
+
+        public String getOpPackageName() {
+            return SHELL;
+        }
+
+        @Override
+        public String getAttributionTag() {
+            return null;
+        }
+    }
+
+    private static void p(String s) {
+        System.out.println(s);
+    }
+
+    private static int lung(MediaMetadata md, String chiave) {
+        try {
+            CharSequence c = md.getText(chiave);
+            return c == null ? -1 : c.length();
+        } catch (Throwable t) {
+            return -2;
+        }
+    }
+
+    private static int utenteSessioni = 0;
+
+    private static List<MediaController> sessioni(Object svc, Method gs) throws Exception {
+        Class<?>[] tipi = gs.getParameterTypes();
+        Object[] v = new Object[tipi.length];
+        for (int i = 0; i < tipi.length; i++) v[i] = tipi[i] == String.class ? SHELL : (tipi[i] == int.class ? (Object) utenteSessioni : null);
+        List<?> l = (List<?>) gs.invoke(svc, v);
+        List<MediaController> out = new ArrayList<>();
+        for (Object t : l) out.add(new MediaController(ctx, (MediaSession.Token) t));
+        return out;
+    }
+
+    public static void main(String[] args) throws Exception {
+        final CountDownLatch pronto = new CountDownLatch(1);
+        final Looper[] lp = new Looper[1];
+        Thread t = new Thread("sonda-looper") {
+            @Override
+            public void run() {
+                Looper.prepare();
+                lp[0] = Looper.myLooper();
+                try {
+                    Class<?> at = Class.forName("android.app.ActivityThread");
+                    Object th = at.getMethod("currentActivityThread").invoke(null);
+                    if (th == null) th = at.getMethod("systemMain").invoke(null);
+                    ctx = new ContestoShell((Context) at.getMethod("getSystemContext").invoke(th));
+                } catch (Throwable e) {
+                    p("contesto: NO " + e);
+                }
+                pronto.countDown();
+                Looper.loop();
+            }
+        };
+        t.setDaemon(true);
+        t.start();
+        pronto.await();
+        if (ctx == null) System.exit(1);
+        Object b = Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "media_session");
+        Object svc = Class.forName("android.media.session.ISessionManager$Stub").getMethod("asInterface", android.os.IBinder.class).invoke(null, b);
+        Method gs = null;
+        for (Method m : svc.getClass().getMethods()) {
+            if (m.getName().equals("getSessions")) gs = m;
+        }
+        List<MediaController> l = new ArrayList<>();
+        for (int u : new int[] {0, -2, -1}) {
+            utenteSessioni = u;
+            try {
+                List<MediaController> r = sessioni(svc, gs);
+                p("getSessions con userId " + u + ": " + r.size() + " sessioni");
+                if (l.isEmpty() && !r.isEmpty()) l = r;
+                else if (!r.isEmpty()) utenteSessioni = utenteSessioni;
+            } catch (Throwable e) {
+                p("getSessions con userId " + u + ": NO " + e.getClass().getSimpleName() + (e.getCause() != null ? " / " + e.getCause().getClass().getSimpleName() : ""));
+            }
+        }
+        p("sessioni attive: " + l.size());
+        MediaController scelta = null;
+        for (MediaController mc : l) {
+            PlaybackState ps = mc.getPlaybackState();
+            MediaMetadata md = mc.getMetadata();
+            StringBuilder sb = new StringBuilder("  pacchetto " + mc.getPackageName());
+            if (ps == null) {
+                sb.append(", stato: assente");
+            } else {
+                sb.append(", stato ").append(ps.getState()).append(" (3=in riproduzione, 2=pausa), posizione nota ").append(ps.getPosition() >= 0)
+                        .append(", velocita ").append(ps.getPlaybackSpeed()).append(", istante aggiornamento presente ").append(ps.getLastPositionUpdateTime() > 0);
+            }
+            if (md == null) {
+                sb.append(", metadati: assenti");
+            } else {
+                sb.append(", titolo lunghezza ").append(lung(md, MediaMetadata.METADATA_KEY_TITLE))
+                        .append(", artista lunghezza ").append(lung(md, MediaMetadata.METADATA_KEY_ARTIST))
+                        .append(", album lunghezza ").append(lung(md, MediaMetadata.METADATA_KEY_ALBUM))
+                        .append(", durata presente ").append(md.getLong(MediaMetadata.METADATA_KEY_DURATION) > 0)
+                        .append(", copertina presente ").append(md.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) != null || md.getBitmap(MediaMetadata.METADATA_KEY_ART) != null);
+            }
+            sb.append(", sessione tag lunghezza ").append(mc.getTag() == null ? -1 : mc.getTag().length());
+            p(sb.toString());
+            if (ps != null && ps.getState() == PlaybackState.STATE_PLAYING && scelta == null) scelta = mc;
+        }
+        if (l.isEmpty()) {
+            p("NESSUNA SESSIONE ATTIVA");
+            System.exit(0);
+        }
+        if (scelta == null) scelta = l.get(0);
+        p("sessione osservata: " + scelta.getPackageName());
+
+        // interrogazione a intervalli: costo
+        long[] ms = new long[30];
+        for (int i = 0; i < ms.length; i++) {
+            long t0 = System.nanoTime();
+            List<MediaController> r = sessioni(svc, gs);
+            for (MediaController mc : r) {
+                mc.getPlaybackState();
+                mc.getMetadata();
+            }
+            ms[i] = (System.nanoTime() - t0) / 1000;
+        }
+        long somma = 0, max = 0;
+        for (long x : ms) {
+            somma += x;
+            max = Math.max(max, x);
+        }
+        p("interrogazione (elenco + stato + metadati di tutte le sessioni): media " + somma / ms.length / 1000.0 + " ms, massimo " + max / 1000.0 + " ms su " + ms.length + " giri");
+
+        // callback senza Looper sul thread principale
+        final AtomicInteger stati = new AtomicInteger(), meta = new AtomicInteger(), sess = new AtomicInteger(), coda = new AtomicInteger();
+        final List<String> thr = new ArrayList<>();
+        MediaController.Callback cb = new MediaController.Callback() {
+            @Override
+            public void onPlaybackStateChanged(PlaybackState s) {
+                stati.incrementAndGet();
+                synchronized (thr) {
+                    if (!thr.contains(Thread.currentThread().getName())) thr.add(Thread.currentThread().getName());
+                }
+            }
+
+            @Override
+            public void onMetadataChanged(MediaMetadata m) {
+                meta.incrementAndGet();
+                synchronized (thr) {
+                    if (!thr.contains(Thread.currentThread().getName())) thr.add(Thread.currentThread().getName());
+                }
+            }
+
+            @Override
+            public void onSessionDestroyed() {
+                sess.incrementAndGet();
+            }
+
+            @Override
+            public void onQueueChanged(List<MediaSession.QueueItem> q) {
+                coda.incrementAndGet();
+            }
+        };
+        try {
+            scelta.registerCallback(new MediaController.Callback() {
+            });
+            p("registerCallback senza Handler dal thread principale (senza Looper): riuscita");
+        } catch (Throwable e) {
+            p("registerCallback senza Handler dal thread principale (senza Looper): NO (" + e.getClass().getSimpleName() + ")");
+        }
+        scelta.registerCallback(cb, new Handler(lp[0]));
+        p("registerCallback con Handler su un Looper nostro: riuscita; ascolto 25 s");
+        Thread.sleep(25000);
+        scelta.unregisterCallback(cb);
+        p("callback in 25 s: cambi di stato " + stati.get() + ", cambi di metadati " + meta.get() + ", coda " + coda.get() + ", sessione distrutta " + sess.get() + ", thread di consegna " + thr);
+        PlaybackState ps = scelta.getPlaybackState();
+        if (ps != null) p("a fine ascolto: stato " + ps.getState() + ", posizione nota " + (ps.getPosition() >= 0));
+        System.exit(0);
+    }
+}

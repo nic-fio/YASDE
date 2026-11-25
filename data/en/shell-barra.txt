@@ -1,0 +1,18 @@
+# Testi del pezzo shell-barra (F-03) non presenti nel mockup.
+# I giorni e i mesi della data per esteso sono quelli di shell-desktop.txt.
+# Formato: "testo italiano come nel codice" = "English text"
+
+"{data} {anno}" = "{data}, {anno}"
+"Barra piena" = "Taskbar full"
+"Togli un'app per fare spazio" = "Unpin an app to make room"
+"lun" = "Mon"
+"mar" = "Tue"
+"mer" = "Wed"
+"gio" = "Thu"
+"ven" = "Fri"
+"sab" = "Sat"
+"dom" = "Sun"
+"Mese precedente" = "Previous month"
+"Mese successivo" = "Next month"
+"Anno precedente" = "Previous year"
+"Anno successivo" = "Next year"

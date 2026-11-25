@@ -1,0 +1,199 @@
+package it.yasde;
+
+import android.hardware.display.VirtualDisplay;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
+/**
+ * Misura della Fase 0: modi di mettere in pausa un flusso video (NON e' codice di produzione).
+ * Uso: CLASSPATH=yasde.jar:prova-pausa.jar app_process / it.yasde.ProvaPausa strategia pacchetto [tocchi]
+ * strategia: A (chiude e riapre la sessione), B1 (PARAMETER_KEY_SUSPEND), B2 (setSurface(null)),
+ * B3 (setSurface(null) + codificatore rilasciato), E (solo esplora). tocchi: "x,y;x,y" dopo l'avvio.
+ * Stampa righe "PAUSA n" (qui l'orchestratore campiona top) e i risultati.
+ */
+public final class ProvaPausa {
+    private static final String FILE = System.getenv("PROVA_FILE") != null ? System.getenv("PROVA_FILE") : "/data/local/tmp/prova-pausa.h264";
+    private static final int L = 720, A = 1280, BPS = 8000000;
+
+    private static volatile long chiavi, pacchetti, frames;
+    private static volatile long ultimaChiaveNs;
+    private static FileOutputStream file;
+
+    private static final Codificatore.Uscita USCITA = new Codificatore.Uscita() {
+        @Override
+        public synchronized boolean pacchetto(int genere, int segni, int l, int a, long us, byte[] dati)
+                throws IOException {
+            pacchetti++;
+            if (genere == Codificatore.FOTOGRAMMA) frames++;
+            if ((segni & 1) != 0) {
+                ultimaChiaveNs = System.nanoTime();
+                chiavi++;
+            }
+            if (file != null) file.write(dati);
+            return true;
+        }
+    };
+
+    private static Object campo(Object o, String nome) throws Exception {
+        Field f = o.getClass().getDeclaredField(nome);
+        f.setAccessible(true);
+        return f.get(o);
+    }
+
+    private static void imposta(Object o, String nome, Object v) throws Exception {
+        Field f = o.getClass().getDeclaredField(nome);
+        f.setAccessible(true);
+        f.set(o, v);
+    }
+
+    private static void sospendi(Codificatore c, boolean si) throws Exception {
+        Method m = Codificatore.class.getDeclaredMethod("sospendi", boolean.class);
+        m.setAccessible(true);
+        m.invoke(c, si);
+    }
+
+    private static String shell(String cmd) throws Exception {
+        Process p = new ProcessBuilder("sh", "-c", cmd).redirectErrorStream(true).start();
+        java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream();
+        byte[] b = new byte[4096];
+        int n;
+        while ((n = p.getInputStream().read(b)) > 0) o.write(b, 0, n);
+        p.waitFor();
+        return o.toString("UTF-8").trim();
+    }
+
+    private static String taskApp(String pacchetto) throws Exception {
+        return shell("dumpsys activity activities | grep -E 'Task\\{[0-9a-f]+ #[0-9]+ .*" + pacchetto
+                + "' | grep -o '#[0-9]*' | sort -u | tr '\\n' ' '");
+    }
+
+    /** Aspetta un fotogramma chiave dopo `dopoChiavi`; se non arriva in 250 ms ridisegna come la produzione. */
+    private static long aspettaChiave(long t0, long dopoChiavi, VirtualDisplay vd, Codificatore c) throws Exception {
+        boolean ridisegnato = false;
+        long fine = t0 + 6000000000L;
+        while (System.nanoTime() < fine) {
+            if (chiavi > dopoChiavi) return (ultimaChiaveNs - t0) / 1000000;
+            if (!ridisegnato && System.nanoTime() - t0 > 250000000L && vd != null) {
+                ridisegnato = true;
+                vd.setSurface(null);
+                vd.setSurface(c.superficie);
+            }
+            Thread.sleep(2);
+        }
+        return -1;
+    }
+
+    private static void tocchi(Sessione s, String t) throws Exception {
+        Iniettore in = new Iniettore();
+        for (String p : t.split(";")) {
+            String[] xy = p.split(",");
+            in.tocco(s, 0, Integer.parseInt(xy[0]), Integer.parseInt(xy[1]));
+            Thread.sleep(60);
+            in.tocco(s, 2, Integer.parseInt(xy[0]), Integer.parseInt(xy[1]));
+            Thread.sleep(700);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        String strategia = args[0];
+        String pacchetto = args[1];
+        file = new FileOutputStream(FILE);
+        Sessione s = Video.apri(1, L, A, 450, BPS, 60, pacchetto);
+        s.collega(USCITA, null);
+        System.out.println("codificatore " + s.nomeCodificatore());
+        Thread.sleep(2500);
+        if (args.length > 2) tocchi(s, args[2]);
+        Thread.sleep(3000);
+        if (strategia.equals("E")) {
+            s.scollega(null);
+            Video.chiudi(1, true);
+            file.close();
+            System.exit(0);
+        }
+        if (strategia.equals("S1") || strategia.equals("S0")) {
+            // Codice di produzione (Sessione.pausa/riprendi). S0 toglie subito la sospensione del codificatore.
+            long[] ms = new long[10];
+            for (int rep = 0; rep < 10; rep++) {
+                Codificatore c = (Codificatore) campo(s, "codificatore");
+                s.pausa();
+                if (strategia.equals("S0")) sospendi(c, false);
+                Thread.sleep(1500);
+                long prima = chiavi;
+                long t0 = System.nanoTime();
+                s.riprendi();
+                long fine = t0 + 5000000000L;
+                while (chiavi == prima && System.nanoTime() < fine) Thread.sleep(1);
+                ms[rep] = chiavi > prima ? (ultimaChiaveNs - t0) / 1000000 : -1;
+                Thread.sleep(800);
+            }
+            java.util.Arrays.sort(ms);
+            System.out.println("RISULTATO " + strategia + " ms ordinati " + java.util.Arrays.toString(ms) + " mediana "
+                    + (ms[4] + ms[5]) / 2 + " massimo " + ms[9]);
+            if (args.length > 3) tocchi(s, args[3]);
+            s.scollega(null);
+            Video.chiudi(1, true);
+            file.close();
+            System.exit(0);
+        }
+        System.out.println("task app: " + taskApp(pacchetto));
+        for (int rep = 1; rep <= 3; rep++) {
+            VirtualDisplay vd = (VirtualDisplay) campo(s, "schermo");
+            Codificatore c = (Codificatore) campo(s, "codificatore");
+            long frameInizio;
+            long t0;
+            if (strategia.equals("B1")) {
+                sospendi(c, true);
+            } else if (strategia.equals("B2")) {
+                vd.setSurface(null);
+            } else if (strategia.equals("B3")) {
+                vd.setSurface(null);
+                c.rilascia();
+            } else { // A
+                s.scollega(null);
+                Video.chiudi(1, false);
+            }
+            System.out.println("PAUSA " + rep);
+            Thread.sleep(500);
+            frameInizio = frames;
+            Thread.sleep(3500);
+            long inPausa = frames - frameInizio;
+            String dopo = strategia.equals("A") ? taskApp(pacchetto) : "-";
+            long chiaviPrima = chiavi;
+            t0 = System.nanoTime();
+            long ms;
+            if (strategia.equals("B1")) {
+                sospendi(c, false);
+                c.chiave();
+                ms = aspettaChiave(t0, chiaviPrima, vd, c);
+            } else if (strategia.equals("B2")) {
+                vd.setSurface(c.superficie);
+                c.chiave();
+                ms = aspettaChiave(t0, chiaviPrima, vd, c);
+            } else if (strategia.equals("B3")) {
+                Codificatore n = Codificatore.crea(L, A, BPS, 60, null);
+                vd.setSurface(n.superficie);
+                n.attiva(USCITA);
+                imposta(s, "codificatore", n);
+                ms = aspettaChiave(t0, chiaviPrima, vd, n);
+            } else {
+                s = Video.apri(1, L, A, 450, BPS, 60, pacchetto);
+                s.collega(USCITA, null);
+                Codificatore n = (Codificatore) campo(s, "codificatore");
+                ms = aspettaChiave(t0, chiaviPrima, null, n);
+            }
+            System.out.println("RIPRESA " + rep + ": primo fotogramma chiave dopo " + ms + " ms; fotogrammi durante la pausa "
+                    + inPausa + (strategia.equals("A") ? "; task app durante pausa [" + dopo + "], dopo riapertura ["
+                    + taskApp(pacchetto) + "]" : ""));
+            Thread.sleep(2000);
+        }
+        file.flush();
+        s.scollega(null);
+        Video.chiudi(1, true);
+        file.close();
+        System.out.println("fine");
+        System.exit(0);
+    }
+}

@@ -1,0 +1,24 @@
+package it.yasde;
+
+/**
+ * Pezzo finto per provare il guardiano sul telefono (non entra nel jar: estensione .txt).
+ * Si compila come it/yasde/Input.java in un jar a parte (vedi prova_telefono.py).
+ * Registra due ripristini in ordine invertito rispetto a "ordine" e uno poi tolto.
+ */
+public final class Input {
+    private Input() {}
+
+    public static void registra() {
+        Guardiano g = Registro.guardiano();
+        // l'esito di ogni imposta va su stdout (visibile al PC): la prova lo controlla
+        System.out.println("prova imposta secondo=" + g.imposta("secondo", 20, "echo b >> /data/local/tmp/prova-base-ripristino"));
+        System.out.println("prova imposta primo=" + g.imposta("primo", 10, "echo a >> /data/local/tmp/prova-base-ripristino"));
+        g.imposta("tolto", 15, "echo X >> /data/local/tmp/prova-base-ripristino");
+        g.togli("tolto");
+        // prova del ripristino che si blocca: solo se esiste il file-comando
+        if (new java.io.File("/data/local/tmp/prova-base-blocca").exists()) {
+            g.imposta("blocco", 5, "sh -c 'sleep 100000 & wait'");
+            g.imposta("normale", 30, "echo n >> /data/local/tmp/prova-base-ripristino");
+        }
+    }
+}

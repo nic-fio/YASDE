@@ -1,0 +1,94 @@
+import it.yasde.Protocollo;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.Arrays;
+
+/** Prova di Protocollo sulla JVM normale. Non entra nel jar (l'estensione .txt la tiene fuori). */
+public class ProvaProtocollo {
+    static int errori = 0;
+
+    static void verifica(boolean ok, String nome) {
+        if (!ok) {
+            errori++;
+            System.out.println("FALLITA: " + nome);
+        }
+    }
+
+    static byte[] b(int... v) {
+        byte[] r = new byte[v.length];
+        for (int i = 0; i < v.length; i++) r[i] = (byte) v[i];
+        return r;
+    }
+
+    public static void main(String[] a) throws Exception {
+        // scrittura: tipo + lunghezza big endian + corpo
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        Protocollo.scrivi(bo, Protocollo.OK, b(1, 2, 3));
+        verifica(Arrays.equals(bo.toByteArray(), b(0x02, 0, 0, 0, 3, 1, 2, 3)), "scrivi OK con corpo");
+
+        bo.reset();
+        Protocollo.scrivi(bo, Protocollo.CHIUDI, null);
+        verifica(Arrays.equals(bo.toByteArray(), b(0x04, 0, 0, 0, 0)), "scrivi corpo vuoto");
+
+        // lettura, anche di due messaggi di fila
+        DataInputStream in = new DataInputStream(new ByteArrayInputStream(
+            b(0x01, 0, 0, 0, 2, 0, 1, 0x04, 0, 0, 0, 0)));
+        Protocollo.Messaggio m = Protocollo.leggi(in);
+        verifica(m != null && m.tipo == Protocollo.SALUTO && Arrays.equals(m.corpo, b(0, 1)), "leggi SALUTO");
+        m = Protocollo.leggi(in);
+        verifica(m != null && m.tipo == Protocollo.CHIUDI && m.corpo.length == 0, "leggi CHIUDI");
+        verifica(Protocollo.leggi(in) == null, "fine pulita = null");
+
+        // corpo troncato
+        try {
+            Protocollo.leggi(new DataInputStream(new ByteArrayInputStream(b(0x02, 0, 0, 0, 5, 1))));
+            verifica(false, "corpo troncato");
+        } catch (IOException e) {
+            // atteso (EOFException)
+        }
+
+        // limite di 1 MiB
+        try {
+            Protocollo.leggi(new DataInputStream(new ByteArrayInputStream(b(0x02, 0, 0x10, 0, 1))));
+            verifica(false, "oltre 1 MiB in lettura");
+        } catch (IOException e) {
+            // atteso
+        }
+        byte[] limite = new byte[Protocollo.MAX_CORPO];
+        bo.reset();
+        Protocollo.scrivi(bo, Protocollo.OK, limite);
+        verifica(bo.size() == 5 + Protocollo.MAX_CORPO, "esattamente 1 MiB ammesso");
+        try {
+            Protocollo.scrivi(new ByteArrayOutputStream(), Protocollo.OK, new byte[Protocollo.MAX_CORPO + 1]);
+            verifica(false, "oltre 1 MiB in scrittura");
+        } catch (IOException e) {
+            // atteso
+        }
+
+        // stringhe: u16 + UTF-8
+        bo.reset();
+        Protocollo.scriviStringa(new DataOutputStream(bo), "tipo sconosciuto è");
+        byte[] s = bo.toByteArray();
+        verifica(s[0] == 0 && s[1] == 19 && s.length == 21, "stringa: lunghezza in byte UTF-8");
+        verifica(Protocollo.leggiStringa(new DataInputStream(new ByteArrayInputStream(s)))
+            .equals("tipo sconosciuto è"), "stringa: andata e ritorno");
+        bo.reset();
+        Protocollo.scriviStringa(new DataOutputStream(bo), "");
+        verifica(Arrays.equals(bo.toByteArray(), b(0, 0)), "stringa vuota");
+
+        // corpo di ERRORE
+        verifica(Arrays.equals(Protocollo.corpoErrore("no"), b(0, 2, 'n', 'o')), "corpo ERRORE");
+
+        // valori dei tipi del contratto
+        verifica(Protocollo.SALUTO == 1 && Protocollo.OK == 2 && Protocollo.ERRORE == 3
+            && Protocollo.CHIUDI == 4 && Protocollo.VIDEO_APRI == 0x40 && Protocollo.VIDEO_EVENTO == 0x48
+            && Protocollo.TOCCO == 0x50 && Protocollo.INDIETRO == 0x54, "costanti");
+
+        System.out.println(errori == 0 ? "ProvaProtocollo: tutto ok" : "ProvaProtocollo: " + errori + " errori");
+        System.exit(errori == 0 ? 0 : 1);
+    }
+}

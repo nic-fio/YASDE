@@ -1,0 +1,1755 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Mockup desktop Android</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid #ffffff;outline-offset:1px}
+input::placeholder{color:#9aa4b5}
+.ib{width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#d6dbe6;display:flex;align-items:center;justify-content:center;padding:0}
+.ib:hover{background:rgba(255,255,255,.16)}
+.ib.x:hover{background:#c2410c;color:#ffffff}
+.tb{height:40px;min-width:40px;border:0;border-radius:8px;background:transparent;color:#e6eaf2;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;font-size:12px;position:relative}
+.tb:hover{background:rgba(255,255,255,.14)}
+.lrow{width:100%;border:0;background:transparent;color:#e6eaf2;display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:8px;font-size:13px;text-align:left}
+.lrow:hover{background:rgba(255,255,255,.1)}
+.ico{border:0;background:transparent;border-radius:10px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;width:84px}
+.ico:hover{background:rgba(255,255,255,.14)}
+.pbtn{width:100%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e6eaf2;border-radius:8px;padding:9px 12px;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left}
+.pbtn:hover{background:rgba(255,255,255,.12)}
+.wc{width:26px;height:26px;border:0;border-radius:50%;background:rgba(255,255,255,.1);color:#e6eaf2;display:flex;align-items:center;justify-content:center;padding:0}
+.wc:hover{background:rgba(255,255,255,.22)}
+.wc.wx:hover{background:#c2410c;color:#ffffff}
+.nf{flex:none}
+.fs{position:absolute;left:0;right:0;top:0;z-index:9500;height:6px;overflow:hidden}
+.fs:hover{height:36px}
+.ghost{border:0;background:transparent;color:#cbd5e1;font-size:12px;padding:4px 8px;border-radius:6px}
+.ghost:hover{background:rgba(255,255,255,.12)}
+</style>
+</helmet>
+
+<div onMouseMove="{{onRootMove}}" onMouseUp="{{onRootUp}}" onMouseLeave="{{onRootUp}}" style="position:relative;width:1280px;height:800px;overflow:hidden;background:#1c2330;">
+
+  <div style="position:absolute;display:flex;flex-direction:column;overflow:hidden;{{host.pos}}{{host.deco}}">
+
+    <div class="{{twrap.cls}}">
+      <div onMouseDown="{{hostDragStart}}" style="height:36px;box-sizing:border-box;background:#2b3242;display:flex;align-items:center;padding:0 8px 0 14px;gap:8px;{{twrap.cursor}}">
+        <div style="flex:1;color:#e6eaf2;font-size:13px;font-weight:500;">YASDE 2.1</div>
+        <button class="wc" aria-label="{{fullLabel}}" title="{{fullLabel}}" onMouseDown="{{stopDown}}" onClick="{{toggleFull}}">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6V3h3M10 3h3v3M13 10v3h-3M6 13H3v-3"></path></svg>
+        </button>
+        <button class="wc" aria-label="Riduci a icona" title="Riduci a icona" onMouseDown="{{stopDown}}" onClick="{{minimizeHost}}">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 11.5h8"></path></svg>
+        </button>
+        <button class="wc" aria-label="{{maxLabel}}" title="{{maxLabel}}" onMouseDown="{{stopDown}}" onClick="{{toggleHostMax}}">
+          <sc-if value="{{hostMax}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5.5" width="7.5" height="7.5" rx="1"></rect><path d="M6 5.5V3.8a.8.8 0 0 1 .8-.8h5.4a.8.8 0 0 1 .8.8v5.4a.8.8 0 0 1-.8.8H10.5"></path></svg></sc-if>
+          <sc-if value="{{notHostMax}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1"></rect></svg></sc-if>
+        </button>
+        <button class="wc wx" aria-label="Chiudi" title="Chiudi" onMouseDown="{{stopDown}}" onClick="{{closeHost}}">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <div data-desk="1" onMouseMove="{{onDeskMove}}" onMouseUp="{{onDeskUp}}" onMouseLeave="{{onDeskLeave}}" onDragOver="{{onDragOver}}" onDragLeave="{{onDragLeave}}" onDrop="{{onDrop}}" style="position:relative;flex:none;overflow:hidden;user-select:none;-webkit-user-select:none;font-family:Inter,system-ui,sans-serif;{{desk.size}}">
+
+      <div onContextMenu="{{onWallCtx}}" style="position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;{{wallStyle}}">
+        <sc-if value="{{wallIsImage}}" hint-placeholder-val="{{ false }}"><div style="position:absolute;{{wallImgStyle}}"></div></sc-if>
+      </div>
+
+      <sc-if value="{{dropCellOn}}" hint-placeholder-val="{{ false }}"><div style="position:absolute;width:84px;height:88px;box-sizing:border-box;border:2px dashed rgba(255,255,255,.6);border-radius:10px;background:rgba(255,255,255,.08);pointer-events:none;{{dropCell}}"></div></sc-if>
+      <sc-for list="{{deskIcons}}" as="d" hint-placeholder-count="4">
+        <button class="ico" aria-label="{{d.name}}" onMouseDown="{{d.down}}" onClick="{{d.click}}" onContextMenu="{{d.ctx}}" style="position:absolute;{{d.pos}}{{d.fade}}">
+          <span style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:#ffffff;box-shadow:0 4px 10px rgba(0,0,0,.35);{{d.tile}}">{{d.mono}}</span>
+          <span style="font-size:12px;color:#ffffff;text-shadow:0 1px 3px rgba(0,0,0,.7);">{{d.name}}</span>
+        </button>
+      </sc-for>
+
+      <sc-if value="{{widgetsOn}}" hint-placeholder-val="{{ true }}">
+        <sc-for list="{{widgetItems}}" as="g" hint-placeholder-count="3">
+          <div onMouseDown="{{g.down}}" onContextMenu="{{g.ctx}}" style="position:absolute;box-sizing:border-box;cursor:move;background:rgba(12,20,30,.62);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 16px;color:#ffffff;{{g.pos}}">
+            <sc-if value="{{g.hasTitle}}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;color:#cbd5e1;margin-bottom:6px;">{{g.title}}</div></sc-if>
+            <div style="font-weight:600;line-height:1.1;{{g.headStyle}}">{{g.head}}</div>
+            <sc-if value="{{g.hasSub}}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;color:#cbd5e1;margin-top:6px;{{g.subStyle}}">{{g.sub}}</div></sc-if>
+            <sc-if value="{{g.hasBar}}" hint-placeholder-val="{{ false }}"><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.18);overflow:hidden;margin-top:8px;"><div style="height:100%;width:{{g.pct}}%;{{accentBg}}"></div></div></sc-if>
+            <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+              <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-top:6px;"><span style="min-width:0;">{{r.l}}</span><span style="color:#cbd5e1;flex:none;">{{r.r}}</span></div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </sc-if>
+
+      <sc-for list="{{wins}}" as="w" hint-placeholder-count="2">
+        <div onMouseDown="{{w.focus}}" style="position:absolute;display:flex;flex-direction:column;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 14px 40px rgba(0,0,0,.5);{{w.pos}}">
+          <div onMouseDown="{{w.dragStart}}" style="flex:none;height:32px;display:flex;align-items:center;gap:2px;padding:0 4px;cursor:grab;{{w.titleBg}}">
+            <button class="ib" aria-label="Indietro">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 3.5 5 8l4.5 4.5"></path></svg>
+            </button>
+            <div style="flex:1;min-width:0;font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;{{w.titleColor}}">{{w.name}}</div>
+            <sc-if value="{{w.rec}}" hint-placeholder-val="{{ false }}"><span style="color:#fca5a5;font-size:11px;font-weight:600;padding:0 6px;">REC</span></sc-if>
+            <button class="ib" aria-label="Screenshot" onClick="{{w.shot}}">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4.5" width="12" height="8" rx="1.5"></rect><circle cx="8" cy="8.5" r="2"></circle></svg>
+            </button>
+            <button class="ib" aria-label="Registra lo schermo" onClick="{{w.recToggle}}">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle></svg>
+            </button>
+            <button class="ib" aria-label="Riduci a icona" onClick="{{w.minimize}}">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 11.5h8"></path></svg>
+            </button>
+            <button class="ib" aria-label="Ingrandisci o ripristina" onClick="{{w.maximize}}">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1"></rect></svg>
+            </button>
+            <button class="ib x" aria-label="Chiudi" onClick="{{w.close}}">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"></path></svg>
+            </button>
+          </div>
+
+          <div style="flex:1;min-height:0;position:relative;overflow:hidden;">
+
+            <sc-if value="{{w.isMsg}}" hint-placeholder-val="{{ false }}">
+              <div style="height:100%;background:#ffffff;color:#111827;">
+                <div style="padding:14px 16px 8px;font-size:20px;font-weight:600;">Messaggi</div>
+                <div style="padding:0 16px 10px;"><div style="background:#f1f3f7;border-radius:20px;padding:8px 14px;font-size:12px;color:#5b6472;">Cerca nelle conversazioni</div></div>
+                <div style="display:flex;gap:12px;padding:9px 16px;align-items:center;"><span style="width:38px;height:38px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none;">GF</span><span style="flex:1;min-width:0;"><span style="display:block;font-size:13px;font-weight:600;">Giulia</span><span style="display:block;font-size:12px;color:#5b6472;">Ci vediamo alle 18?</span></span><span style="font-size:11px;color:#5b6472;">18:12</span></div>
+                <div style="display:flex;gap:12px;padding:9px 16px;align-items:center;"><span style="width:38px;height:38px;border-radius:50%;background:#047857;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none;">PR</span><span style="flex:1;min-width:0;"><span style="display:block;font-size:13px;font-weight:600;">Paolo</span><span style="display:block;font-size:12px;color:#5b6472;">Ti mando i file domani</span></span><span style="font-size:11px;color:#5b6472;">17:40</span></div>
+                <div style="display:flex;gap:12px;padding:9px 16px;align-items:center;"><span style="width:38px;height:38px;border-radius:50%;background:#7c3aed;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none;">FA</span><span style="flex:1;min-width:0;"><span style="display:block;font-size:13px;font-weight:600;">Famiglia</span><span style="display:block;font-size:12px;color:#5b6472;">Domenica tutti a pranzo</span></span><span style="font-size:11px;color:#5b6472;">Ieri</span></div>
+                <div style="display:flex;gap:12px;padding:9px 16px;align-items:center;"><span style="width:38px;height:38px;border-radius:50%;background:#475569;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none;">CP</span><span style="flex:1;min-width:0;"><span style="display:block;font-size:13px;font-weight:600;">Corriere</span><span style="display:block;font-size:12px;color:#5b6472;">Il pacco arriva oggi</span></span><span style="font-size:11px;color:#5b6472;">Ieri</span></div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{w.isWeb}}" hint-placeholder-val="{{ false }}">
+              <div style="height:100%;background:#ffffff;color:#111827;display:flex;flex-direction:column;">
+                <div style="padding:8px 12px;background:#f1f3f7;"><div style="background:#ffffff;border-radius:16px;padding:6px 14px;font-size:12px;color:#374151;">esempio.it/desktop-su-telefono</div></div>
+                <div style="padding:16px 20px;overflow:hidden;">
+                  <div style="font-size:22px;font-weight:600;margin-bottom:8px;">Un desktop dentro il telefono</div>
+                  <div style="font-size:13px;line-height:1.55;color:#374151;">Le app girano sul telefono e il computer le mostra in finestre. La finestra si ridimensiona e l'app si adatta alla nuova dimensione.</div>
+                  <div style="font-size:13px;line-height:1.55;color:#374151;margin-top:10px;">Nessun cavo, nessuna installazione: basta il Debug wireless.</div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{w.isNote}}" hint-placeholder-val="{{ false }}">
+              <div style="height:100%;background:#fffbe6;color:#1f2937;padding:14px 18px;overflow:hidden;">
+                <div style="font-size:18px;font-weight:600;margin-bottom:8px;">Idee per il progetto</div>
+                <div style="font-size:13px;line-height:1.7;">1. Finestra principale ridimensionabile<br>2. Barra con launcher e notifiche<br>3. Widget della shell<br>4. Opzione schermo intero<br>5. Blocco come in DeX</div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{w.isCalc}}" hint-placeholder-val="{{ false }}">
+              <div style="height:100%;background:#111827;display:flex;flex-direction:column;">
+                <div style="flex:none;color:#ffffff;font-size:36px;text-align:right;padding:18px 16px 10px;">1.284</div>
+                <div style="flex:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px;">
+                  <button style="border:0;border-radius:10px;background:#374151;color:#fff;font-size:15px;">C</button><button style="border:0;border-radius:10px;background:#374151;color:#fff;font-size:15px;">±</button><button style="border:0;border-radius:10px;background:#374151;color:#fff;font-size:15px;">%</button><button style="border:0;border-radius:10px;background:#b45309;color:#fff;font-size:15px;">÷</button>
+                  <button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">7</button><button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">8</button><button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">9</button><button style="border:0;border-radius:10px;background:#b45309;color:#fff;font-size:15px;">×</button>
+                  <button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">4</button><button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">5</button><button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">6</button><button style="border:0;border-radius:10px;background:#b45309;color:#fff;font-size:15px;">−</button>
+                  <button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">1</button><button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">2</button><button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">3</button><button style="border:0;border-radius:10px;background:#b45309;color:#fff;font-size:15px;">+</button>
+                  <button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;grid-column:span 2;">0</button><button style="border:0;border-radius:10px;background:#1f2937;color:#fff;font-size:15px;">,</button><button style="border:0;border-radius:10px;background:#b45309;color:#fff;font-size:15px;">=</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{w.isPhoto}}" hint-placeholder-val="{{ false }}">
+              <div style="height:100%;background:#ffffff;padding:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;">
+                <div style="background:#9fb8d6;border-radius:6px;"></div><div style="background:#d6b49f;border-radius:6px;"></div><div style="background:#a9cdb4;border-radius:6px;"></div>
+                <div style="background:#c9a9cd;border-radius:6px;"></div><div style="background:#d6cf9f;border-radius:6px;"></div><div style="background:#9fd0d6;border-radius:6px;"></div>
+                <div style="background:#d69f9f;border-radius:6px;"></div><div style="background:#a3a9d6;border-radius:6px;"></div><div style="background:#b8d69f;border-radius:6px;"></div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{w.isGeneric}}" hint-placeholder-val="{{ false }}">
+              <div style="height:100%;background:#f4f6fa;color:#111827;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">
+                <span style="width:64px;height:64px;border-radius:16px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;{{w.tile}}">{{w.mono}}</span>
+                <span style="font-size:15px;font-weight:600;">{{w.name}}</span>
+                <span style="font-size:12px;color:#5b6472;">Contenuto dell'app</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{w.isPhone}}" hint-placeholder-val="{{ false }}">
+              <div style="height:100%;background:#0b1220;color:#ffffff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px;text-align:center;">
+                <span style="font-size:44px;font-weight:600;line-height:1;">{{w.clock}}</span>
+                <span style="font-size:12px;color:#cbd5e1;">Schermo reale del telefono</span>
+                <span style="margin-top:14px;font-size:12px;border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:4px 10px;">Pannello fisico: {{w.panelText}}</span>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="flex:none;height:20px;background:#eef1f6;color:#4b5565;font-size:10px;display:flex;align-items:center;justify-content:space-between;padding:0 18px 0 8px;white-space:nowrap;"><span>{{w.stream}}</span><span>{{w.tag}}</span></div>
+          <sc-if value="{{w.canResize}}" hint-placeholder-val="{{ false }}">
+            <div onMouseDown="{{w.resizeStart}}" style="position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:2;"></div>
+          </sc-if>
+        </div>
+      </sc-for>
+
+      <div style="position:absolute;left:0;right:0;bottom:0;height:48px;z-index:4000;background:rgba(15,23,32,.95);border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;padding:0 8px;gap:4px;">
+        <button class="tb" aria-label="Launcher delle app" aria-expanded="{{launcherOpen}}" onClick="{{toggleLauncher}}">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="3" width="6" height="6" rx="1.5"></rect><rect x="11" y="3" width="6" height="6" rx="1.5"></rect><rect x="3" y="11" width="6" height="6" rx="1.5"></rect><rect x="11" y="11" width="6" height="6" rx="1.5"></rect></svg>
+        </button>
+        <div style="width:1px;height:24px;background:rgba(255,255,255,.18);margin:0 4px;"></div>
+        <sc-for list="{{taskItems}}" as="t" hint-placeholder-count="4">
+          <button class="tb" aria-label="{{t.label}}" title="{{t.hint}}" onClick="{{t.click}}" style="{{t.style}}">
+            <span style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#ffffff;{{t.tile}}">{{t.mono}}</span>
+            <span style="position:absolute;bottom:2px;left:50%;margin-left:-8px;width:16px;height:3px;border-radius:2px;{{t.bar}}"></span>
+          </button>
+        </sc-for>
+        <div style="flex:1;"></div>
+        <button class="tb" aria-label="Invia file al telefono" title="Invia file al telefono (PC verso telefono)" aria-expanded="{{upOpen}}" onClick="{{toggleUp}}">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13V4M6.5 7.5L10 4l3.5 3.5M4 13.5V16h12v-2.5"></path></svg>
+          <sc-if value="{{upBusy}}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;{{accentBg}}"></span></sc-if>
+        </button>
+        <button class="tb" aria-label="Scarica file dal telefono" title="Scarica file dal telefono (telefono verso PC)" aria-expanded="{{downOpen}}" onClick="{{toggleDown}}">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4v9M6.5 9.5L10 13l3.5-3.5M4 13.5V16h12v-2.5"></path></svg>
+          <sc-if value="{{downBusy}}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;{{accentBg}}"></span></sc-if>
+        </button>
+        <div style="width:1px;height:24px;background:rgba(255,255,255,.18);margin:0 4px;"></div>
+        <button class="tb" aria-label="{{volLabel}}" aria-expanded="{{volOpen}}" onClick="{{toggleVol}}">
+          <sc-if value="{{volMuted}}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8v4h3l4 3V5L6 8H3z"></path><path d="M13 8l4 4M17 8l-4 4"></path></svg></sc-if>
+          <sc-if value="{{volNotMuted}}" hint-placeholder-val="{{ true }}"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8v4h3l4 3V5L6 8H3z"></path><path d="M13 7.5a3.5 3.5 0 0 1 0 5M15 5a7 7 0 0 1 0 10"></path></svg></sc-if>
+        </button>
+        <button class="tb" aria-label="Stato del telefono" aria-expanded="{{phoneOpen}}" onClick="{{togglePhonePop}}">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 8.5a10 10 0 0 1 14 0M6 11.5a6 6 0 0 1 8 0M9 14.5a2 2 0 0 1 2 0"></path></svg>
+          <svg width="22" height="20" viewBox="0 0 22 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="6" width="15" height="8" rx="2"></rect><path d="M19 9v2"></path><rect x="4" y="8" width="8" height="4" fill="currentColor" stroke="none"></rect></svg>
+          <span>78%</span>
+        </button>
+        <button class="tb" aria-label="Notifiche" aria-expanded="{{notifOpen}}" onClick="{{toggleNotif}}">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14h10l-1.4-2V8.5a3.6 3.6 0 0 0-7.2 0V12L5 14zM8.5 16a1.5 1.5 0 0 0 3 0"></path></svg>
+          <sc-if value="{{hasNotifs}}" hint-placeholder-val="{{ true }}"><span style="min-width:16px;height:16px;border-radius:8px;font-size:11px;font-weight:600;color:#0b1220;display:flex;align-items:center;justify-content:center;padding:0 4px;{{accentBg}}">{{notifCount}}</span></sc-if>
+        </button>
+        <div style="color:#e6eaf2;font-size:12px;font-weight:500;padding:0 16px 0 10px;">{{now}}</div>
+      </div>
+
+      <sc-if value="{{anyPopup}}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{closePopups}}" style="position:absolute;left:0;top:0;right:0;bottom:0;z-index:4500;"></div>
+      </sc-if>
+
+      <sc-if value="{{launcherOpen}}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:24px;right:24px;top:24px;bottom:60px;z-index:5000;background:rgba(14,21,31,.96);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:20px 24px;color:#e6eaf2;box-shadow:0 18px 50px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:18px;overflow:hidden;">
+          <input type="text" aria-label="Cerca app" placeholder="Cerca app (Invio apre la prima)" value="{{query}}" onInput="{{onQuery}}" onChange="{{onQuery}}" onKeyDown="{{onQueryKey}}" style="flex:none;align-self:center;width:100%;max-width:420px;box-sizing:border-box;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#ffffff;border-radius:20px;padding:10px 16px;font-size:13px;font-family:inherit;">
+          <div style="flex:1;min-height:0;overflow-y:auto;display:grid;gap:20px 8px;align-content:start;padding:4px 4px 12px;{{gridCols}}">
+            <sc-for list="{{gridItems}}" as="a" hint-placeholder-count="12">
+              <button class="ico" aria-label="{{a.name}}" onMouseDown="{{a.down}}" onClick="{{a.open}}" onContextMenu="{{a.ctx}}" style="width:100%;">
+                <span style="width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:#ffffff;box-shadow:0 4px 12px rgba(0,0,0,.35);{{a.tile}}">{{a.mono}}</span>
+                <span style="font-size:12px;color:#e6eaf2;text-align:center;">{{a.name}}</span>
+              </button>
+            </sc-for>
+            <sc-if value="{{noResults}}" hint-placeholder-val="{{ false }}"><div style="grid-column:1 / -1;font-size:13px;color:#cbd5e1;padding:8px;text-align:center;">Nessuna app trovata</div></sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{notifOpen}}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;right:8px;bottom:56px;width:340px;max-height:460px;overflow:hidden;z-index:5000;background:rgba(20,27,38,.98);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px;color:#e6eaf2;box-shadow:0 18px 50px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:14px;font-weight:600;">Notifiche</span><button class="ghost" onClick="{{hideAll}}">Nascondi tutte</button></div>
+          <sc-if value="{{noNotifs}}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#cbd5e1;padding:8px 0;">Nessuna notifica</div></sc-if>
+          <sc-for list="{{notifItems}}" as="n" hint-placeholder-count="3">
+            <div style="display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.06);border-radius:10px;padding:10px;">
+              <span style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex:none;{{n.tile}}">{{n.mono}}</span>
+              <button onClick="{{n.open}}" aria-label="{{n.openLabel}}" style="flex:1;min-width:0;border:0;background:transparent;color:#e6eaf2;text-align:left;padding:0;font-size:12px;">
+                <span style="display:block;font-size:13px;font-weight:600;">{{n.title}}</span>
+                <span style="display:block;color:#cbd5e1;margin-top:2px;">{{n.text}}</span>
+                <span style="display:block;color:#9aa4b5;margin-top:4px;font-size:11px;">{{n.appName}} · {{n.time}}</span>
+              </button>
+              <button class="ghost" aria-label="Nascondi la notifica" onClick="{{n.hide}}">Nascondi</button>
+            </div>
+          </sc-for>
+          <button class="pbtn" onClick="{{simulateNotif}}"><span>Simula una nuova notifica</span></button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{phoneOpen}}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;right:8px;bottom:56px;width:300px;z-index:5000;background:rgba(20,27,38,.98);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px;color:#e6eaf2;box-shadow:0 18px 50px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:14px;font-weight:600;">Telefono</div>
+          <div style="font-size:12px;color:#cbd5e1;margin-bottom:4px;">Android 14 · Batteria 78% · Wi-Fi connesso</div>
+          <button class="pbtn" aria-pressed="{{phoneScreenOn}}" onClick="{{toggleScreen}}"><span>Mostra schermo del telefono</span><span style="font-size:11px;font-weight:600;border-radius:10px;padding:2px 9px;{{screenPill}}">{{screenPillText}}</span></button>
+          <button class="pbtn" aria-pressed="{{panelIsOn}}" onClick="{{togglePanel}}"><span>Pannello fisico<br><span style="font-size:11px;color:#9aa4b5;">Si spegne da solo mentre usi il PC</span></span><span style="font-size:11px;font-weight:600;border-radius:10px;padding:2px 9px;{{panelPill}}">{{panelPillText}}</span></button>
+          <button class="pbtn" onClick="{{toggleLock}}"><span>Simula blocco del telefono</span></button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{volOpen}}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;right:135px;bottom:56px;width:250px;z-index:5000;background:rgba(20,27,38,.98);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px;color:#e6eaf2;box-shadow:0 18px 50px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:14px;font-weight:600;">Volume</span><span style="font-size:12px;color:#cbd5e1;">{{volText}}</span></div>
+          <input type="range" min="0" max="100" value="{{vol}}" aria-label="Volume di YASDE 2.1" onInput="{{onVol}}" onChange="{{onVol}}" style="width:100%;accent-color:{{accent}};">
+          <button class="pbtn" aria-pressed="{{volMuted}}" onClick="{{toggleMute}}"><span>Muto</span><span style="font-size:11px;font-weight:600;border-radius:10px;padding:2px 9px;{{mutePill}}">{{mutePillText}}</span></button>
+          <div style="font-size:11px;color:#9aa4b5;line-height:1.4;">Regola l'audio di YASDE 2.1 sul PC. Il volume del telefono non cambia.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{upOpen}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="Invia file al telefono" style="position:absolute;right:200px;bottom:56px;width:380px;max-height:560px;overflow:hidden;z-index:5000;background:rgba(20,27,38,.98);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px;color:#e6eaf2;box-shadow:0 18px 50px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:12px;">
+          <div><div style="font-size:14px;font-weight:600;">Invia al telefono</div><div style="font-size:12px;color:#9aa4b5;margin-top:2px;">Dal PC al telefono</div></div>
+          <sc-if value="{{upNotPick}}" hint-placeholder-val="{{ true }}">
+          <div style="border:2px dashed rgba(255,255,255,.28);border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;">
+            <div style="font-size:13px;">Trascina i file in qualsiasi punto della finestra</div>
+            <div style="font-size:12px;color:#9aa4b5;">oppure</div>
+            <input type="file" multiple aria-label="Scegli i file dal PC" onChange="{{onPick}}" style="font-size:12px;color:#e6eaf2;max-width:100%;">
+            <button class="ghost" onClick="{{addSampleUp}}" style="border:1px solid rgba(255,255,255,.2);">Prova con file di esempio</button>
+          </div>
+          </sc-if>
+          <div style="font-size:11px;color:#9aa4b5;text-transform:uppercase;letter-spacing:.06em;">Cartella di destinazione sul telefono</div>
+          <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:6px 8px;">
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;">{{upDestText}}</span>
+            <button class="ghost" onClick="{{toggleUpPick}}" style="border:1px solid rgba(255,255,255,.2);flex:none;">{{upPickLabel}}</button>
+          </div>
+          <sc-if value="{{upNotPick}}" hint-placeholder-val="{{ true }}">
+          <div role="group" aria-label="Cartelle usate spesso" style="display:flex;gap:4px;flex-wrap:wrap;">
+            <sc-for list="{{upDests}}" as="u" hint-placeholder-count="4">
+              <button aria-pressed="{{u.sel}}" onClick="{{u.pick}}" style="border:0;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;{{u.style}}">{{u.label}}</button>
+            </sc-for>
+          </div>
+          </sc-if>
+          <sc-if value="{{upPick}}" hint-placeholder-val="{{ false }}">
+            <div style="border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button class="ghost" onClick="{{upUp}}" aria-label="Cartella superiore" style="border:1px solid rgba(255,255,255,.2);{{upUpStyle}}">Su</button>
+                <input type="text" aria-label="Percorso sul telefono (Invio per andare)" value="{{upBrowseText}}" onKeyDown="{{upGoKey}}" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#ffffff;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;">
+              </div>
+              <input type="text" aria-label="Cerca una cartella nel telefono" placeholder="Cerca una cartella in tutto il telefono" value="{{upQuery}}" onInput="{{onUpQuery}}" onChange="{{onUpQuery}}" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#ffffff;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;flex:none;width:100%;">
+              <div style="overflow-y:auto;max-height:170px;display:flex;flex-direction:column;gap:2px;">
+                <sc-for list="{{upDirRows}}" as="r" hint-placeholder-count="4">
+                  <button class="lrow" onClick="{{r.click}}" aria-label="{{r.label}}"><span style="width:16px;flex:none;text-align:center;color:#9aa4b5;">&gt;</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{r.name}}</span></button>
+                </sc-for>
+                <sc-if value="{{upDirEmpty}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#9aa4b5;padding:6px 8px;">{{upEmptyText}}</div></sc-if>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="ghost" onClick="{{upNewDir}}" style="border:1px solid rgba(255,255,255,.2);">Nuova cartella</button>
+                <button onClick="{{upUseDir}}" style="flex:1;border:0;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;color:#0b1220;{{accentBg}}">Usa questa cartella</button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{hasUpX}}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:150px;">
+              <sc-for list="{{upX}}" as="x" hint-placeholder-count="2">
+                <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;font-size:12px;">
+                  <div style="display:flex;justify-content:space-between;gap:8px;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">{{x.name}}</span><span style="color:#cbd5e1;flex:none;">{{x.status}}</span></div>
+                  <div style="height:4px;border-radius:2px;background:rgba(255,255,255,.16);overflow:hidden;margin-top:6px;"><div style="height:100%;{{x.bar}}"></div></div>
+                  <div style="color:#9aa4b5;margin-top:4px;">{{x.meta}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{downOpen}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="Scarica file dal telefono" style="position:absolute;right:200px;bottom:56px;width:380px;max-height:580px;overflow:hidden;z-index:5000;background:rgba(20,27,38,.98);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px;color:#e6eaf2;box-shadow:0 18px 50px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:10px;">
+          <div><div style="font-size:14px;font-weight:600;">Scarica dal telefono</div><div style="font-size:12px;color:#9aa4b5;margin-top:2px;">Dal telefono al PC</div></div>
+          <sc-if value="{{dlNotPick}}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="ghost" onClick="{{dlUp}}" aria-label="Cartella superiore" style="border:1px solid rgba(255,255,255,.2);{{dlUpStyle}}">Su</button>
+            <input type="text" aria-label="Percorso sul telefono (Invio per andare)" value="{{dlPathText}}" onKeyDown="{{dlGoKey}}" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#ffffff;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;">
+          </div>
+          <input type="text" aria-label="Cerca nel telefono" placeholder="Cerca file o cartelle in tutto il telefono" value="{{dlQuery}}" onInput="{{onDlQuery}}" onChange="{{onDlQuery}}" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#ffffff;border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;flex:none;width:100%;">
+          <div style="overflow-y:auto;max-height:230px;display:flex;flex-direction:column;gap:2px;">
+            <sc-for list="{{dlRows}}" as="r" hint-placeholder-count="5">
+              <button class="lrow" onClick="{{r.click}}" aria-label="{{r.label}}">
+                <sc-if value="{{r.isFile}}" hint-placeholder-val="{{ true }}"><span style="width:16px;height:16px;border-radius:4px;flex:none;box-sizing:border-box;{{r.check}}"></span></sc-if>
+                <sc-if value="{{r.isDir}}" hint-placeholder-val="{{ false }}"><span style="width:16px;flex:none;text-align:center;color:#9aa4b5;">&gt;</span></sc-if>
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{r.name}}</span>
+                <span style="font-size:11px;color:#9aa4b5;flex:none;">{{r.meta}}</span>
+              </button>
+            </sc-for>
+            <sc-if value="{{dlEmpty}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#9aa4b5;padding:8px;">{{dlEmptyText}}</div></sc-if>
+          </div>
+          </sc-if>
+          <button onClick="{{dlStart}}" aria-disabled="{{dlOff}}" style="border:0;border-radius:8px;padding:9px 12px;font-size:13px;font-weight:600;color:#0b1220;{{dlBtnStyle}}">{{dlLabel}}</button>
+          <div style="font-size:11px;color:#9aa4b5;text-transform:uppercase;letter-spacing:.06em;">Cartella di destinazione sul PC</div>
+          <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:6px 8px;">
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;">{{dlDestText}}</span>
+            <button class="ghost" onClick="{{toggleDlPick}}" style="border:1px solid rgba(255,255,255,.2);flex:none;">{{dlPickLabel}}</button>
+          </div>
+          <sc-if value="{{dlPick}}" hint-placeholder-val="{{ false }}">
+            <div style="border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button class="ghost" onClick="{{pcUp}}" aria-label="Cartella superiore" style="border:1px solid rgba(255,255,255,.2);{{pcUpStyle}}">Su</button>
+                <span style="font-size:12px;color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{pcBrowseText}}</span>
+              </div>
+              <div style="overflow-y:auto;max-height:170px;display:flex;flex-direction:column;gap:2px;">
+                <sc-for list="{{pcDirRows}}" as="r" hint-placeholder-count="4">
+                  <button class="lrow" onClick="{{r.click}}" aria-label="{{r.label}}"><span style="width:16px;flex:none;text-align:center;color:#9aa4b5;">&gt;</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{r.name}}</span></button>
+                </sc-for>
+                <sc-if value="{{pcDirEmpty}}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#9aa4b5;padding:6px 8px;">Nessuna sottocartella</div></sc-if>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="ghost" onClick="{{pcNew}}" style="border:1px solid rgba(255,255,255,.2);">Nuova cartella</button>
+                <button onClick="{{pcUse}}" style="flex:1;border:0;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;color:#0b1220;{{accentBg}}">Usa questa cartella</button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{hasDownX}}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:120px;">
+              <sc-for list="{{downX}}" as="x" hint-placeholder-count="2">
+                <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;font-size:12px;">
+                  <div style="display:flex;justify-content:space-between;gap:8px;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">{{x.name}}</span><span style="color:#cbd5e1;flex:none;">{{x.status}}</span></div>
+                  <div style="height:4px;border-radius:2px;background:rgba(255,255,255,.16);overflow:hidden;margin-top:6px;"><div style="height:100%;{{x.bar}}"></div></div>
+                  <div style="color:#9aa4b5;margin-top:4px;">{{x.meta}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{dropHot}}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:8px;top:8px;right:8px;bottom:56px;z-index:5400;border:3px dashed rgba(255,255,255,.7);border-radius:16px;background:rgba(14,21,31,.55);display:flex;align-items:center;justify-content:center;pointer-events:none;color:#ffffff;font-size:18px;font-weight:600;">Rilascia per inviare al telefono</div>
+      </sc-if>
+
+      <sc-if value="{{ghostOn}}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;z-index:6000;width:84px;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;opacity:.9;{{ghostPos}}">
+          <span style="width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:#ffffff;box-shadow:0 8px 20px rgba(0,0,0,.5);{{ghostTile}}">{{ghostMono}}</span>
+          <span style="font-size:12px;color:#ffffff;text-shadow:0 1px 3px rgba(0,0,0,.7);">{{ghostName}}</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ctxOpen}}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;z-index:5100;min-width:200px;background:rgba(20,27,38,.98);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:6px;box-shadow:0 14px 40px rgba(0,0,0,.55);{{ctxStyle}}">
+          <sc-if value="{{ctxWall}}" hint-placeholder-val="{{ true }}"><button class="lrow" onClick="{{openWallDlg}}"><span>Cambia sfondo…</span></button></sc-if>
+          <sc-if value="{{ctxWall}}" hint-placeholder-val="{{ true }}"><button class="lrow" onClick="{{openWdgDlg}}"><span>Aggiungi widget…</span></button></sc-if>
+          <sc-if value="{{ctxWidget}}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:11px;color:#9aa4b5;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px;">Dimensione</div>
+            <sc-for list="{{ctxSizes}}" as="z" hint-placeholder-count="3">
+              <button class="lrow" aria-pressed="{{z.sel}}" onClick="{{z.pick}}"><span>{{z.label}}</span></button>
+            </sc-for>
+            <button class="lrow" onClick="{{ctxRemoveWidget}}"><span>Rimuovi widget</span></button>
+          </sc-if>
+          <sc-if value="{{ctxApp}}" hint-placeholder-val="{{ false }}"><button class="lrow" onClick="{{ctxOpenApp}}"><span>Apri</span></button></sc-if>
+          <sc-if value="{{ctxCanAdd}}" hint-placeholder-val="{{ false }}"><button class="lrow" onClick="{{ctxAdd}}"><span>Aggiungi al desktop</span></button></sc-if>
+          <sc-if value="{{ctxCanRemove}}" hint-placeholder-val="{{ false }}"><button class="lrow" onClick="{{ctxRemove}}"><span>Rimuovi dal desktop</span></button></sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{wdgDlg}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="Aggiungi widget" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:540px;max-width:calc(100% - 48px);max-height:calc(100% - 96px);overflow:hidden;z-index:5000;background:rgba(14,21,31,.98);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:20px;color:#e6eaf2;box-shadow:0 24px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:16px;font-weight:600;">Aggiungi widget</span><button class="ghost" onClick="{{closeWdgDlg}}">Fatto</button></div>
+          <div style="font-size:12px;color:#9aa4b5;line-height:1.4;">Widget del desktop: li disegna YASDE 2.1 sul PC, usando i dati del telefono. Dopo averlo aggiunto lo trascini dove vuoi; clic destro per cambiare dimensione o rimuoverlo.</div>
+          <div style="overflow-y:auto;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+            <sc-for list="{{wdgCatalog}}" as="k" hint-placeholder-count="8">
+              <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;">
+                <div style="font-size:13px;font-weight:600;">{{k.name}}</div>
+                <div style="font-size:12px;color:#cbd5e1;line-height:1.35;flex:1;">{{k.desc}}</div>
+                <button onClick="{{k.add}}" style="align-self:flex-start;border:0;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;color:#0b1220;{{accentBg}}">Aggiungi</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{wallDlg}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="Sfondo del desktop" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:520px;max-width:calc(100% - 48px);max-height:calc(100% - 96px);overflow:hidden;z-index:5000;background:rgba(14,21,31,.98);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:20px;color:#e6eaf2;box-shadow:0 24px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:16px;font-weight:600;">Sfondo del desktop</span><button class="ghost" onClick="{{closeWallDlg}}">Fatto</button></div>
+          <div style="position:relative;height:96px;flex:none;overflow:hidden;border-radius:10px;border:1px solid rgba(255,255,255,.18);{{wallStyle}}">
+            <sc-if value="{{wallIsImage}}" hint-placeholder-val="{{ false }}"><div style="position:absolute;{{wallImgStyle}}"></div></sc-if>
+          </div>
+          <div role="group" aria-label="Tipo di sfondo" style="display:flex;gap:4px;background:rgba(0,0,0,.28);padding:3px;border-radius:9px;">
+            <sc-for list="{{wallTabs}}" as="t" hint-placeholder-count="3">
+              <button aria-pressed="{{t.sel}}" onClick="{{t.pick}}" style="flex:1;border:0;border-radius:7px;padding:7px 8px;font-size:12px;font-weight:600;{{t.style}}">{{t.label}}</button>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{tabSolid}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <label style="display:flex;align-items:center;gap:10px;font-size:13px;">Colore <input type="color" value="{{wallSolid}}" onInput="{{onSolid}}" onChange="{{onSolid}}" aria-label="Colore dello sfondo" style="width:48px;height:30px;border:0;padding:0;background:transparent;"></label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <sc-for list="{{solidQuick}}" as="c" hint-placeholder-count="8">
+                  <button aria-label="{{c.label}}" onClick="{{c.pick}}" style="width:34px;height:34px;border-radius:8px;{{c.style}}"></button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{tabGradient}}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;gap:18px;align-items:center;font-size:13px;">
+                <label style="display:flex;align-items:center;gap:8px;">Da <input type="color" value="{{wallG1}}" onInput="{{onG1}}" onChange="{{onG1}}" aria-label="Primo colore" style="width:48px;height:30px;border:0;padding:0;background:transparent;"></label>
+                <label style="display:flex;align-items:center;gap:8px;">A <input type="color" value="{{wallG2}}" onInput="{{onG2}}" onChange="{{onG2}}" aria-label="Secondo colore" style="width:48px;height:30px;border:0;padding:0;background:transparent;"></label>
+              </div>
+              <div role="group" aria-label="Direzione della sfumatura" style="display:flex;gap:4px;flex-wrap:wrap;">
+                <sc-for list="{{angles}}" as="a" hint-placeholder-count="4">
+                  <button aria-pressed="{{a.sel}}" onClick="{{a.pick}}" style="border:0;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;{{a.style}}">{{a.label}}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{tabImage}}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="font-size:11px;color:#9aa4b5;text-transform:uppercase;letter-spacing:.06em;">Galleria del telefono · Recenti</div>
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
+                <sc-for list="{{gallery}}" as="g" hint-placeholder-count="8">
+                  <button aria-pressed="{{g.sel}}" aria-label="{{g.name}}" onClick="{{g.pick}}" style="background:transparent;padding:3px;border-radius:10px;color:#e6eaf2;font-size:10px;{{g.border}}">
+                    <span style="display:block;height:58px;border-radius:7px;{{g.thumb}}"></span>
+                    <span style="display:block;margin-top:3px;">{{g.name}}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <div role="group" aria-label="Adattamento dell'immagine" style="display:flex;gap:4px;">
+                <sc-for list="{{wallModes}}" as="m" hint-placeholder-count="4">
+                  <button aria-pressed="{{m.sel}}" onClick="{{m.pick}}" style="border:0;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;{{m.style}}">{{m.label}}</button>
+                </sc-for>
+              </div>
+              <div style="font-size:11px;color:#9aa4b5;line-height:1.4;">Le anteprime arrivano dal telefono. L'immagine scelta viene copiata sul PC, così lo sfondo resta anche a telefono scollegato e non pesa sullo stream.</div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{toastClick}}" style="position:absolute;right:16px;bottom:60px;width:300px;z-index:5200;text-align:left;border:1px solid rgba(255,255,255,.18);background:rgba(20,27,38,.98);color:#e6eaf2;border-radius:12px;padding:12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.55);">
+          <span style="display:block;font-size:13px;font-weight:600;">{{toastTitle}}</span>
+          <span style="display:block;font-size:12px;color:#cbd5e1;margin-top:2px;">{{toastText}}</span>
+        </button>
+      </sc-if>
+
+      <sc-if value="{{locked}}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:0;top:0;right:0;bottom:0;z-index:9000;background:rgba(6,10,16,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#ffffff;text-align:center;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+          <div style="font-size:20px;font-weight:600;">Telefono bloccato</div>
+          <div style="font-size:13px;color:#cbd5e1;max-width:320px;">Come in DeX, il desktop si blocca con il telefono. Sblocca il telefono per continuare: le finestre tornano dove erano.</div>
+          <button onClick="{{toggleLock}}" style="margin-top:8px;border:0;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;color:#0b1220;{{accentBg}}">Simula lo sblocco</button>
+        </div>
+      </sc-if>
+
+    </div>
+
+    <sc-if value="{{canResizeHost}}" hint-placeholder-val="{{ true }}">
+      <div onMouseDown="{{hostResizeStart}}" style="position:absolute;right:0;bottom:0;width:14px;height:14px;cursor:nwse-resize;z-index:9600;"></div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{hostMin}}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{restoreHost}}" style="position:absolute;left:50%;bottom:28px;transform:translateX(-50%);border:1px solid rgba(255,255,255,.2);background:#2b3242;color:#e6eaf2;border-radius:20px;padding:9px 18px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.45);">YASDE 2.1 (ridotta a icona): clic per ripristinare</button>
+  </sc-if>
+
+  <sc-if value="{{hostClosed}}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#e6eaf2;">
+      <div style="font-size:16px;font-weight:500;">YASDE 2.1 è chiuso</div>
+      <div style="font-size:12px;color:#9aa4b5;">Le app aperte sul telefono vengono tolte dai recenti alla chiusura.</div>
+      <button onClick="{{reopenHost}}" style="border:0;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;color:#0b1220;{{accentBg}}">Riapri YASDE 2.1</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#2dd4bf","options":["#2dd4bf","#60a5fa","#fbbf24","#f472b6"]},"widgets":{"editor":"boolean","default":true},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.WK = {
+      clock: { name: 'Orologio', desc: 'Ora e data; nella versione grande anche un secondo fuso orario.' },
+      calendar: { name: 'Calendario', desc: 'I prossimi eventi di oggi, letti dal telefono.' },
+      phone: { name: 'Stato del telefono', desc: 'Batteria, rete e stato del pannello fisico.' },
+      notifs: { name: 'Notifiche recenti', desc: 'Le ultime notifiche del telefono, senza aprire il pannello.' },
+      notes: { name: 'Note rapide', desc: 'Le note più recenti, a colpo d\'occhio.' },
+      weather: { name: 'Meteo', desc: 'Condizioni attuali e previsione dei prossimi giorni.' },
+      music: { name: 'In riproduzione', desc: 'Brano in corso e avanzamento; l\'audio resta quello di YASDE 2.1.' },
+      storage: { name: 'Memoria del telefono', desc: 'Spazio usato e suddivisione per tipo di contenuto.' }
+    };
+    this.WORDER = ['clock', 'calendar', 'phone', 'notifs', 'notes', 'weather', 'music', 'storage'];
+    this.WW = { s: 200, m: 250, l: 320 };
+    this.WH = { s: 90, m: 140, l: 200 };
+    this.PCFS = {
+      '/': [{ n: 'Scaricati', d: 1 }, { n: 'Documenti', d: 1 }, { n: 'Immagini', d: 1 }, { n: 'Musica', d: 1 }, { n: 'Video', d: 1 }, { n: 'Scrivania', d: 1 }, { n: 'Progetti', d: 1 }],
+      '/Scaricati': [{ n: 'YASDE', d: 1 }],
+      '/Scaricati/YASDE': [],
+      '/Documenti': [{ n: 'Lavoro', d: 1 }, { n: 'Personale', d: 1 }],
+      '/Documenti/Lavoro': [],
+      '/Documenti/Personale': [],
+      '/Immagini': [{ n: 'Foto del telefono', d: 1 }],
+      '/Immagini/Foto del telefono': [],
+      '/Musica': [], '/Video': [], '/Scrivania': [], '/Progetti': []
+    };
+    this.FS = {
+      '/': [{ n: 'Download', d: 1 }, { n: 'DCIM', d: 1 }, { n: 'Documents', d: 1 }, { n: 'Pictures', d: 1 }, { n: 'Music', d: 1 }, { n: 'WhatsApp', d: 1 }, { n: 'pippo', d: 1 }],
+      '/pippo': [{ n: 'vecchi', d: 1 }, { n: 'schema_impianto.pdf', s: 760000 }, { n: 'nota_vocale.m4a', s: 1900000 }],
+      '/pippo/vecchi': [{ n: 'bozza_1.txt', s: 2048 }],
+      '/WhatsApp': [{ n: 'Media', d: 1 }],
+      '/WhatsApp/Media': [{ n: 'WhatsApp Documents', d: 1 }],
+      '/WhatsApp/Media/WhatsApp Documents': [{ n: 'preventivo.pdf', s: 412000 }, { n: 'planimetria.pdf', s: 1850000 }],
+      '/Download': [{ n: 'relazione.pdf', s: 2516582 }, { n: 'fattura_ottobre.pdf', s: 318000 }, { n: 'setup.apk', s: 50331648 }, { n: 'appunti.txt', s: 4096 }],
+      '/DCIM': [{ n: 'Camera', d: 1 }],
+      '/DCIM/Camera': [{ n: 'IMG_0412.jpg', s: 4300000 }, { n: 'IMG_0398.jpg', s: 3900000 }, { n: 'IMG_0377.jpg', s: 4100000 }, { n: 'VID_0120.mp4', s: 90177536 }],
+      '/Documents': [{ n: 'contratto.docx', s: 122880 }, { n: 'budget.xlsx', s: 87040 }],
+      '/Pictures': [{ n: 'Screenshots', d: 1 }],
+      '/Pictures/Screenshots': [{ n: 'Screenshot_1120.png', s: 1258291 }],
+      '/Music': [{ n: 'brano_01.mp3', s: 5872025 }, { n: 'brano_02.mp3', s: 7444889 }]
+    };
+    const BASE = '/storage/emulated/0';
+    this.BASE = BASE;
+    const ph = {};
+    Object.keys(this.FS).forEach((k) => { ph[k === '/' ? BASE : BASE + k] = this.FS[k]; });
+    ph['/'] = [{ n: 'storage', d: 1 }, { n: 'mnt', d: 1 }, { n: 'data', d: 1 }, { n: 'system', d: 1 }];
+    ph['/storage'] = [{ n: 'emulated', d: 1 }];
+    ph['/storage/emulated'] = [{ n: '0', d: 1 }];
+    ph['/mnt'] = [];
+    ph['/data'] = [];
+    ph['/system'] = [];
+    this.DENY = { '/mnt': 1, '/data': 1, '/system': 1 };
+    this.FS = ph;
+    const HOME = '/home/user';
+    this.HOME = HOME;
+    const pc = {};
+    Object.keys(this.PCFS).forEach((k) => { pc[k === '/' ? HOME : HOME + k] = this.PCFS[k]; });
+    pc['/'] = [{ n: 'etc', d: 1 }, { n: 'home', d: 1 }, { n: 'media', d: 1 }, { n: 'mnt', d: 1 }, { n: 'opt', d: 1 }, { n: 'tmp', d: 1 }, { n: 'usr', d: 1 }, { n: 'var', d: 1 }];
+    pc['/home'] = [{ n: 'user', d: 1 }];
+    ['/etc', '/media', '/mnt', '/opt', '/tmp', '/usr', '/var'].forEach((k) => { pc[k] = []; });
+    this.PCFS = pc;
+    this.APPS = [
+      { id: 'msg', name: 'Messaggi', mono: 'Ms', color: '#2563eb', fav: true, desk: true },
+      { id: 'web', name: 'Browser', mono: 'Br', color: '#b45309', fav: true, desk: true },
+      { id: 'note', name: 'Note', mono: 'No', color: '#047857', fav: true, desk: true },
+      { id: 'photo', name: 'Foto', mono: 'Fo', color: '#be185d', fav: false, desk: true },
+      { id: 'calc', name: 'Calcolatrice', mono: 'Ca', color: '#7c3aed', fav: true, desk: false },
+      { id: 'map', name: 'Mappe', mono: 'Ma', color: '#0f766e', fav: false, desk: false },
+      { id: 'music', name: 'Musica', mono: 'Mu', color: '#b91c1c', fav: false, desk: false },
+      { id: 'set', name: 'Impostazioni', mono: 'Im', color: '#475569', fav: false, desk: false },
+      { id: 'cam', name: 'Fotocamera', mono: 'Fc', color: '#0369a1', fav: false, desk: false },
+      { id: 'cal', name: 'Calendario', mono: 'Cl', color: '#4338ca', fav: false, desk: false },
+      { id: 'clock', name: 'Orologio', mono: 'Or', color: '#0e7490', fav: false, desk: false },
+      { id: 'contacts', name: 'Contatti', mono: 'Ct', color: '#15803d', fav: false, desk: false },
+      { id: 'files', name: 'File', mono: 'Fi', color: '#a16207', fav: false, desk: false },
+      { id: 'weather', name: 'Meteo', mono: 'Mt', color: '#1d4ed8', fav: false, desk: false },
+      { id: 'video', name: 'Video', mono: 'Vi', color: '#9d174d', fav: false, desk: false },
+      { id: 'calls', name: 'Chiamate', mono: 'Cm', color: '#166534', fav: false, desk: false }
+    ];
+    this.SPEC = {
+      msg: { w: 296, h: 470, rs: false },
+      web: { w: 540, h: 340, rs: true },
+      note: { w: 400, h: 290, rs: true },
+      calc: { w: 260, h: 390, rs: false },
+      photo: { w: 460, h: 330, rs: true },
+      map: { w: 480, h: 330, rs: true },
+      music: { w: 300, h: 430, rs: false },
+      set: { w: 360, h: 400, rs: true },
+      phone: { w: 280, h: 500, rs: false }
+    };
+    this.timers = [];
+    const d = new Date();
+    this.state = {
+      hostX: 150,
+      hostY: 90,
+      hostW: 980,
+      hostH: 584,
+      hostMax: false,
+      hostMin: false,
+      hostClosed: false,
+      hostDrag: null,
+      vol: 60,
+      muted: false,
+      volOpen: false,
+      wallKind: 'gradient',
+      wallSolid: '#1f2430',
+      wallG1: '#0e2638',
+      wallG2: '#1a625f',
+      wallAngle: 135,
+      wallPhoto: 'g1',
+      wallMode: 'fill',
+      wallDlg: false, xferOpen: null, wdgDlg: false,
+      ctx: null,
+      deskPos: { msg: { c: 0, r: 0 }, web: { c: 0, r: 1 }, note: { c: 0, r: 2 }, photo: { c: 0, r: 3 } },
+      idrag: null,
+      wlist: [
+        { id: 1, kind: 'clock', rx: 16, y: 16, size: 'm' },
+        { id: 2, kind: 'phone', rx: 16, y: 120, size: 'm' },
+        { id: 3, kind: 'notifs', rx: 16, y: 240, size: 'm' }
+      ],
+      wnext: 4,
+      wdrag: null,
+      dropHot: false,
+      upDest: '/storage/emulated/0/Download',
+      upPick: false,
+      upBrowse: '/storage/emulated/0',
+      dlPath: '/storage/emulated/0',
+      dlSel: [],
+      dlQuery: '',
+      upQuery: '',
+      dlDest: '/home/user/Scaricati/YASDE',
+      dlPick: false,
+      dlBrowse: '/home/user',
+      xfers: [],
+      xferId: 1,
+      full: false,
+      wins: [
+        { id: 1, app: 'note', x: 60, y: 70, w: 400, h: 290, z: 11, min: false, max: false, rec: false },
+        { id: 2, app: 'msg', x: 400, y: 24, w: 296, h: 470, z: 12, min: false, max: false, rec: false }
+      ],
+      zTop: 12,
+      nextId: 3,
+      focusId: 2,
+      drag: null,
+      launcher: false,
+      query: '',
+      notifOpen: false,
+      phoneOpen: false,
+      notifs: [
+        { id: 1, app: 'msg', title: 'Nuovo messaggio', text: 'Giulia: ci vediamo alle 18?', time: '18:12', hidden: false },
+        { id: 2, app: 'web', title: 'Download completato', text: 'relazione.pdf', time: '17:55', hidden: false },
+        { id: 3, app: 'set', title: 'Aggiornamento disponibile', text: 'Una nuova versione del sistema', time: '09:30', hidden: false }
+      ],
+      nextNotif: 0,
+      toast: null,
+      panelOn: false,
+      locked: false,
+      now: d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+      date: d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+    };
+  }
+
+  componentDidMount() {
+    this.timers.push(setInterval(() => this.updateClock(), 30000));
+    this.timers.push(setTimeout(() => this.addNotif(), 7000));
+    this.timers.push(setInterval(() => this.xferTick(), 300));
+  }
+
+  componentWillUnmount() {
+    this.timers.forEach((t) => { clearTimeout(t); clearInterval(t); });
+    clearTimeout(this.toastT);
+  }
+
+  updateClock() {
+    const d = new Date();
+    this.setState({
+      now: d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+      date: d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+    });
+  }
+
+  dims() {
+    const s = this.state;
+    if (s.full) return { W: 1280, H: 800 };
+    if (s.hostMax) return { W: 1280, H: 764 };
+    return { W: s.hostW, H: s.hostH };
+  }
+
+  specOf(id) {
+    return this.SPEC[id] || { w: 380, h: 420, rs: true };
+  }
+
+  stopDown(e) { if (e && e.stopPropagation) e.stopPropagation(); }
+
+  hostDragStart(e) {
+    const s = this.state;
+    if (s.full || s.hostMax) return;
+    if (e && e.preventDefault) e.preventDefault();
+    this.setState({ hostDrag: { mode: 'move', sx: e.clientX, sy: e.clientY, ox: s.hostX, oy: s.hostY, ow: s.hostW, oh: s.hostH } });
+  }
+
+  hostResizeStart(e) {
+    const s = this.state;
+    if (s.full || s.hostMax) return;
+    if (e && e.preventDefault) e.preventDefault();
+    this.setState({ hostDrag: { mode: 'resize', sx: e.clientX, sy: e.clientY, ox: s.hostX, oy: s.hostY, ow: s.hostW, oh: s.hostH } });
+  }
+
+  onRootMove(e) {
+    const d = this.state.hostDrag;
+    if (!d) return;
+    const el = e.currentTarget;
+    const scale = (el.getBoundingClientRect().width / el.offsetWidth) || 1;
+    const dx = (e.clientX - d.sx) / scale;
+    const dy = (e.clientY - d.sy) / scale;
+    if (d.mode === 'move') {
+      this.setState({
+        hostX: Math.min(1200, Math.max(-d.ow + 120, d.ox + dx)),
+        hostY: Math.min(760, Math.max(0, d.oy + dy))
+      });
+    } else {
+      this.setState({
+        hostW: Math.min(1280, Math.max(640, d.ow + dx)),
+        hostH: Math.min(764, Math.max(420, d.oh + dy))
+      });
+    }
+  }
+
+  onRootUp() {
+    if (this.state.hostDrag) this.setState({ hostDrag: null });
+  }
+
+  minimizeHost() { this.setState({ hostMin: true, full: false, launcher: false, notifOpen: false, phoneOpen: false }); }
+  restoreHost() { this.setState({ hostMin: false }); }
+  closeHost() { this.setState({ hostClosed: true, hostMin: false, full: false, launcher: false, notifOpen: false, phoneOpen: false }); }
+  reopenHost() { this.setState({ hostClosed: false }); }
+  toggleHostMax() { this.setState((p) => ({ hostMax: p.full ? true : !p.hostMax, full: false })); }
+
+  mk(appId, id, z, n) {
+    const s = this.specOf(appId);
+    return { id: id, app: appId, x: 70 + n * 40, y: 30 + n * 30, w: s.w, h: s.h, z: z, min: false, max: false, rec: false };
+  }
+
+  openApp(appId) {
+    this.setState((p) => {
+      const ex = p.wins.find((w) => w.app === appId);
+      const z = p.zTop + 1;
+      if (ex) {
+        return { wins: p.wins.map((w) => (w.id === ex.id ? Object.assign({}, w, { min: false, z: z }) : w)), zTop: z, focusId: ex.id, launcher: false, query: '' };
+      }
+      const n = p.wins.filter((w) => w.app !== 'phone').length % 6;
+      const nw = this.mk(appId, p.nextId, z, n);
+      return { wins: p.wins.concat([nw]), zTop: z, nextId: p.nextId + 1, focusId: nw.id, launcher: false, query: '' };
+    });
+  }
+
+  focus(id) {
+    this.setState((p) => {
+      const z = p.zTop + 1;
+      return { wins: p.wins.map((w) => (w.id === id ? Object.assign({}, w, { z: z }) : w)), zTop: z, focusId: id };
+    });
+  }
+
+  minimize(id) {
+    this.setState((p) => ({ wins: p.wins.map((w) => (w.id === id ? Object.assign({}, w, { min: true }) : w)), focusId: p.focusId === id ? null : p.focusId }));
+  }
+
+  toggleMax(id) {
+    this.setState((p) => ({ wins: p.wins.map((w) => (w.id === id ? Object.assign({}, w, { max: !w.max }) : w)) }));
+  }
+
+  closeWin(id) {
+    this.setState((p) => ({ wins: p.wins.filter((w) => w.id !== id), focusId: p.focusId === id ? null : p.focusId }));
+  }
+
+  toggleRec(id) {
+    this.setState((p) => ({ wins: p.wins.map((w) => (w.id === id ? Object.assign({}, w, { rec: !w.rec }) : w)) }));
+  }
+
+  taskClick(appId) {
+    const st = this.state;
+    const ex = st.wins.find((w) => w.app === appId);
+    if (!ex || ex.min) { this.openApp(appId); return; }
+    if (st.focusId === ex.id) { this.minimize(ex.id); return; }
+    this.focus(ex.id);
+  }
+
+  startDrag(id, mode, e) {
+    const w = this.state.wins.find((x) => x.id === id);
+    if (!w || w.max) return;
+    if (e && e.preventDefault) e.preventDefault();
+    this.setState({ drag: { id: id, mode: mode, sx: e.clientX, sy: e.clientY, ox: w.x, oy: w.y, ow: w.w, oh: w.h } });
+  }
+
+  onDeskMove(e) {
+    const wd = this.state.wdrag;
+    if (wd) {
+      const el = e.currentTarget;
+      const scale = (el.getBoundingClientRect().width / el.offsetWidth) || 1;
+      const dx = (e.clientX - wd.sx) / scale;
+      const dy = (e.clientY - wd.sy) / scale;
+      this.setState((p) => ({
+        wlist: p.wlist.map((w) => (w.id === wd.id ? Object.assign({}, w, { rx: Math.max(0, Math.round((wd.orx - dx) / 8) * 8), y: Math.max(0, Math.round((wd.oy + dy) / 8) * 8) }) : w))
+      }));
+      return;
+    }
+    const ig = this.state.idrag;
+    if (ig) {
+      const el = e.currentTarget;
+      const rect = el.getBoundingClientRect();
+      const scale = (rect.width / el.offsetWidth) || 1;
+      const x = (e.clientX - rect.left) / scale;
+      const y = (e.clientY - rect.top) / scale;
+      const active = ig.active || Math.hypot(e.clientX - ig.sx, e.clientY - ig.sy) > 6;
+      if (!active) return;
+      this.setState(Object.assign({ idrag: Object.assign({}, ig, { x: x, y: y, active: true }) }, ig.src === 'launcher' ? { launcher: false, ctx: null } : {}));
+      return;
+    }
+    const d = this.state.drag;
+    if (!d) return;
+    const el = e.currentTarget;
+    const scale = (el.getBoundingClientRect().width / el.offsetWidth) || 1;
+    const dx = (e.clientX - d.sx) / scale;
+    const dy = (e.clientY - d.sy) / scale;
+    this.setState((p) => ({
+      wins: p.wins.map((w) => {
+        if (w.id !== d.id) return w;
+        if (d.mode === 'move') return Object.assign({}, w, { max: false, x: d.ox + dx, y: Math.max(0, d.oy + dy) });
+        return Object.assign({}, w, { w: Math.max(240, d.ow + dx), h: Math.max(180, d.oh + dy) });
+      })
+    }));
+  }
+
+  cellInfo(el) {
+    const wOn = this.props.widgets ?? true;
+    return { cols: Math.max(1, Math.floor((el.offsetWidth - 16 - (wOn ? 240 : 16)) / 92)), rows: Math.max(1, Math.floor((el.offsetHeight - 48 - 16) / 96)) };
+  }
+
+  cellAt(x, y, ci) {
+    const c = Math.max(0, Math.min(ci.cols - 1, Math.floor((x - 16) / 92)));
+    const r = Math.max(0, Math.min(ci.rows - 1, Math.floor((y - 16) / 96)));
+    return { c: c, r: r };
+  }
+
+  freeCell(pos, id, want, ci) {
+    const taken = {};
+    Object.keys(pos).forEach((k) => { if (k !== id) taken[pos[k].c + ',' + pos[k].r] = 1; });
+    const all = [];
+    for (let c = 0; c < ci.cols; c++) for (let r = 0; r < ci.rows; r++) if (!taken[c + ',' + r]) all.push({ c: c, r: r, d: Math.abs(c - want.c) + Math.abs(r - want.r) });
+    all.sort((a, b) => a.d - b.d);
+    return all[0] || null;
+  }
+
+  startIconDrag(id, src, e) {
+    if (e && e.button) return;
+    const el = e.currentTarget.closest('[data-desk]');
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const scale = (rect.width / el.offsetWidth) || 1;
+    this.setState({ idrag: { id: id, src: src, sx: e.clientX, sy: e.clientY, x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale, active: false } });
+  }
+
+  guardOpen(id) {
+    if (this._dragged) return;
+    this.openApp(id);
+  }
+
+  onAppCtx(e, id) {
+    if (e && e.preventDefault) e.preventDefault();
+    const el = e.currentTarget.closest('[data-desk]');
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const scale = (rect.width / el.offsetWidth) || 1;
+    const px = (e.clientX - rect.left) / scale;
+    const py = (e.clientY - rect.top) / scale;
+    this.setState({ ctx: { kind: 'app', app: id, x: Math.max(0, Math.min(px, el.offsetWidth - 210)), y: Math.max(0, Math.min(py, el.offsetHeight - 150)) }, notifOpen: false, phoneOpen: false, volOpen: false, xferOpen: null });
+  }
+
+  startWidgetDrag(id, e) {
+    if (e && e.button) return;
+    const w = this.state.wlist.find((x) => x.id === id);
+    if (!w) return;
+    this.setState({ wdrag: { id: id, sx: e.clientX, sy: e.clientY, orx: w.rx, oy: w.y } });
+  }
+
+  onWidgetCtx(e, id) {
+    if (e && e.preventDefault) e.preventDefault();
+    const el = e.currentTarget.closest('[data-desk]');
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const scale = (rect.width / el.offsetWidth) || 1;
+    const px = (e.clientX - rect.left) / scale;
+    const py = (e.clientY - rect.top) / scale;
+    this.setState({ ctx: { kind: 'widget', wid: id, x: Math.max(0, Math.min(px, el.offsetWidth - 210)), y: Math.max(0, Math.min(py, el.offsetHeight - 220)) }, launcher: false, notifOpen: false, phoneOpen: false, volOpen: false, xferOpen: null });
+  }
+
+  openWdgDlg() { this.setState({ wdgDlg: true, ctx: null, wallDlg: false }); }
+  closeWdgDlg() { this.setState({ wdgDlg: false }); }
+
+  addWidget(kind) {
+    const deskH = this.dims().H - 48;
+    const list = this.state.wlist;
+    const est = this.WH.m;
+    let pos = null;
+    for (let col = 0; col < 4 && !pos; col++) {
+      const rx = 16 + col * 266;
+      const inCol = list.filter((w) => Math.round((w.rx - 16) / 266) === col);
+      const y = 16 + inCol.reduce((acc, w) => acc + this.WH[w.size] + 12, 0);
+      if (y + est <= deskH - 8) pos = { rx: rx, y: y };
+    }
+    if (!pos) pos = { rx: 16 + (list.length % 4) * 24, y: 16 + (list.length % 4) * 24 };
+    this.setState((p) => ({ wlist: p.wlist.concat([{ id: p.wnext, kind: kind, rx: pos.rx, y: pos.y, size: 'm' }]), wnext: p.wnext + 1 }));
+    this.showInfo('Widget aggiunto', this.WK[kind].name);
+  }
+
+  setWidgetSize(id, size) { this.setState((p) => ({ ctx: null, wlist: p.wlist.map((w) => (w.id === id ? Object.assign({}, w, { size: size }) : w)) })); }
+  removeWidget(id) { this.setState((p) => ({ ctx: null, wlist: p.wlist.filter((w) => w.id !== id) })); }
+
+  widgetData(kind, size, st, visNotifs, panelText) {
+    const cnt = { s: 1, m: 2, l: 4 }[size];
+    const cap = (txt) => ({ title: '', head: '', headStyle: 'font-size:18px;', sub: '', subStyle: '', pct: -1, rows: [] , t: txt });
+    const d = { title: '', head: '', headStyle: 'font-size:18px;', sub: '', subStyle: '', pct: -1, rows: [] };
+    if (kind === 'clock') {
+      d.head = st.now; d.headStyle = 'font-size:34px;'; d.sub = size === 's' ? '' : st.date; d.subStyle = 'text-transform:capitalize;';
+      if (size === 'l') d.rows = [{ l: 'Roma', r: st.now }, { l: 'New York', r: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' }) }];
+    } else if (kind === 'calendar') {
+      const ev = [['09:30', 'Riunione di lavoro'], ['13:00', 'Pranzo'], ['15:30', 'Chiamata con il cliente'], ['18:30', 'Palestra'], ['20:30', 'Cena']];
+      d.title = 'Calendario'; d.head = 'Oggi'; d.sub = st.date; d.subStyle = 'text-transform:capitalize;';
+      d.rows = ev.slice(0, cnt).map((x) => ({ l: x[1], r: x[0] }));
+    } else if (kind === 'phone') {
+      d.title = 'Telefono'; d.head = 'Batteria 78%'; d.pct = 78;
+      const rows = [{ l: 'Rete', r: 'Wi-Fi connesso' }, { l: 'Pannello fisico', r: panelText }, { l: 'Schermo', r: st.locked ? 'bloccato' : 'sbloccato' }];
+      d.rows = rows.slice(0, { s: 0, m: 1, l: 3 }[size]);
+    } else if (kind === 'notifs') {
+      d.title = 'Notifiche recenti';
+      d.head = visNotifs.length === 0 ? 'Nessuna notifica' : visNotifs.length + (visNotifs.length === 1 ? ' nuova' : ' nuove');
+      d.rows = visNotifs.slice(0, cnt).map((n) => ({ l: n.title + ': ' + n.text, r: '' }));
+    } else if (kind === 'notes') {
+      d.title = 'Note rapide'; d.head = 'Lista della spesa';
+      d.rows = [{ l: 'Idee per il progetto', r: '' }, { l: 'Cose da ricordare', r: '' }].slice(0, { s: 0, m: 1, l: 2 }[size]);
+    } else if (kind === 'weather') {
+      d.title = 'Meteo · Roma'; d.head = '18°'; d.sub = 'Parzialmente nuvoloso';
+      d.rows = [{ l: 'Domani', r: '19°' }, { l: 'Dopodomani', r: '16°' }, { l: 'Tra tre giorni', r: '17°' }].slice(0, { s: 0, m: 2, l: 3 }[size]);
+    } else if (kind === 'music') {
+      d.title = 'In riproduzione'; d.head = 'Brano 01'; d.sub = 'Artista'; d.pct = 42;
+      if (size === 'l') d.rows = [{ l: 'Prossimo', r: 'Brano 02' }];
+    } else {
+      d.title = 'Memoria del telefono'; d.head = '160 GB usati'; d.sub = 'su 256 GB'; d.pct = 62;
+      d.rows = [{ l: 'Immagini', r: '38 GB' }, { l: 'App', r: '41 GB' }, { l: 'Video', r: '54 GB' }].slice(0, { s: 0, m: 1, l: 3 }[size]);
+    }
+    return d;
+  }
+
+  ctxAddDesk() {
+    const c = this.state.ctx;
+    if (!c || !c.app) return;
+    const el = document.querySelector('[data-desk]');
+    const ci = el ? this.cellInfo(el) : { cols: 6, rows: 6 };
+    const cell = this.freeCell(this.state.deskPos, c.app, { c: 0, r: 0 }, ci);
+    if (!cell) { this.setState({ ctx: null }); this.showInfo('Desktop pieno', 'Rimuovi un\'icona per fare spazio'); return; }
+    const a = this.APPS.find((x) => x.id === c.app);
+    this.setState((p) => ({ ctx: null, deskPos: Object.assign({}, p.deskPos, { [c.app]: { c: cell.c, r: cell.r } }) }));
+    this.showInfo('Aggiunta al desktop', a ? a.name : '');
+  }
+
+  ctxRemoveDesk() {
+    const c = this.state.ctx;
+    if (!c || !c.app) return;
+    this.setState((p) => { const n = Object.assign({}, p.deskPos); delete n[c.app]; return { ctx: null, deskPos: n }; });
+  }
+
+  ctxOpenAppNow() {
+    const c = this.state.ctx;
+    this.setState({ ctx: null, launcher: false });
+    if (c && c.app) this.openApp(c.app);
+  }
+
+  onDeskUp(e) {
+    if (this.state.wdrag) { this.setState({ wdrag: null }); return; }
+    const ig = this.state.idrag;
+    if (ig) {
+      if (!ig.active) { this.setState({ idrag: null }); return; }
+      this._dragged = true;
+      setTimeout(() => { this._dragged = false; }, 50);
+      const el = e.currentTarget;
+      if (ig.y > el.offsetHeight - 48) { this.setState({ idrag: null }); return; }
+      const ci = this.cellInfo(el);
+      const want = this.cellAt(ig.x, ig.y, ci);
+      const cell = this.freeCell(this.state.deskPos, ig.id, want, ci);
+      if (!cell) { this.setState({ idrag: null }); return; }
+      const a = this.APPS.find((x) => x.id === ig.id);
+      const isNew = !this.state.deskPos[ig.id];
+      this.setState((p) => ({ idrag: null, deskPos: Object.assign({}, p.deskPos, { [ig.id]: { c: cell.c, r: cell.r } }) }));
+      if (isNew) this.showInfo('Aggiunta al desktop', a ? a.name : '');
+      return;
+    }
+    const d = this.state.drag;
+    if (!d) return;
+    const dw = this.state.wins.find((w) => w.id === d.id);
+    if (d.mode === 'move' && dw && this.specOf(dw.app).rs) {
+      const el = e.currentTarget;
+      const rect = el.getBoundingClientRect();
+      const scale = (rect.width / el.offsetWidth) || 1;
+      const px = (e.clientX - rect.left) / scale;
+      const py = (e.clientY - rect.top) / scale;
+      const W = el.offsetWidth;
+      const H = el.offsetHeight - 48;
+      if (px < 14) {
+        this.setState((p) => ({ drag: null, wins: p.wins.map((w) => (w.id === d.id ? Object.assign({}, w, { x: 0, y: 0, w: W / 2, h: H }) : w)) }));
+        return;
+      }
+      if (px > W - 14) {
+        this.setState((p) => ({ drag: null, wins: p.wins.map((w) => (w.id === d.id ? Object.assign({}, w, { x: W / 2, y: 0, w: W / 2, h: H }) : w)) }));
+        return;
+      }
+      if (py < 10) {
+        this.setState((p) => ({ drag: null, wins: p.wins.map((w) => (w.id === d.id ? Object.assign({}, w, { max: true }) : w)) }));
+        return;
+      }
+    }
+    this.setState({ drag: null });
+  }
+
+  onDeskLeave() {
+    if (this.state.drag) this.setState({ drag: null });
+    if (this.state.idrag) this.setState({ idrag: null });
+    if (this.state.wdrag) this.setState({ wdrag: null });
+  }
+
+  fmtSize(b) {
+    if (b >= 1048576) return (b / 1048576).toFixed(1).replace('.', ',') + ' MB';
+    if (b >= 1024) return Math.round(b / 1024) + ' KB';
+    return b + ' B';
+  }
+
+  toggleUp() { this.setState((p) => ({ xferOpen: p.xferOpen === 'up' ? null : 'up', launcher: false, notifOpen: false, phoneOpen: false, volOpen: false, ctx: null })); }
+  toggleDown() { this.setState((p) => ({ xferOpen: p.xferOpen === 'down' ? null : 'down', launcher: false, notifOpen: false, phoneOpen: false, volOpen: false, ctx: null })); }
+  setUpDest(v) { this.setState({ upDest: v }); }
+  toggleUpPick() { this.setState((p) => ({ upPick: !p.upPick, upBrowse: p.upDest })); }
+  upEnter(name) { this.setState((p) => ({ upBrowse: (p.upBrowse === '/' ? '' : p.upBrowse) + '/' + name })); }
+  upUp() {
+    const cur = this.state.upBrowse;
+    if (cur === '/') return;
+    const i = cur.lastIndexOf('/');
+    this.setState({ upBrowse: i <= 0 ? '/' : cur.slice(0, i) });
+  }
+  upUseDir() { this.setState((p) => ({ upDest: p.upBrowse, upPick: false })); }
+  upNewDir() {
+    const base = this.state.upBrowse;
+    const list = this.FS[base] || (this.FS[base] = []);
+    let name = 'Nuova cartella';
+    let n = 2;
+    while (list.some((e) => e.n === name)) { name = 'Nuova cartella ' + n; n++; }
+    list.push({ n: name, d: 1 });
+    this.FS[(base === '/' ? '' : base) + '/' + name] = [];
+    this.setState({ upBrowse: (base === '/' ? '' : base) + '/' + name });
+  }
+
+  queueXfers(dir, items, dest) {
+    this.setState((p) => {
+      let id = p.xferId;
+      const add = items.map((it) => ({ id: id++, dir: dir, name: it.name, size: it.size, pct: 0, dest: dest }));
+      return { xfers: p.xfers.concat(add).slice(-12), xferId: id };
+    });
+  }
+
+  addUploads(files) {
+    if (!files.length) return;
+    this.queueXfers('up', files, this.state.upDest);
+    this.setState({ xferOpen: 'up', dropHot: false });
+  }
+
+  onPick(e) {
+    const fl = Array.prototype.slice.call(e.target.files || []).map((f) => ({ name: f.name, size: f.size }));
+    this.addUploads(fl);
+    try { e.target.value = ''; } catch (err) { /* ignore */ }
+  }
+
+  addSampleUp() {
+    this.addUploads([{ name: 'presentazione.pdf', size: 6291456 }, { name: 'foto_vacanza.zip', size: 31457280 }]);
+  }
+
+  onDragOver(e) {
+    if (!e.dataTransfer || Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') < 0) return;
+    e.preventDefault();
+    if (!this.state.dropHot) this.setState({ dropHot: true });
+  }
+
+  onDragLeave(e) {
+    if (!e.relatedTarget && this.state.dropHot) this.setState({ dropHot: false });
+  }
+
+  onDrop(e) {
+    if (!e.dataTransfer) return;
+    e.preventDefault();
+    const fl = Array.prototype.slice.call(e.dataTransfer.files || []).map((f) => ({ name: f.name, size: f.size }));
+    if (!fl.length) { this.setState({ dropHot: false }); return; }
+    this.addUploads(fl);
+  }
+
+  normPath(raw) {
+    let t = String(raw || '').trim();
+    if (/^Telefono/i.test(t)) t = this.BASE + t.replace(/^Telefono/i, '');
+    t = t.replace(/^\/sdcard(?=\/|$)/i, this.BASE).replace(/\/+$/, '');
+    if (t === '') return '/';
+    if (t.charAt(0) !== '/') t = '/' + t;
+    const key = Object.keys(this.FS).find((k) => k.toLowerCase() === t.toLowerCase());
+    return key || null;
+  }
+
+  searchFS(q, dirsOnly) {
+    const out = [];
+    const needle = q.trim().toLowerCase();
+    if (!needle) return out;
+    Object.keys(this.FS).forEach((dir) => {
+      this.FS[dir].forEach((en) => {
+        if (en.n.toLowerCase().indexOf(needle) >= 0 && (!dirsOnly || en.d)) out.push({ en: en, dir: dir, full: (dir === '/' ? '' : dir) + '/' + en.n });
+      });
+    });
+    return out.slice(0, 30);
+  }
+
+  onDlQuery(e) { this.setState({ dlQuery: e.target.value }); }
+  onUpQuery(e) { this.setState({ upQuery: e.target.value }); }
+  dlGo(path) { this.setState({ dlPath: path, dlQuery: '' }); }
+  upGo(path) { this.setState({ upBrowse: path, upQuery: '' }); }
+  dlGoKey(e) {
+    if (e.key !== 'Enter') return;
+    const t = this.normPath(e.target.value);
+    if (t === null) { this.showInfo('Cartella non trovata', e.target.value); return; }
+    this.setState({ dlPath: t, dlQuery: '' });
+  }
+  upGoKey(e) {
+    if (e.key !== 'Enter') return;
+    const t = this.normPath(e.target.value);
+    if (t === null) { this.showInfo('Cartella non trovata', e.target.value); return; }
+    this.setState({ upBrowse: t, upQuery: '' });
+  }
+
+  toggleDlPick() { this.setState((p) => ({ dlPick: !p.dlPick, dlBrowse: p.dlDest })); }
+  pcEnter(name) { this.setState((p) => ({ dlBrowse: (p.dlBrowse === '/' ? '' : p.dlBrowse) + '/' + name })); }
+  pcUp() {
+    const cur = this.state.dlBrowse;
+    if (cur === '/') return;
+    const i = cur.lastIndexOf('/');
+    this.setState({ dlBrowse: i <= 0 ? '/' : cur.slice(0, i) });
+  }
+  pcUse() { this.setState((p) => ({ dlDest: p.dlBrowse, dlPick: false })); }
+  pcNew() {
+    const base = this.state.dlBrowse;
+    const list = this.PCFS[base] || (this.PCFS[base] = []);
+    let name = 'Nuova cartella';
+    let n = 2;
+    while (list.some((e) => e.n === name)) { name = 'Nuova cartella ' + n; n++; }
+    list.push({ n: name, d: 1 });
+    this.PCFS[(base === '/' ? '' : base) + '/' + name] = [];
+    this.setState({ dlBrowse: (base === '/' ? '' : base) + '/' + name });
+  }
+
+  dlEnter(name) { this.setState((p) => ({ dlPath: (p.dlPath === '/' ? '' : p.dlPath) + '/' + name })); }
+  dlUp() {
+    const cur = this.state.dlPath;
+    if (cur === '/') return;
+    const i = cur.lastIndexOf('/');
+    this.setState({ dlPath: i <= 0 ? '/' : cur.slice(0, i) });
+  }
+  dlToggle(full) { this.setState((p) => ({ dlSel: p.dlSel.indexOf(full) >= 0 ? p.dlSel.filter((x) => x !== full) : p.dlSel.concat([full]) })); }
+  dlStart() {
+    const sel = this.state.dlSel;
+    if (!sel.length) return;
+    const items = sel.map((full) => {
+      const i = full.lastIndexOf('/');
+      const dir = i <= 0 ? '/' : full.slice(0, i);
+      const name = full.slice(i + 1);
+      const f = (this.FS[dir] || []).find((x) => x.n === name);
+      return { name: name, size: f ? f.s : 1024 };
+    });
+    this.queueXfers('down', items, this.state.dlDest);
+    this.setState({ dlSel: [] });
+  }
+
+  xferTick() {
+    if (!this.state.xfers.some((x) => x.pct < 100)) return;
+    const done = [];
+    this.setState((p) => ({
+      xfers: p.xfers.map((x) => {
+        if (x.pct >= 100) return x;
+        const step = Math.max(3, Math.min(25, Math.round((60 * 1048576) / x.size)));
+        const np = Math.min(100, x.pct + step);
+        if (np >= 100) done.push(x);
+        return Object.assign({}, x, { pct: np });
+      })
+    }));
+    if (done.length) {
+      const x = done[0];
+      this.showInfo(x.dir === 'up' ? 'Inviato al telefono' : 'Scaricato sul PC', x.name + (done.length > 1 ? ' e altri ' + (done.length - 1) : ''));
+    }
+  }
+
+  closePopups() { this.setState({ launcher: false, notifOpen: false, phoneOpen: false, volOpen: false, ctx: null, wallDlg: false, xferOpen: null, wdgDlg: false, query: '' }); }
+  toggleLauncher() { this.setState((p) => ({ launcher: !p.launcher, notifOpen: false, phoneOpen: false, volOpen: false, ctx: null, wallDlg: false, xferOpen: null, wdgDlg: false, query: '' })); }
+  toggleNotif() { this.setState((p) => ({ notifOpen: !p.notifOpen, launcher: false, phoneOpen: false, volOpen: false, ctx: null, wallDlg: false, xferOpen: null, wdgDlg: false })); }
+  togglePhonePop() { this.setState((p) => ({ phoneOpen: !p.phoneOpen, launcher: false, notifOpen: false, volOpen: false, ctx: null, wallDlg: false, xferOpen: null, wdgDlg: false })); }
+  toggleVol() { this.setState((p) => ({ volOpen: !p.volOpen, launcher: false, notifOpen: false, phoneOpen: false, ctx: null, wallDlg: false, xferOpen: null, wdgDlg: false })); }
+  onVol(e) { const v = parseInt(e.target.value, 10); this.setState({ vol: isNaN(v) ? 0 : v, muted: false }); }
+  toggleMute() { this.setState((p) => ({ muted: !p.muted })); }
+
+  onWallCtx(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    const scale = (rect.width / el.offsetWidth) || 1;
+    const px = (e.clientX - rect.left) / scale;
+    const py = (e.clientY - rect.top) / scale;
+    this.setState({ ctx: { x: Math.max(0, Math.min(px, el.offsetWidth - 200)), y: Math.max(0, Math.min(py, el.offsetHeight - 110)) }, launcher: false, notifOpen: false, phoneOpen: false, volOpen: false });
+  }
+
+  openWallDlg() { this.setState({ wallDlg: true, ctx: null, wdgDlg: false }); }
+  closeWallDlg() { this.setState({ wallDlg: false, xferOpen: null, wdgDlg: false }); }
+  setWallKind(k) { this.setState({ wallKind: k }); }
+  setWallMode(m) { this.setState({ wallMode: m }); }
+  setSolid(c) { this.setState({ wallSolid: c }); }
+  onSolid(e) { this.setState({ wallSolid: e.target.value }); }
+  onG1(e) { this.setState({ wallG1: e.target.value }); }
+  onG2(e) { this.setState({ wallG2: e.target.value }); }
+  setAngle(a) { this.setState({ wallAngle: a }); }
+  pickPhoto(id) { this.setState({ wallPhoto: id }); }
+  toggleFull() { this.setState((p) => ({ full: !p.full })); }
+  toggleLock() { this.setState((p) => ({ locked: !p.locked, launcher: false, notifOpen: false, phoneOpen: false })); }
+  togglePanel() { this.setState((p) => ({ panelOn: !p.panelOn })); }
+
+  togglePhoneScreen() {
+    this.setState((p) => {
+      const ex = p.wins.find((w) => w.app === 'phone');
+      if (ex) return { wins: p.wins.filter((w) => w.id !== ex.id), phoneOpen: false };
+      const z = p.zTop + 1;
+      const nw = { id: p.nextId, app: 'phone', x: 640, y: 20, w: 280, h: 500, z: z, min: false, max: false, rec: false };
+      return { wins: p.wins.concat([nw]), zTop: z, nextId: p.nextId + 1, focusId: nw.id, phoneOpen: false };
+    });
+  }
+
+  onQuery(e) { this.setState({ query: e.target.value }); }
+
+  onQueryKey(e) {
+    if (e.key === 'Enter') {
+      const q = this.state.query.trim().toLowerCase();
+      const m = this.APPS.filter((a) => a.name.toLowerCase().indexOf(q) >= 0);
+      if (m.length) this.openApp(m[0].id);
+    }
+  }
+
+  hideNotif(id) { this.setState((p) => ({ notifs: p.notifs.map((n) => (n.id === id ? Object.assign({}, n, { hidden: true }) : n)) })); }
+  hideAll() { this.setState((p) => ({ notifs: p.notifs.map((n) => Object.assign({}, n, { hidden: true })) })); }
+  openNotif(app, id) { this.hideNotif(id); this.openApp(app); this.closePopups(); }
+
+  addNotif() {
+    const pool = [
+      { app: 'msg', title: 'Nuovo messaggio', text: 'Giulia: ti chiamo tra cinque minuti' },
+      { app: 'web', title: 'Download completato', text: 'fattura.pdf' },
+      { app: 'set', title: 'Batteria quasi carica', text: 'Il telefono ha raggiunto l\'80%' }
+    ];
+    this.setState((p) => {
+      const n = pool[p.nextNotif % pool.length];
+      const id = 100 + p.nextNotif;
+      return {
+        notifs: [Object.assign({}, n, { id: id, time: p.now, hidden: false })].concat(p.notifs),
+        nextNotif: p.nextNotif + 1,
+        toast: { app: n.app, title: n.title, text: n.text, id: id }
+      };
+    });
+    clearTimeout(this.toastT);
+    this.toastT = setTimeout(() => this.setState({ toast: null }), 5200);
+  }
+
+  showInfo(title, text) {
+    this.setState({ toast: { app: null, title: title, text: text, id: 0 } });
+    clearTimeout(this.toastT);
+    this.toastT = setTimeout(() => this.setState({ toast: null }), 3200);
+  }
+
+  toastClick() {
+    const t = this.state.toast;
+    this.setState({ toast: null });
+    if (t && t.app) { this.hideNotif(t.id); this.openApp(t.app); }
+  }
+
+  renderVals() {
+    const st = this.state;
+    const dm = this.dims();
+    const W = dm.W;
+    const H = dm.H;
+    const deskH = H - 48;
+    const accent = this.props.accent ?? '#2dd4bf';
+    const accentBg = 'background:' + accent + ';';
+    const px = (v) => Math.min(2560, Math.round((v * 2.625) / 8) * 8);
+    const appOf = (id) => this.APPS.find((a) => a.id === id);
+    const panelText = st.panelOn ? 'acceso' : 'spento';
+
+    const wins = st.wins.map((w) => {
+      const spec = this.specOf(w.app);
+      const app = appOf(w.app);
+      const focused = st.focusId === w.id && !w.min;
+      let pos;
+      let wpx;
+      let hpx;
+      if (w.min) {
+        pos = 'display:none;';
+      } else if (w.max && spec.rs) {
+        pos = 'left:0;top:0;width:100%;height:calc(100% - 48px);border-radius:0;z-index:' + w.z + ';';
+        wpx = W; hpx = deskH - 52;
+      } else if (w.max) {
+        pos = 'left:50%;top:0;transform:translateX(-50%);height:calc(100% - 48px);aspect-ratio:9/16;border-radius:0;z-index:' + w.z + ';';
+        hpx = deskH - 52; wpx = Math.round((deskH * 9) / 16);
+      } else {
+        pos = 'left:' + Math.round(w.x) + 'px;top:' + Math.round(w.y) + 'px;width:' + Math.round(w.w) + 'px;height:' + Math.round(w.h) + 'px;z-index:' + w.z + ';';
+        wpx = w.w; hpx = w.h - 52;
+      }
+      const isPhone = w.app === 'phone';
+      return {
+        id: w.id,
+        name: isPhone ? 'Schermo del telefono' : app.name,
+        mono: isPhone ? 'Tl' : app.mono,
+        tile: 'background:' + (isPhone ? '#475569' : app.color) + ';',
+        pos: pos,
+        titleBg: focused ? 'background:#2a3344;' : 'background:#171c26;',
+        titleColor: focused ? 'color:#ffffff;' : 'color:#9aa4b5;',
+        rec: w.rec,
+        isMsg: w.app === 'msg',
+        isWeb: w.app === 'web',
+        isNote: w.app === 'note',
+        isCalc: w.app === 'calc',
+        isPhoto: w.app === 'photo',
+        isPhone: isPhone,
+        isGeneric: ['msg', 'web', 'note', 'calc', 'photo', 'phone'].indexOf(w.app) < 0,
+        clock: st.now,
+        panelText: panelText,
+        stream: isPhone ? 'Specchio · fino a 1920 px per lato' : (w.min ? '' : px(wpx) + '×' + px(hpx) + ' px · H.264 · 8 Mbit/s'),
+        tag: spec.rs ? 'Ridimensionabile' : 'Solo verticale 9:16',
+        canResize: spec.rs && !w.max && !w.min,
+        focus: () => this.focus(w.id),
+        dragStart: (e) => this.startDrag(w.id, 'move', e),
+        resizeStart: (e) => this.startDrag(w.id, 'resize', e),
+        minimize: () => this.minimize(w.id),
+        maximize: () => this.toggleMax(w.id),
+        close: () => this.closeWin(w.id),
+        recToggle: () => this.toggleRec(w.id),
+        shot: () => this.showInfo('Screenshot salvato', 'Immagini/YASDE e copiato negli appunti')
+      };
+    });
+
+    const taskItems = this.APPS.filter((a) => a.fav || st.wins.some((w) => w.app === a.id)).map((a) => {
+      const ex = st.wins.find((w) => w.app === a.id);
+      const open = !!ex;
+      const min = open && ex.min;
+      const active = open && !ex.min && st.focusId === ex.id;
+      let bar = 'background:transparent;';
+      if (open && min) bar = 'background:transparent;border:1px solid #9aa4b5;box-sizing:border-box;';
+      else if (active) bar = 'background:' + accent + ';';
+      else if (open) bar = 'background:#9aa4b5;';
+      return {
+        label: a.name + (open ? (min ? ' (in pausa)' : ' (aperta)') : ''),
+        hint: !open ? 'Apri ' + a.name : (min ? a.name + ' · in pausa, stream sospeso' : a.name),
+        mono: a.mono,
+        tile: 'background:' + a.color + ';',
+        bar: bar,
+        style: active ? 'background:rgba(255,255,255,.14);' : (min ? 'opacity:.65;' : ''),
+        click: () => this.taskClick(a.id)
+      };
+    });
+
+    const q = st.query.trim().toLowerCase();
+    const matches = this.APPS.filter((a) => a.name.toLowerCase().indexOf(q) >= 0);
+    const toItem = (a) => ({
+      name: a.name, mono: a.mono, tile: 'background:' + a.color + ';',
+      open: () => this.guardOpen(a.id),
+      down: (e) => this.startIconDrag(a.id, 'launcher', e),
+      ctx: (e) => this.onAppCtx(e, a.id)
+    });
+    const ig = st.idrag && st.idrag.active ? st.idrag : null;
+    const deskIcons = Object.keys(st.deskPos).map((id) => {
+      const a = appOf(id);
+      const pp = st.deskPos[id];
+      return Object.assign({}, toItem(a), {
+        pos: 'left:' + (16 + pp.c * 92) + 'px;top:' + (16 + pp.r * 96) + 'px;',
+        fade: ig && ig.src === 'desk' && ig.id === id ? 'opacity:.35;' : '',
+        down: (e) => this.startIconDrag(id, 'desk', e)
+      });
+    });
+    const ci = { cols: Math.max(1, Math.floor((W - 16 - ((this.props.widgets ?? true) ? 240 : 16)) / 92)), rows: Math.max(1, Math.floor((deskH - 16) / 96)) };
+    const igCell = ig ? this.freeCell(st.deskPos, ig.id, this.cellAt(ig.x, ig.y, ci), ci) : null;
+    const igApp = ig ? appOf(ig.id) : null;
+    const xrow = (x) => ({
+      name: x.name,
+      status: x.pct >= 100 ? 'Completato' : x.pct + '%',
+      bar: 'width:' + x.pct + '%;' + accentBg,
+      meta: this.fmtSize(x.size) + ' · ' + x.dest
+    });
+    const upList = st.xfers.filter((x) => x.dir === 'up').slice().reverse();
+    const downList = st.xfers.filter((x) => x.dir === 'down').slice().reverse();
+    const upDests = [['/Download', 'Download'], ['/Documents', 'Documenti'], ['/Pictures', 'Immagini'], ['/Music', 'Musica']].map((u) => [this.BASE + u[0], u[1]]).map((u) => ({
+      label: u[1],
+      sel: st.upDest === u[0],
+      style: st.upDest === u[0] ? 'background:' + accent + ';color:#0b1220;' : 'background:rgba(255,255,255,.1);color:#e6eaf2;',
+      pick: () => this.setUpDest(u[0])
+    }));
+    const dlEntries = this.FS[st.dlPath] || [];
+    const dlSearching = st.dlQuery.trim() !== '';
+    const dlItems = dlSearching ? this.searchFS(st.dlQuery, false) : dlEntries.map((en) => ({ en: en, dir: st.dlPath, full: (st.dlPath === '/' ? '' : st.dlPath) + '/' + en.n }));
+    const dlRows = dlItems.map((it) => {
+      const en = it.en;
+      const full = it.full;
+      const on = st.dlSel.indexOf(full) >= 0;
+      const where = it.dir;
+      return en.d
+        ? { name: en.n, label: 'Apri la cartella ' + en.n, isDir: true, isFile: false, meta: dlSearching ? where : 'Cartella', check: '', click: () => this.dlGo(full) }
+        : { name: en.n, label: (on ? 'Deseleziona ' : 'Seleziona ') + en.n, isDir: false, isFile: true, meta: dlSearching ? where + ' · ' + this.fmtSize(en.s) : this.fmtSize(en.s), check: on ? 'background:' + accent + ';border:2px solid ' + accent + ';' : 'border:2px solid rgba(255,255,255,.4);', click: () => this.dlToggle(full) };
+    });
+    const upSearching = st.upQuery.trim() !== '';
+    const upDirs = upSearching ? this.searchFS(st.upQuery, true) : (this.FS[st.upBrowse] || []).filter((en) => en.d).map((en) => ({ en: en, dir: st.upBrowse, full: (st.upBrowse === '/' ? '' : st.upBrowse) + '/' + en.n }));
+    const upDirRows = upDirs.map((it) => ({ name: upSearching ? it.full : it.en.n, label: 'Apri la cartella ' + it.en.n, click: () => (upSearching ? this.upGo(it.full) : this.upEnter(it.en.n)) }));
+    const visNotifs = st.notifs.filter((n) => !n.hidden);
+    const widgetItems = st.wlist.map((w) => {
+      const d = this.widgetData(w.kind, w.size, st, visNotifs, panelText);
+      return {
+        title: d.title, hasTitle: d.title !== '', head: d.head, headStyle: d.headStyle, sub: d.sub, hasSub: d.sub !== '', subStyle: d.subStyle,
+        hasBar: d.pct >= 0, pct: d.pct, rows: d.rows,
+        pos: 'right:' + w.rx + 'px;top:' + w.y + 'px;width:' + this.WW[w.size] + 'px;',
+        down: (e) => this.startWidgetDrag(w.id, e),
+        ctx: (e) => this.onWidgetCtx(e, w.id)
+      };
+    });
+    const ctxW = st.ctx && st.ctx.kind === 'widget' ? st.wlist.find((w) => w.id === st.ctx.wid) : null;
+    const ctxSizes = ctxW ? [['s', 'Piccolo'], ['m', 'Medio'], ['l', 'Grande']].map((z) => ({
+      label: z[1] + (ctxW.size === z[0] ? ' (attuale)' : ''),
+      sel: ctxW.size === z[0],
+      pick: () => this.setWidgetSize(ctxW.id, z[0])
+    })) : [];
+    const wdgCatalog = this.WORDER.map((k) => ({ name: this.WK[k].name, desc: this.WK[k].desc, add: () => this.addWidget(k) }));
+    const pcDirs = (this.PCFS[st.dlBrowse] || []).filter((en) => en.d);
+    const pcDirRows = pcDirs.map((en) => ({ name: en.n, label: 'Apri la cartella ' + en.n, click: () => this.pcEnter(en.n) }));
+    const dlN = st.dlSel.length;
+
+    const GALLERY = [
+      { id: 'g1', name: 'IMG_0412', css: 'linear-gradient(160deg,#1e3a5f,#0ea5e9 55%,#fde68a)' },
+      { id: 'g2', name: 'IMG_0398', css: 'linear-gradient(180deg,#312e81,#be185d 60%,#fb923c)' },
+      { id: 'g3', name: 'IMG_0377', css: 'linear-gradient(170deg,#14532d,#4d7c0f 60%,#d9f99d)' },
+      { id: 'g4', name: 'IMG_0351', css: 'linear-gradient(160deg,#0f172a,#475569 60%,#cbd5e1)' },
+      { id: 'g5', name: 'IMG_0330', css: 'linear-gradient(180deg,#7c2d12,#ea580c 55%,#fef3c7)' },
+      { id: 'g6', name: 'Screenshot_1120', css: 'linear-gradient(160deg,#0b1220,#1d4ed8)' },
+      { id: 'g7', name: 'IMG_0302', css: 'linear-gradient(170deg,#4a044e,#a21caf 60%,#f5d0fe)' },
+      { id: 'g8', name: 'IMG_0288', css: 'linear-gradient(180deg,#134e4a,#14b8a6 60%,#ccfbf1)' }
+    ];
+    const SOLIDS = ['#1f2430', '#0f172a', '#1e1b4b', '#052e16', '#451a03', '#4a044e', '#7f1d1d', '#e5e7eb'];
+    const kind = st.wallKind;
+    const photo = GALLERY.find((g) => g.id === st.wallPhoto) || GALLERY[0];
+    const wallStyle = kind === 'solid'
+      ? 'background:' + st.wallSolid + ';'
+      : (kind === 'gradient'
+        ? 'background:linear-gradient(' + st.wallAngle + 'deg,' + st.wallG1 + ',' + st.wallG2 + ');'
+        : 'background:#0b1220;');
+    const wallImgStyle = {
+      fill: 'left:0;top:0;right:0;bottom:0;',
+      stretch: 'left:0;top:0;right:0;bottom:0;',
+      fit: 'top:0;bottom:0;left:50%;transform:translateX(-50%);aspect-ratio:3/4;',
+      center: 'top:50%;left:50%;transform:translate(-50%,-50%);width:30%;aspect-ratio:3/4;'
+    }[st.wallMode] + 'background:' + photo.css + ';';
+    const wallTabs = [['solid', 'Colore solido'], ['gradient', 'Colore sfumato'], ['image', 'Immagine dal telefono']].map((t) => ({
+      label: t[1],
+      sel: kind === t[0],
+      style: kind === t[0] ? 'background:' + accent + ';color:#0b1220;' : 'background:transparent;color:#d6dbe6;',
+      pick: () => this.setWallKind(t[0])
+    }));
+    const solidQuick = SOLIDS.map((c) => ({
+      label: 'Colore ' + c,
+      style: 'background:' + c + ';border:2px solid ' + (st.wallSolid.toLowerCase() === c ? accent : 'rgba(255,255,255,.25)') + ';',
+      pick: () => this.setSolid(c)
+    }));
+    const angles = [[135, 'Diagonale'], [180, 'Verticale'], [90, 'Orizzontale'], [45, 'Diagonale inversa']].map((a) => ({
+      label: a[1],
+      sel: st.wallAngle === a[0],
+      style: st.wallAngle === a[0] ? 'background:' + accent + ';color:#0b1220;' : 'background:rgba(255,255,255,.1);color:#e6eaf2;',
+      pick: () => this.setAngle(a[0])
+    }));
+    const gallery = GALLERY.map((g) => ({
+      name: g.name,
+      thumb: 'background:' + g.css + ';',
+      sel: st.wallPhoto === g.id,
+      border: 'border:2px solid ' + (st.wallPhoto === g.id ? accent : 'transparent') + ';',
+      pick: () => this.pickPhoto(g.id)
+    }));
+    const wallModes = [['fill', 'Riempi'], ['fit', 'Adatta'], ['stretch', 'Allunga'], ['center', 'Centra']].map((m) => ({
+      label: m[1],
+      sel: st.wallMode === m[0],
+      style: st.wallMode === m[0] ? 'background:' + accent + ';color:#0b1220;' : 'background:rgba(255,255,255,.1);color:#e6eaf2;',
+      pick: () => this.setWallMode(m[0])
+    }));
+    const volShown = st.muted ? 0 : st.vol;
+    const hostHidden = st.hostMin || st.hostClosed;
+    const hostPos = st.full
+      ? 'left:0;top:0;width:1280px;height:800px;'
+      : (st.hostMax ? 'left:0;top:0;width:1280px;' : 'left:' + Math.round(st.hostX) + 'px;top:' + Math.round(st.hostY) + 'px;width:' + Math.round(W) + 'px;');
+    const hasPhone = st.wins.some((w) => w.app === 'phone');
+    const pill = (on) => (on ? 'background:' + accent + ';color:#0b1220;' : 'background:rgba(255,255,255,.14);color:#e6eaf2;');
+
+    return {
+      host: {
+        pos: (hostHidden ? 'display:none;' : '') + hostPos,
+        deco: (st.full || st.hostMax) ? '' : 'border-radius:10px;box-shadow:0 24px 70px rgba(0,0,0,.55);'
+      },
+      desk: { size: 'width:' + Math.round(W) + 'px;height:' + Math.round(H) + 'px;' },
+      twrap: {
+        cls: st.full ? 'fs' : 'nf',
+        cursor: (st.full || st.hostMax) ? '' : 'cursor:grab;'
+      },
+      hostMax: st.hostMax && !st.full,
+      notHostMax: !(st.hostMax && !st.full),
+      maxLabel: st.hostMax && !st.full ? 'Ripristina la dimensione' : 'Ingrandisci',
+      hostMin: st.hostMin,
+      hostClosed: st.hostClosed,
+      canResizeHost: !st.full && !st.hostMax,
+      onRootMove: (e) => this.onRootMove(e),
+      onRootUp: () => this.onRootUp(),
+      hostDragStart: (e) => this.hostDragStart(e),
+      hostResizeStart: (e) => this.hostResizeStart(e),
+      stopDown: (e) => this.stopDown(e),
+      minimizeHost: () => this.minimizeHost(),
+      restoreHost: () => this.restoreHost(),
+      closeHost: () => this.closeHost(),
+      reopenHost: () => this.reopenHost(),
+      toggleHostMax: () => this.toggleHostMax(),
+      accentBg: accentBg,
+      widgetsOn: this.props.widgets ?? true,
+      now: st.now,
+      date: st.date,
+      panelText: panelText,
+      deskIcons: deskIcons,
+      dropCellOn: !!igCell,
+      dropCell: igCell ? 'left:' + (16 + igCell.c * 92) + 'px;top:' + (16 + igCell.r * 96) + 'px;' : '',
+      ghostOn: !!ig,
+      ghostPos: ig ? 'left:' + Math.round(ig.x - 42) + 'px;top:' + Math.round(ig.y - 36) + 'px;' : '',
+      ghostTile: igApp ? 'background:' + igApp.color + ';' : '',
+      ghostMono: igApp ? igApp.mono : '',
+      ghostName: igApp ? igApp.name : '',
+      onDragOver: (e) => this.onDragOver(e),
+      onDragLeave: (e) => this.onDragLeave(e),
+      onDrop: (e) => this.onDrop(e),
+      dropHot: st.dropHot,
+      upOpen: st.xferOpen === 'up',
+      downOpen: st.xferOpen === 'down',
+      upBusy: st.xfers.some((x) => x.dir === 'up' && x.pct < 100),
+      downBusy: st.xfers.some((x) => x.dir === 'down' && x.pct < 100),
+      toggleUp: () => this.toggleUp(),
+      toggleDown: () => this.toggleDown(),
+      upDests: upDests,
+      upNotPick: !st.upPick,
+      upPick: st.upPick,
+      upPickLabel: st.upPick ? 'Annulla' : 'Cambia…',
+      upDestText: st.upDest,
+      toggleUpPick: () => this.toggleUpPick(),
+      upBrowseText: st.upBrowse,
+      upDirRows: upDirRows,
+      upDirEmpty: upDirs.length === 0,
+      upUp: () => this.upUp(),
+      upUpStyle: st.upBrowse === '/' ? 'opacity:.4;' : '',
+      upUseDir: () => this.upUseDir(),
+      upNewDir: () => this.upNewDir(),
+      upX: upList.map(xrow),
+      hasUpX: upList.length > 0,
+      downX: downList.map(xrow),
+      hasDownX: downList.length > 0,
+      onPick: (e) => this.onPick(e),
+      addSampleUp: () => this.addSampleUp(),
+      dlRows: dlRows,
+      dlNotPick: !st.dlPick,
+      dlPick: st.dlPick,
+      dlPickLabel: st.dlPick ? 'Annulla' : 'Cambia…',
+      dlDestText: 'PC: ' + st.dlDest,
+      toggleDlPick: () => this.toggleDlPick(),
+      pcBrowseText: 'PC: ' + st.dlBrowse,
+      pcDirRows: pcDirRows,
+      pcDirEmpty: pcDirs.length === 0,
+      pcUp: () => this.pcUp(),
+      pcUpStyle: st.dlBrowse === '/' ? 'opacity:.4;' : '',
+      pcUse: () => this.pcUse(),
+      pcNew: () => this.pcNew(),
+      dlEmpty: dlRows.length === 0,
+      dlEmptyText: dlSearching ? 'Nessun risultato' : (this.DENY[st.dlPath] ? 'Accesso non consentito dal sistema' : 'Cartella vuota'),
+      dlQuery: st.dlQuery,
+      onDlQuery: (e) => this.onDlQuery(e),
+      dlGoKey: (e) => this.dlGoKey(e),
+      upQuery: st.upQuery,
+      onUpQuery: (e) => this.onUpQuery(e),
+      upGoKey: (e) => this.upGoKey(e),
+      upEmptyText: upSearching ? 'Nessun risultato' : (this.DENY[st.upBrowse] ? 'Accesso non consentito dal sistema' : 'Nessuna sottocartella'),
+      dlUp: () => this.dlUp(),
+      dlUpStyle: st.dlPath === '/' ? 'opacity:.4;' : '',
+      dlPathText: st.dlPath,
+      dlStart: () => this.dlStart(),
+      dlOff: dlN === 0,
+      dlBtnStyle: dlN === 0 ? 'background:rgba(255,255,255,.25);cursor:default;' : 'background:' + accent + ';',
+      dlLabel: dlN === 0 ? 'Seleziona i file da scaricare' : 'Scarica ' + dlN + (dlN === 1 ? ' file' : ' file'),
+      widgetItems: widgetItems,
+      wdgDlg: st.wdgDlg,
+      wdgCatalog: wdgCatalog,
+      openWdgDlg: () => this.openWdgDlg(),
+      closeWdgDlg: () => this.closeWdgDlg(),
+      ctxWidget: !!ctxW,
+      ctxSizes: ctxSizes,
+      ctxRemoveWidget: () => { if (ctxW) this.removeWidget(ctxW.id); },
+      ctxWall: !!st.ctx && (!st.ctx.kind || st.ctx.kind === 'wall'),
+      ctxApp: !!st.ctx && st.ctx.kind === 'app',
+      ctxCanAdd: !!st.ctx && st.ctx.kind === 'app' && !st.deskPos[st.ctx.app],
+      ctxCanRemove: !!st.ctx && st.ctx.kind === 'app' && !!st.deskPos[st.ctx.app],
+      ctxOpenApp: () => this.ctxOpenAppNow(),
+      ctxAdd: () => this.ctxAddDesk(),
+      ctxRemove: () => this.ctxRemoveDesk(),
+      widgetNotifs: visNotifs.slice(0, 2),
+      noWidgetNotifs: visNotifs.length === 0,
+      wins: wins,
+      taskItems: taskItems,
+      launcherOpen: st.launcher,
+      notifOpen: st.notifOpen,
+      phoneOpen: st.phoneOpen,
+      anyPopup: st.launcher || st.notifOpen || st.phoneOpen || st.volOpen || !!st.ctx || st.wallDlg || st.wdgDlg || !!st.xferOpen,
+      accent: accent,
+      wallStyle: wallStyle,
+      wallImgStyle: wallImgStyle,
+      wallIsImage: kind === 'image',
+      wallTabs: wallTabs,
+      tabSolid: kind === 'solid',
+      tabGradient: kind === 'gradient',
+      tabImage: kind === 'image',
+      wallSolid: st.wallSolid,
+      wallG1: st.wallG1,
+      wallG2: st.wallG2,
+      solidQuick: solidQuick,
+      angles: angles,
+      gallery: gallery,
+      onSolid: (e) => this.onSolid(e),
+      onG1: (e) => this.onG1(e),
+      onG2: (e) => this.onG2(e),
+      wallModes: wallModes,
+      wallDlg: st.wallDlg,
+      ctxOpen: !!st.ctx,
+      ctxStyle: st.ctx ? 'left:' + Math.round(st.ctx.x) + 'px;top:' + Math.round(st.ctx.y) + 'px;' : '',
+      onWallCtx: (e) => this.onWallCtx(e),
+      openWallDlg: () => this.openWallDlg(),
+      closeWallDlg: () => this.closeWallDlg(),
+      vol: st.vol,
+      volOpen: st.volOpen,
+      volMuted: st.muted || st.vol === 0,
+      volNotMuted: !(st.muted || st.vol === 0),
+      volLabel: 'Volume: ' + (volShown === 0 ? 'muto' : volShown + '%'),
+      volText: volShown === 0 ? 'Muto' : volShown + '%',
+      mutePill: st.muted ? 'background:' + accent + ';color:#0b1220;' : 'background:rgba(255,255,255,.14);color:#e6eaf2;',
+      mutePillText: st.muted ? 'Attivo' : 'Disattivo',
+      toggleVol: () => this.toggleVol(),
+      onVol: (e) => this.onVol(e),
+      toggleMute: () => this.toggleMute(),
+      gridCols: 'grid-template-columns:repeat(' + Math.max(3, Math.floor((W - 96) / 120)) + ',minmax(0,1fr));',
+      gridItems: matches.map(toItem),
+      noResults: matches.length === 0,
+      query: st.query,
+      onQuery: (e) => this.onQuery(e),
+      onQueryKey: (e) => this.onQueryKey(e),
+      hasNotifs: visNotifs.length > 0,
+      notifCount: visNotifs.length,
+      noNotifs: visNotifs.length === 0,
+      notifItems: visNotifs.map((n) => {
+        const a = appOf(n.app);
+        return {
+          title: n.title,
+          text: n.text,
+          time: n.time,
+          appName: a.name,
+          mono: a.mono,
+          tile: 'background:' + a.color + ';',
+          openLabel: 'Apri ' + a.name,
+          open: () => this.openNotif(n.app, n.id),
+          hide: () => this.hideNotif(n.id)
+        };
+      }),
+      hideAll: () => this.hideAll(),
+      simulateNotif: () => this.addNotif(),
+      phoneScreenOn: hasPhone,
+      screenPill: pill(hasPhone),
+      screenPillText: hasPhone ? 'Visibile' : 'Nascosto',
+      panelIsOn: st.panelOn,
+      panelPill: pill(st.panelOn),
+      panelPillText: st.panelOn ? 'Acceso' : 'Spento',
+      toggleScreen: () => this.togglePhoneScreen(),
+      togglePanel: () => this.togglePanel(),
+      toggleLock: () => this.toggleLock(),
+      locked: st.locked,
+      hasToast: !!st.toast,
+      toastTitle: st.toast ? st.toast.title : '',
+      toastText: st.toast ? st.toast.text : '',
+      toastClick: () => this.toastClick(),
+      fullLabel: st.full ? 'Esci da schermo intero' : 'Schermo intero',
+      toggleFull: () => this.toggleFull(),
+      toggleLauncher: () => this.toggleLauncher(),
+      toggleNotif: () => this.toggleNotif(),
+      togglePhonePop: () => this.togglePhonePop(),
+      closePopups: () => this.closePopups(),
+      onDeskMove: (e) => this.onDeskMove(e),
+      onDeskUp: (e) => this.onDeskUp(e),
+      onDeskLeave: () => this.onDeskLeave()
+    };
+  }
+}
+</script>
+</body>
+</html>

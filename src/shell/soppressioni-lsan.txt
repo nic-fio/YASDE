@@ -1,0 +1,9 @@
+# Perdite di memoria delle librerie di terzi (non del nostro codice) da non
+# segnalare nelle prove di logica della shell: cache di fontconfig (testo di
+# cairo nelle icone finte) e strutture globali di GLib/GTK.
+leak:libfontconfig
+leak:libpango
+leak:libcairo
+leak:libglib-2.0
+leak:libgobject-2.0
+leak:libgtk-4

@@ -1,0 +1,486 @@
+/* Stile del pezzo shell-desktop (F-02): solo classi con prefisso ph-desktop-.
+ * Colori: SOLO le variabili di src/shell/ossatura/base.css (--ph-*): widget, menu e
+ * dialoghi sono vetro chiaro (ph_shell_vetro_registra) e le variabili cambiano da sole.
+ * Misure: i valori del mockup citati in COMPITO.md. Eccezioni: ogni colore scritto a
+ * mano sta su una riga con il commento `colore-dato: ...` che dice perche' (la prova
+ * di logica fallisce se ne trova uno senza). Il fondo e il bordo del widget li da' la
+ * classe di vetro. Caricato da ph_shell_stile_carica nel proprio _installa. */
+
+/* ---- Icone (mockup .ico): pulsante 84 px, raggio 10, imbottitura 6 4 ----
+ * Le icone e il loro nome stanno SEMPRE sopra lo sfondo del desktop, non su una
+ * superficie di vetro: restano bianche con l'ombra (come nel mockup) su qualunque tema. */
+button.ph-desktop-icona {
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  padding: 6px 4px;
+  box-shadow: none;
+  color: #ffffff; /* colore-dato: testo sopra lo sfondo del desktop, sempre bianco */
+}
+button.ph-desktop-icona:hover { background-color: rgba(255, 255, 255, 0.14); } /* colore-dato: velo sopra lo sfondo del desktop */
+
+/* Tessera 48x48 raggio 12 con ombra; il segnaposto e le icone vere stanno dentro. */
+.ph-desktop-tessera {
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); /* colore-dato: ombra sopra lo sfondo del desktop */
+}
+/* Tessera con dentro un'icona VERA: l'icona ha la sua forma, l'ombra rettangolare
+ * le farebbe un alone quadrato (icone.c, wx_elenchi.c). Vale per le due tessere. */
+.ph-desktop-tessera.ph-desktop-tessera-vera,
+.ph-desktop-app-tessera.ph-desktop-tessera-vera {
+  box-shadow: none;
+}
+.ph-desktop-nome {
+  font-size: 12px;
+  color: #ffffff; /* colore-dato: nome sopra lo sfondo del desktop, sempre bianco */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); /* colore-dato: ombra del nome sopra lo sfondo */
+}
+
+/* Riquadro tratteggiato sulla cella di destinazione (84x88). */
+.ph-desktop-tratteggio {
+  border: 2px dashed rgba(255, 255, 255, 0.6); /* colore-dato: segno di destinazione sopra lo sfondo */
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.08); /* colore-dato: idem */
+}
+
+/* ---- Widget: vetro chiaro (fondo e bordo dalla classe di vetro), raggio 14, imbottitura 12 16 ---- */
+.ph-desktop-widget {
+  border-radius: 14px;
+  padding: 12px 16px;
+  color: var(--ph-testo);
+}
+.ph-desktop-widget:focus-visible {
+  outline: 2px solid var(--ph-fuoco);
+  outline-offset: 1px;
+}
+.ph-desktop-w-titolo { font-size: 12px; color: var(--ph-testo-2); margin-bottom: 6px; }
+.ph-desktop-w-testa { font-size: 18px; font-weight: 600; }
+.ph-desktop-w-testa.ph-desktop-w-grande { font-size: 34px; }
+.ph-desktop-w-sotto { font-size: 12px; color: var(--ph-testo-2); margin-top: 6px; }
+.ph-desktop-w-barra {
+  min-height: 6px;
+  border-radius: 3px;
+  background-color: var(--ph-avanzamento-fondo);
+  margin-top: 8px;
+}
+.ph-desktop-w-pieno {
+  min-height: 6px;
+  border-radius: 3px;
+  background-color: var(--ph-accento);
+}
+.ph-desktop-w-riga { margin-top: 6px; }
+.ph-desktop-w-riga-sx { font-size: 12px; }
+.ph-desktop-w-riga-dx { font-size: 12px; color: var(--ph-testo-2); }
+
+/* Sonda dell'accento: il quadrante dell'Orologio (disegnato in C) legge da qui il colore
+ * dell'accento del tema (da C le variabili CSS non si leggono). Il colore del testo lo
+ * eredita dalla scheda del widget. */
+.ph-desktop-orologio-accento { color: var(--ph-accento); }
+
+/* ---- Menu contestuali: titoletto "Dimensione" (imbottitura 4 8) ---- */
+.ph-desktop-menu-titolo { padding: 4px 8px; }
+
+/* ---- Dialoghi ---- */
+.ph-desktop-nota { font-size: 11px; color: var(--ph-testo-3); }
+.ph-desktop-campo { font-size: 13px; }
+
+/* Anteprima dello sfondo: 96 px, raggio 10, bordo 1 px. */
+.ph-desktop-anteprima {
+  border-radius: 10px;
+  border: 1px solid var(--ph-bordo-forte);
+}
+
+/* Schede del tipo di sfondo: contenitore .28, imbottitura 3, raggio 9. */
+.ph-desktop-schede {
+  background-color: var(--ph-campo);
+  padding: 3px;
+  border-radius: 9px;
+}
+button.ph-desktop-scheda {
+  border: none;
+  border-radius: 7px;
+  padding: 7px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--ph-testo-2);
+  box-shadow: none;
+}
+button.ph-desktop-scheda.ph-desktop-scelto {
+  background: var(--ph-accento);
+  color: var(--ph-su-accento);
+}
+
+/* Direzione e adattamento: raggio 6, imbottitura 5 12. */
+button.ph-desktop-opzione {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--ph-sopra-riga);
+  color: var(--ph-testo);
+  box-shadow: none;
+}
+button.ph-desktop-opzione.ph-desktop-scelto {
+  background: var(--ph-accento);
+  color: var(--ph-su-accento);
+}
+
+.ph-desktop-selettore { min-width: 48px; min-height: 30px; }
+
+/* Tavolozza 6x8: pulsanti 24x24, raggio 6, bordo 2 px (accento se scelto). */
+button.ph-desktop-pal {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  border: 2px solid var(--ph-bordo-forte);
+  box-shadow: none;
+}
+/* Segno «attuale» leggibile su ogni tinta: bordo interno bianco (sopra la tinta) e
+ * anello ESTERNO nel colore del testo, che si vede sempre sul dialogo, chiaro o scuro. */
+button.ph-desktop-pal.ph-desktop-scelto {
+  border-color: #ffffff; /* colore-dato: bordo interno bianco, sta sopra una tinta della tavolozza */
+  box-shadow: 0 0 0 2px var(--ph-testo);
+}
+button.ph-desktop-pal-0 { background: #000000; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-1 { background: #0b1220; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-2 { background: #1f2430; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-3 { background: #374151; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-4 { background: #6b7280; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-5 { background: #9ca3af; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-6 { background: #d1d5db; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-7 { background: #ffffff; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-8 { background: #e46767; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-9 { background: #e49b67; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-10 { background: #e4c567; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-11 { background: #67e491; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-12 { background: #67e4da; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-13 { background: #67b0e4; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-14 { background: #6772e4; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-15 { background: #c567e4; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-16 { background: #d22d2d; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-17 { background: #d2722d; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-18 { background: #d2a92d; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-19 { background: #2dd264; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-20 { background: #2dd2c5; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-21 { background: #2d8dd2; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-22 { background: #2d3ad2; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-23 { background: #a92dd2; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-24 { background: #8f2424; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-25 { background: #8f5024; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-26 { background: #8f7424; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-27 { background: #248f47; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-28 { background: #248f86; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-29 { background: #24628f; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-30 { background: #242d8f; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-31 { background: #74248f; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-32 { background: #571919; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-33 { background: #573319; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-34 { background: #574819; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-35 { background: #19572e; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-36 { background: #195752; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-37 { background: #193d57; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-38 { background: #191e57; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-39 { background: #481957; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-40 { background: #2e0f0f; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-41 { background: #2e1c0f; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-42 { background: #2e260f; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-43 { background: #0f2e1a; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-44 { background: #0f2e2b; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-45 { background: #0f212e; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-46 { background: #0f122e; } /* colore-dato: tinta della tavolozza */
+button.ph-desktop-pal-47 { background: #260f2e; } /* colore-dato: tinta della tavolozza */
+
+/* Miniature della galleria: imbottitura 3, raggio 10, bordo 2 px; immagine alta 58. */
+button.ph-desktop-miniatura {
+  background: transparent;
+  padding: 3px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  color: var(--ph-testo);
+  box-shadow: none;
+}
+button.ph-desktop-miniatura.ph-desktop-scelto { border-color: var(--ph-accento); }
+.ph-desktop-miniatura-cornice { border-radius: 7px; background-color: var(--ph-voce); }
+.ph-desktop-miniatura-nome { font-size: 10px; }
+
+/* Catalogo dei widget: scheda .06, bordo .12, raggio 12, imbottitura 12. */
+.ph-desktop-voce-catalogo {
+  background-color: var(--ph-voce);
+  border: 1px solid var(--ph-bordo);
+  border-radius: 12px;
+  padding: 12px;
+}
+.ph-desktop-catalogo-nome { font-size: 13px; font-weight: 600; }
+.ph-desktop-catalogo-desc { font-size: 12px; color: var(--ph-testo-2); }
+button.ph-desktop-aggiungi {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ph-su-accento);
+  background: var(--ph-accento);
+  box-shadow: none;
+}
+
+.ph-desktop-scorrevole { background: transparent; }
+
+/* Selettore di colore: un campo 48x30 senza cornice (mockup: input type=color). */
+.ph-desktop-selettore,
+.ph-desktop-selettore button {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  min-width: 48px;
+  min-height: 30px;
+}
+.ph-desktop-selettore colorswatch {
+  border: 2px solid var(--ph-bordo-forte);
+  border-radius: 6px;
+  box-shadow: none;
+  min-width: 48px;
+  min-height: 30px;
+}
+
+/* Navigazione delle cartelle del telefono. */
+.ph-desktop-percorso {
+  font-size: 12px;
+  color: var(--ph-testo-2);
+  background-color: var(--ph-voce);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+button.ph-desktop-cartella {
+  border: none;
+  background: transparent;
+  color: var(--ph-testo);
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  box-shadow: none;
+}
+button.ph-desktop-cartella:hover { background-color: var(--ph-sopra-riga); }
+.ph-desktop-cartella-freccia { color: var(--ph-testo-3); font-size: 16px; }
+button.ph-desktop-su {
+  border: 1px solid var(--ph-bordo-ghost);
+  background: transparent;
+  color: var(--ph-testo-2);
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+button.ph-desktop-su:disabled { opacity: 0.4; }
+.ph-desktop-vuoto { font-size: 12px; color: var(--ph-testo-3); }
+
+/* Separatore orizzontale dei menu dei widget. */
+separator.ph-desktop-menu-sep {
+  min-height: 1px;
+  margin: 4px 6px;
+  background-color: var(--ph-separatore);
+}
+
+/* ---- Calendario del mese ---- */
+.ph-desktop-cal-intestazione { margin-bottom: 6px; }
+button.ph-desktop-cal-titolo {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ph-testo);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 4px;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 8px;
+}
+button.ph-desktop-cal-titolo:hover:not(:disabled) { background-color: var(--ph-sopra-riga); }
+button.ph-desktop-cal-titolo:disabled { color: var(--ph-testo); opacity: 1; }
+button.ph-desktop-freccia {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ph-testo-2);
+  padding: 4px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 8px;
+}
+button.ph-desktop-freccia:hover { background-color: var(--ph-sopra-ghost); }
+.ph-desktop-giorno-nome { font-size: 11px; color: var(--ph-testo-3); }
+button.ph-desktop-giorno {
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ph-testo);
+  padding: 2px 0;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 8px;
+}
+button.ph-desktop-giorno:hover { background-color: var(--ph-sopra-riga); }
+.ph-desktop-giorno-numero { font-size: 12px; }
+button.ph-desktop-giorno-oggi { border-color: var(--ph-accento); }
+button.ph-desktop-giorno-scelto { background-color: var(--ph-accento); color: var(--ph-su-accento); }
+button.ph-desktop-giorno-scelto .ph-desktop-giorno-numero { color: var(--ph-su-accento); font-weight: 600; }
+.ph-desktop-punto {
+  min-width: 4px;
+  min-height: 4px;
+  border-radius: 2px;
+  background-color: var(--ph-accento);
+}
+button.ph-desktop-giorno-scelto .ph-desktop-punto { background-color: var(--ph-su-accento); }
+.ph-desktop-cal-elenco { margin-top: 6px; }
+button.ph-desktop-impegno {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ph-testo);
+  padding: 3px 4px;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 6px;
+}
+button.ph-desktop-impegno:hover { background-color: var(--ph-sopra-riga); }
+.ph-desktop-agenda-giorno { font-size: 11px; color: var(--ph-testo-3); margin-top: 4px; padding: 0 4px; }
+button.ph-desktop-giorno-scelto .ph-desktop-giorno-nome { color: var(--ph-su-accento); }
+
+/* ---- Interruttori rapidi ---- */
+button.ph-desktop-interruttore {
+  border: 1px solid var(--ph-bordo);
+  background: var(--ph-voce);
+  box-shadow: none;
+  color: var(--ph-testo);
+  padding: 8px 2px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 12px;
+}
+button.ph-desktop-interruttore:hover:not(:disabled) { background-color: var(--ph-sopra-ghost); }
+button.ph-desktop-interruttore:disabled { opacity: 0.55; }
+button.ph-desktop-interruttore-attivo {
+  background: var(--ph-accento);
+  border-color: var(--ph-accento);
+  color: var(--ph-su-accento);
+}
+button.ph-desktop-interruttore-attivo:hover:not(:disabled) { background: var(--ph-accento); }
+.ph-desktop-interruttore-nome { font-size: 11px; font-weight: 600; }
+.ph-desktop-interruttore-stato { font-size: 11px; color: var(--ph-testo-2); }
+button.ph-desktop-interruttore-attivo .ph-desktop-interruttore-stato { color: var(--ph-su-accento); }
+
+/* ---- Trova il telefono ---- */
+button.ph-desktop-trova {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ph-su-accento);
+  background: var(--ph-accento);
+  box-shadow: none;
+  min-width: 0;
+  min-height: 0;
+}
+button.ph-desktop-trova:disabled { opacity: 0.55; }
+button.ph-desktop-trova-ferma {
+  background: var(--ph-sopra-ghost);
+  color: var(--ph-testo);
+  border: 1px solid var(--ph-bordo-ghost);
+}
+
+/* ---- App frequenti ---- */
+button.ph-desktop-app-frequente {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ph-testo);
+  padding: 4px 0;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 10px;
+}
+button.ph-desktop-app-frequente:hover { background-color: var(--ph-sopra-riga); }
+.ph-desktop-app-tessera {
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); /* colore-dato: ombra della tessera d'icona, come sul desktop */
+}
+.ph-desktop-app-nome { font-size: 10px; color: var(--ph-testo); }
+
+/* ---- Trasferimenti recenti ---- */
+button.ph-desktop-trasferimento {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ph-testo);
+  padding: 4px 4px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 8px;
+}
+button.ph-desktop-trasferimento:hover { background-color: var(--ph-sopra-riga); }
+button.ph-desktop-trova.ph-desktop-trova-spento {
+  background: var(--ph-voce);
+  border: 1px solid var(--ph-bordo);
+  color: var(--ph-testo-2);
+}
+
+/* ---- Meteo ---- */
+.ph-desktop-meteo-t-p { font-size: 26px; font-weight: 600; }
+.ph-desktop-meteo-t-m { font-size: 34px; font-weight: 600; }
+.ph-desktop-meteo-t-g { font-size: 46px; font-weight: 600; }
+.ph-desktop-meteo-t-o { font-size: 30px; font-weight: 600; }
+.ph-desktop-meteo-t-c { font-size: 18px; font-weight: 600; }
+.ph-desktop-w-sotto-nom { font-size: 12px; color: var(--ph-testo-2); }
+.ph-desktop-meteo-mm { font-size: 12px; color: var(--ph-testo-2); margin-top: 6px; }
+.ph-desktop-meteo-ora { font-size: 11px; color: var(--ph-testo-3); }
+.ph-desktop-meteo-ora-t { font-size: 12px; font-weight: 600; }
+.ph-desktop-meteo-giorno { margin-top: 4px; }
+.ph-desktop-meteo-giorno-nome { font-size: 12px; font-weight: 600; }
+.ph-desktop-meteo-min { font-size: 12px; color: var(--ph-testo-3); }
+.ph-desktop-meteo-max { font-size: 12px; font-weight: 600; }
+.ph-desktop-meteo-vecchio { opacity: 0.75; }
+.ph-desktop-meteo-stato { padding: 4px 0; }
+.ph-desktop-meteo-stato-testo { font-size: 14px; font-weight: 600; }
+.ph-desktop-meteo-avviso { margin-bottom: 8px; }
+.ph-desktop-meteo-avviso-testo { font-size: 11px; font-weight: 600; color: var(--ph-avviso); }
+button.ph-desktop-meteo-invito {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ph-accento-testo);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 0;
+  min-width: 0;
+  min-height: 0;
+}
+button.ph-desktop-meteo-invito:hover { text-decoration: underline; }
+/* Attribuzione: 10 px terziario, un collegamento senza decorazioni di sistema. */
+button.ph-desktop-meteo-attrib {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+}
+.ph-desktop-meteo-attrib-testo { font-size: 10px; color: var(--ph-testo-3); }
+button.ph-desktop-meteo-attrib:hover .ph-desktop-meteo-attrib-testo { color: var(--ph-testo-2); text-decoration: underline; }
+/* Dialogo «Località…». */
+button.ph-desktop-luogo-riga {
+  border: none;
+  background: var(--ph-voce);
+  box-shadow: none;
+  color: var(--ph-testo);
+  padding: 7px 10px;
+  border-radius: 8px;
+  min-width: 0;
+  min-height: 0;
+}
+button.ph-desktop-luogo-riga:hover { background-color: var(--ph-sopra-ghost); }
+.ph-desktop-luogo-nome { font-size: 13px; font-weight: 600; }
+.ph-desktop-luogo-dettaglio { font-size: 11px; color: var(--ph-testo-3); }

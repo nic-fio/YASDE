@@ -1,0 +1,31 @@
+# Testi del pezzo shell-trasferimento (F-09) che non sono nel mockup.
+# Quelli del mockup stanno gia' in shell-comune.txt (di chi coordina).
+# Formato: "testo italiano come nel codice" = "English text"
+
+# Coda: annullamento (decisione di chi coordina: "x" sulla voce e "annulla tutto").
+"Annulla il trasferimento di {nome}" = "Cancel the transfer of {nome}"
+"Annulla tutti i trasferimenti" = "Cancel all transfers"
+
+# File che non si inviano (cartelle, file illeggibili).
+"Alcuni elementi non sono stati inviati" = "Some items were not sent"
+"Si inviano solo i file normali, non le cartelle." = "Only regular files are sent, not folders."
+
+# APK trascinato (5.9.1): conferma e, per ora, nessun servizio per installarlo.
+"Installare l'app {nome} sul telefono?" = "Install the app {nome} on the phone?"
+"Il file è un'app: non lo invio come file ma la installo. Se l'app è già sul telefono viene sostituita e conserva i suoi dati." = "The file is an app: I will not send it as a file but install it. If the app is already on the phone it is replaced and keeps its data."
+"Installa l'app" = "Install the app"
+"Questa versione di YASDE non sa ancora installare app sul telefono." = "This version of YASDE cannot install apps on the phone yet."
+
+# Coda lunga: voci ancora da fare che non stanno nell'elenco.
+"e altri {numero} in attesa" = "and {numero} more waiting"
+
+# Selettore di cartelle del PC: il percorso si digita (5.9.4).
+"Percorso sul PC (Invio per andare)" = "Path on the PC (Enter to go)"
+
+# Installazione di un APK (riga nell'elenco dell'invio).
+"Installazione sul telefono" = "Installing on the phone"
+"In installazione" = "Installing"
+
+"Annulla l'installazione di {nome}" = "Cancel the installation of {nome}"
+"Non riesco a leggere questa cartella del PC." = "I cannot read this folder on the PC."
+"Non riesco a creare la cartella sul PC." = "I cannot create the folder on the PC."

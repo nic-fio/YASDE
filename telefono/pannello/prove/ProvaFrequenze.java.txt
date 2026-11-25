@@ -1,0 +1,31 @@
+package it.yasde;
+
+/** Prova su JVM della scelta della frequenza voluta (parte pura). */
+public final class ProvaFrequenze {
+    private static int falliti;
+
+    private ProvaFrequenze() {}
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    public static void main(String[] args) {
+        int[] l = {1080, 1080, 720, 720};
+        int[] a = {2340, 2340, 1560, 1560};
+        float[] hz = {120f, 60f, 144f, 90f};
+        controlla(Frequenze.massimaStessaRisoluzione(0, l, a, hz) == 120f, "la massima di un'altra risoluzione (144) non si sceglie");
+        controlla(Frequenze.massimaStessaRisoluzione(2, l, a, hz) == 144f, "con il modo attivo a 720x1560 la massima e' 144");
+        controlla(Frequenze.voluta(120f, "null") == 120f, "senza tetto: la massima");
+        controlla(Frequenze.voluta(120f, "60.0") == 60f, "tetto dell'utente a 60: voluta 60");
+        controlla(Frequenze.voluta(120f, "144.0") == 120f, "tetto sopra la massima: la massima");
+        controlla(Frequenze.voluta(120f, "0") == 120f, "tetto 0 non e' un tetto");
+        controlla(Frequenze.voluta(120f, "abc") == 120f, "tetto non numerico ignorato");
+        controlla(Frequenze.voluta(120f, null) == 120f, "tetto assente");
+        if (falliti > 0) {
+            System.out.println("falliti: " + falliti);
+            System.exit(1);
+        }
+    }
+}

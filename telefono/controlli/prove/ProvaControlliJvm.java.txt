@@ -1,0 +1,1040 @@
+package it.yasde;
+
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Prove su JVM di Controlli, Trova e ComandiShell con un telefono e un guardiano finti. Nessuna attesa a
+ * tempo per «dare tempo»: si aspetta un segnale (latch o coda) con una scadenza di sicurezza.
+ */
+public final class ProvaControlliJvm {
+    private static int falliti;
+
+    private ProvaControlliJvm() {}
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    /** Un guasto programmato: dopo `salta` chiamate buone, le prossime `volte` falliscono con `errore`. */
+    private static final class Guasto {
+        int salta;
+        int volte;
+        Throwable errore;
+    }
+
+    /** Il telefono finto: ogni scrittura va nel registro comune, in ordine. */
+    private static final class Finto implements Telefono {
+        final List<String> registro = Collections.synchronizedList(new ArrayList<String>());
+        volatile int modo = 1;
+        volatile int filtro = 2;
+        volatile int volume = 3;
+        volatile int massimo = 15;
+        volatile int bersaglio = 15;
+        volatile int torcia = 0;
+        volatile boolean suonoAttivo;
+        volatile boolean dnd = true;
+        volatile boolean haTorcia = true;
+        volatile boolean ripristino = true;
+        volatile boolean ignoraModo; // la scrittura riesce ma il valore non cambia
+        volatile boolean manuale = true; // il Non disturbare attivo e' manuale e senza scadenza
+        volatile Runnable primaDelSuono; // eseguito dentro avviaSuono, prima del controllo di arresto
+        volatile Runnable dopoVolume; // eseguito all'inizio di ogni scrittura del volume
+        volatile Runnable dopoModo; // eseguito dopo ogni scrittura del modo
+        volatile CountDownLatch dentroModo; // abbassato quando la scrittura del modo e' iniziata
+        volatile CountDownLatch rilascioModo; // la scrittura del modo aspetta questo
+        final Map<String, Guasto> guasti = new LinkedHashMap<>();
+        final AtomicCount avviiSuono = new AtomicCount();
+        final AtomicCount chiamate = new AtomicCount(); // ogni metodo del telefono finto, lettura o scrittura
+
+        void rompi(String op, int salta, int volte, Throwable e) {
+            Guasto g = new Guasto();
+            g.salta = salta;
+            g.volte = volte;
+            g.errore = e;
+            synchronized (guasti) {
+                guasti.put(op, g);
+            }
+        }
+
+        private void prova(String op) throws Exception {
+            Throwable e = null;
+            synchronized (guasti) {
+                Guasto g = guasti.get(op);
+                if (g != null) {
+                    if (g.salta > 0) {
+                        g.salta--;
+                    } else if (g.volte > 0) {
+                        g.volte--;
+                        e = g.errore;
+                    }
+                }
+            }
+            if (e instanceof Exception) throw (Exception) e;
+            if (e instanceof Error) throw (Error) e;
+        }
+
+        @Override
+        public int modoSuoneria() throws Exception {
+            chiamate.incrementa();
+            prova("leggi-modo");
+            return modo;
+        }
+
+        @Override
+        public void impostaModoSuoneria(int m) throws Exception {
+            chiamate.incrementa();
+            prova("scrivi-modo");
+            CountDownLatch d = dentroModo;
+            if (d != null) d.countDown();
+            CountDownLatch r = rilascioModo;
+            if (r != null && !r.await(10, TimeUnit.SECONDS)) throw new IOException("prova bloccata");
+            registro.add("scrivi modo " + m);
+            if (!ignoraModo) modo = m;
+            Runnable h = dopoModo;
+            if (h != null) h.run();
+        }
+
+        @Override
+        public int filtroNonDisturbare() throws Exception {
+            chiamate.incrementa();
+            prova("leggi-filtro");
+            return filtro;
+        }
+
+        @Override
+        public void impostaFiltroNonDisturbare(int f) throws Exception {
+            chiamate.incrementa();
+            prova("scrivi-filtro");
+            registro.add("scrivi filtro " + f);
+            filtro = f;
+        }
+
+        @Override
+        public int volumeSuoneria() throws Exception {
+            chiamate.incrementa();
+            // regola vera di Android: con la suoneria silenziata (vibra o silenzioso) il volume LETTO e' 0
+            // anche se quello salvato dell'utente e' un altro
+            return modo != 0 ? 0 : volume;
+        }
+
+        @Override
+        public int volumeSuoneriaMassimo() throws Exception {
+            chiamate.incrementa();
+            return massimo;
+        }
+
+        @Override
+        public void impostaVolumeSuoneria(int v) throws Exception {
+            chiamate.incrementa();
+            prova("scrivi-volume");
+            registro.add("scrivi volume " + v);
+            Runnable h = dopoVolume;
+            if (h != null) h.run();
+            if (modo != 0) return; // regola di Android: a suoneria silenziata il volume non si cambia
+            volume = v;
+            if (v == 0) modo = 1; // regola di Android: volume 0 in modo «suona» = vibra
+        }
+
+        @Override
+        public int volumeTrova(int max) {
+            chiamate.incrementa();
+            return Math.min(bersaglio, max);
+        }
+
+        @Override
+        public int torcia() throws Exception {
+            chiamate.incrementa();
+            prova("leggi-torcia");
+            return torcia;
+        }
+
+        @Override
+        public void impostaTorcia(boolean accesa) throws Exception {
+            chiamate.incrementa();
+            prova("scrivi-torcia");
+            registro.add("scrivi torcia " + (accesa ? 1 : 0));
+            torcia = accesa ? 1 : 0;
+        }
+
+        @Override
+        public void avviaSuono(Telefono.Fermata fermata) throws Exception {
+            chiamate.incrementa();
+            prova("avvia-suono");
+            Runnable h = primaDelSuono;
+            if (h != null) h.run();
+            if (fermata.richiesta()) throw new IllegalStateException("fermata");
+            registro.add("avvia suono");
+            avviiSuono.incrementa();
+            suonoAttivo = true;
+        }
+
+        @Override
+        public void fermaSuono() {
+            chiamate.incrementa();
+            registro.add("ferma suono");
+            suonoAttivo = false;
+            try {
+                prova("ferma-suono");
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        }
+
+        @Override
+        public boolean nonDisturbareManualeSenzaScadenza() throws Exception {
+            chiamate.incrementa();
+            prova("manuale-dnd");
+            return manuale;
+        }
+
+        @Override
+        public boolean haComandoNonDisturbare() {
+            chiamate.incrementa();
+            return dnd;
+        }
+
+        @Override
+        public boolean haTorcia() {
+            chiamate.incrementa();
+            return haTorcia;
+        }
+
+        @Override
+        public boolean haComandiRipristino() {
+            chiamate.incrementa();
+            return ripristino;
+        }
+    }
+
+    private static final class AtomicCount {
+        private int n;
+
+        synchronized void incrementa() {
+            n++;
+        }
+
+        synchronized int valore() {
+            return n;
+        }
+    }
+
+    /** Il guardiano finto: scrive nello stesso registro del telefono. */
+    private static final class GuardianoFinto implements Guardiano {
+        final List<String> registro;
+        final Map<String, String> voci = Collections.synchronizedMap(new LinkedHashMap<String, String>());
+        final Map<String, Integer> ordini = Collections.synchronizedMap(new LinkedHashMap<String, Integer>());
+        volatile String rifiuta;
+        volatile String fermaDopo; // nome del ripristino dopo il quale arriva lo stop
+        volatile Runnable ferma;
+
+        GuardianoFinto(List<String> registro) {
+            this.registro = registro;
+        }
+
+        @Override
+        public boolean imposta(String nome, int ordine, String comando) {
+            if (nome.equals(rifiuta)) {
+                registro.add("rifiutato " + nome);
+                return false;
+            }
+            registro.add("imposta " + nome);
+            voci.put(nome, comando);
+            ordini.put(nome, ordine);
+            if (nome.equals(fermaDopo) && ferma != null) ferma.run();
+            return true;
+        }
+
+        @Override
+        public void togli(String nome) {
+            registro.add("togli " + nome);
+            voci.remove(nome);
+            ordini.remove(nome);
+        }
+    }
+
+    private static int indice(List<String> r, String voce) {
+        return r.indexOf(voce);
+    }
+
+    private static boolean prima(List<String> r, String a, String b) {
+        int ia = indice(r, a);
+        int ib = indice(r, b);
+        return ia >= 0 && ib >= 0 && ia < ib;
+    }
+
+    private static boolean aspetta(CountDownLatch l) throws InterruptedException {
+        return l.await(10, TimeUnit.SECONDS);
+    }
+
+    /** Una Trova di prova: `fine` si abbassa a ogni fine di sessione. */
+    private static final class Banco {
+        final Finto t = new Finto();
+        final GuardianoFinto g = new GuardianoFinto(t.registro);
+        volatile CountDownLatch fine = new CountDownLatch(1);
+        final Trova trova;
+
+        Banco(int tentativi) {
+            trova = new Trova(t, g, new Runnable() {
+                @Override
+                public void run() {
+                    fine.countDown();
+                }
+            }, tentativi, 1, 10000);
+        }
+    }
+
+    private static boolean comeInizio(Finto t) {
+        return t.modo == 1 && t.filtro == 2 && t.volume == 3;
+    }
+
+    // ---- Trova ----
+
+    private static void proveTrova() throws Exception {
+        // riuscito
+        Banco b = new Banco(3);
+        b.trova.avvia(60000);
+        controlla(b.t.modo == 0 && b.t.filtro == 1 && b.t.volume == 15 && b.t.suonoAttivo && b.trova.inCorso(),
+            "trova: valori cambiati, suono acceso, in corso");
+        controlla(prima(b.t.registro, "imposta trova-non-disturbare", "scrivi filtro 1")
+            && prima(b.t.registro, "imposta trova-modo", "scrivi modo 0")
+            && prima(b.t.registro, "imposta trova-volume", "scrivi volume 15")
+            && prima(b.t.registro, "scrivi volume 15", "avvia suono"),
+            "trova: il ripristino nel guardiano PRIMA di ogni modifica");
+        controlla(b.g.ordini.get("trova-volume") == 420 && b.g.ordini.get("trova-modo") == 421
+            && b.g.ordini.get("trova-non-disturbare") == 422, "trova: ordini del guardiano 420/421/422");
+        controlla(b.g.voci.get("trova-volume").equals(ComandiShell.ripristinaVolume(3, 15))
+            && b.g.voci.get("trova-modo").equals(ComandiShell.ripristinaModo(1, 0))
+            && b.g.voci.get("trova-non-disturbare").equals(ComandiShell.ripristinaNonDisturbare(2)),
+            "trova: i comandi del guardiano rimettono i valori dell'utente");
+        b.trova.ferma();
+        controlla(comeInizio(b.t) && !b.t.suonoAttivo && !b.trova.inCorso(), "trova: fermato, valori dell'utente rimessi");
+        controlla(b.g.voci.isEmpty(), "trova: guardiano vuoto a fine");
+        controlla(prima(b.t.registro, "ferma suono", "scrivi volume 3") && prima(b.t.registro, "scrivi volume 3", "togli trova-volume")
+            && prima(b.t.registro, "scrivi modo 1", "togli trova-modo")
+            && prima(b.t.registro, "scrivi filtro 2", "togli trova-non-disturbare"),
+            "trova: ripristini tolti SOLO dopo aver rimesso i valori; suono fermato prima");
+        controlla(prima(b.t.registro, "scrivi volume 3", "scrivi modo 1") && prima(b.t.registro, "scrivi modo 1", "scrivi filtro 2"),
+            "trova: si rimette prima il volume, poi il modo, poi non disturbare");
+        controlla(aspetta(b.fine), "trova: avviso di fine");
+        b.trova.ferma();
+        controlla(true, "trova: ferma a vuoto non fa nulla");
+
+        // niente da cambiare
+        b = new Banco(3);
+        b.t.modo = 0;
+        b.t.filtro = 1;
+        b.t.volume = 15;
+        b.trova.avvia(60000);
+        controlla(b.g.voci.isEmpty() && b.t.suonoAttivo && !b.t.registro.contains("imposta trova-modo"),
+            "trova: valori gia' a posto, nessun ripristino registrato");
+        b.trova.ferma();
+
+        // guardiano rifiuta il primo
+        b = new Banco(3);
+        b.g.rifiuta = "trova-non-disturbare";
+        boolean lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IllegalStateException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.t.registro.indexOf("avvia suono") < 0
+            && !b.t.registro.contains("scrivi filtro 1") && !b.t.registro.contains("scrivi modo 0")
+            && !b.t.registro.contains("scrivi volume 15"),
+            "trova: guardiano che torna false sul primo, nessuna modifica");
+
+        // guardiano rifiuta il terzo: annulla le prime due
+        b = new Banco(3);
+        b.g.rifiuta = "trova-volume";
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IllegalStateException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && !b.t.registro.contains("scrivi volume 15") && b.g.voci.isEmpty()
+            && !b.trova.inCorso() && b.t.avviiSuono.valore() == 0,
+            "trova: guardiano rifiuta il volume: niente volume, modo e non disturbare annullati, guardiano vuoto");
+
+        // fallimento a meta'
+        b = new Banco(3);
+        b.t.rompi("scrivi-volume", 0, 1, new IOException("finto"));
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IOException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.g.voci.isEmpty() && b.t.avviiSuono.valore() == 0,
+            "trova: la scrittura del volume fallisce: modo e non disturbare gia' cambiati tornano com'erano");
+        b.trova.avvia(60000);
+        controlla(b.trova.inCorso(), "trova: dopo un errore si puo' riprovare subito");
+        b.trova.ferma();
+        controlla(comeInizio(b.t), "trova: riprovato e fermato, tutto com'era");
+
+        // Error (thread che muore) a meta'
+        b = new Banco(3);
+        b.t.rompi("scrivi-modo", 0, 1, new OutOfMemoryError("finto"));
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IllegalStateException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.g.voci.isEmpty(), "trova: Error a meta' della preparazione, telefono com'era");
+
+        // suono che non parte
+        b = new Banco(3);
+        b.t.rompi("avvia-suono", 0, 1, new IOException("nessuna suoneria"));
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IOException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.g.voci.isEmpty() && !b.t.suonoAttivo,
+            "trova: il suono non parte, valori rimessi");
+
+        // il telefono rifiuta: NonPermesso arriva a chi chiama
+        b = new Banco(3);
+        b.t.rompi("scrivi-filtro", 0, 1, new Telefono.NonPermesso("rifiutato"));
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (Telefono.NonPermesso e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.g.voci.isEmpty(), "trova: comando rifiutato dal telefono, nessuna modifica rimasta");
+
+        // arresto automatico (limite di 30 ms: un segnale, non un'attesa)
+        b = new Banco(3);
+        b.trova.avvia(30);
+        controlla(aspetta(b.fine) && comeInizio(b.t) && !b.t.suonoAttivo && !b.trova.inCorso() && b.g.voci.isEmpty(),
+            "trova: arresto automatico al limite, valori rimessi");
+
+        // riavvio: riparte il limite, un solo suono
+        b = new Banco(3);
+        b.trova.avvia(60000);
+        b.trova.avvia(60000);
+        controlla(b.t.avviiSuono.valore() == 1, "trova: gia' in corso, riparte il limite senza un secondo suono");
+        b.trova.ferma();
+
+        // ripristino che fallisce e riesce al terzo tentativo
+        b = new Banco(5);
+        b.trova.avvia(60000);
+        b.t.rompi("scrivi-volume", 0, 2, new IOException("finto"));
+        b.trova.ferma();
+        controlla(comeInizio(b.t) && b.g.voci.isEmpty() && prima(b.t.registro, "scrivi volume 3", "togli trova-volume"),
+            "trova: ripristino che fallisce due volte e riesce al terzo, poi tolto dal guardiano");
+
+        // ripristino che non riesce mai: resta nel guardiano, gli altri si rimettono
+        b = new Banco(3);
+        b.trova.avvia(60000);
+        b.t.rompi("scrivi-volume", 0, 100, new IOException("finto"));
+        b.trova.ferma();
+        controlla(b.t.modo == 1 && b.t.filtro == 2 && b.g.voci.containsKey("trova-volume") && b.g.voci.size() == 1
+            && !b.t.registro.contains("togli trova-volume"),
+            "trova: ripristino impossibile resta nel guardiano, gli altri rimessi e tolti");
+
+        // il valore dell'utente vince
+        b = new Banco(3);
+        b.trova.avvia(60000);
+        b.t.filtro = 3; // l'utente lo rimette da solo
+        b.t.volume = 7;
+        b.trova.ferma();
+        controlla(b.t.filtro == 3 && b.t.volume == 7 && b.t.modo == 1 && b.g.voci.isEmpty()
+            && !b.t.registro.contains("scrivi filtro 2") && !b.t.registro.contains("scrivi volume 3"),
+            "trova: se l'utente ha cambiato un valore durante lo squillo, il suo vince; ripristini comunque tolti");
+
+        // fermaSuono che lancia Error: i valori si rimettono lo stesso
+        b = new Banco(3);
+        b.trova.avvia(60000);
+        b.t.rompi("ferma-suono", 0, 1, new OutOfMemoryError("finto"));
+        b.trova.ferma();
+        controlla(comeInizio(b.t) && b.g.voci.isEmpty(), "trova: fermaSuono che muore, i valori si rimettono lo stesso");
+
+        // chiusura mentre squilla
+        b = new Banco(3);
+        b.trova.avvia(60000);
+        b.trova.chiudi();
+        boolean errore = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IllegalStateException e) {
+            errore = true;
+        }
+        controlla(comeInizio(b.t) && errore && b.g.voci.isEmpty(), "trova: chiusura ferma e rimette; dopo la chiusura avvia da' errore");
+    }
+
+
+    private static Thread avviaIn(final Trova t, final Throwable[] esito, final int i) {
+        Thread th = new Thread("prova-avvia-" + i) {
+            @Override
+            public void run() {
+                try {
+                    t.avvia(60000);
+                } catch (Throwable e) {
+                    esito[i] = e;
+                }
+            }
+        };
+        th.setDaemon(true);
+        th.start();
+        return th;
+    }
+
+    private static void proveTrovaNuove() throws Exception {
+        // regola di Android sul volume letto: partenza da silenzioso e da vibra con volume salvato diverso da 0
+        Banco b = new Banco(3);
+        b.t.modo = 2;
+        b.t.filtro = 1;
+        b.t.volume = 11;
+        b.trova.avvia(60000);
+        controlla(b.t.modo == 0 && b.t.volume == 15, "trova da SILENZIOSO: modo suona, volume al bersaglio");
+        b.trova.ferma();
+        controlla(b.t.modo == 2 && b.t.volume == 11 && b.g.voci.isEmpty(),
+            "trova da SILENZIOSO: modo e volume dell'utente (11, non 0) rimessi");
+        b = new Banco(3);
+        b.t.volume = 7;
+        b.t.filtro = 1;
+        b.trova.avvia(60000);
+        b.trova.ferma();
+        controlla(b.t.modo == 1 && b.t.volume == 7, "trova da VIBRA con volume 7: rimessi modo e volume 7 (non 0)");
+        b = new Banco(3);
+        b.t.modo = 2;
+        b.t.filtro = 1;
+        b.t.volume = 11;
+        b.trova.avvia(60000);
+        controlla(b.g.voci.get("trova-volume").equals(ComandiShell.ripristinaVolume(11, 15)),
+            "trova: il guardiano rimette il volume vero (11), non quello letto a suoneria silenziata (0)");
+        b.trova.ferma();
+
+        // Non disturbare automatico o a tempo, o incerto: rifiuto, niente toccato
+        b = new Banco(3);
+        b.t.manuale = false;
+        boolean lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IllegalStateException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.t.registro.isEmpty() && b.t.avviiSuono.valore() == 0,
+            "trova: Non disturbare automatico/a tempo -> ERRORE, nessuna modifica, nessun guardiano");
+        b = new Banco(3);
+        b.t.rompi("manuale-dnd", 0, 1, new IOException("illeggibile"));
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IOException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.t.registro.isEmpty(), "trova: non so da dove viene il Non disturbare -> rifiuto, nulla toccato");
+        b = new Banco(3);
+        b.t.manuale = false;
+        b.t.filtro = 1; // spento: la regola non conta
+        b.trova.avvia(60000);
+        controlla(b.trova.inCorso(), "trova: Non disturbare spento, parte anche se la regola non e' leggibile");
+        b.trova.ferma();
+
+        // stop arrivato durante la preparazione: si annulla e non si suona
+        b = new Banco(3);
+        final Banco bb = b;
+        b.t.dopoModo = new Runnable() {
+            @Override
+            public void run() {
+                bb.trova.ferma();
+            }
+        };
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IllegalStateException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.t.avviiSuono.valore() == 0 && b.g.voci.isEmpty()
+            && !b.t.registro.contains("scrivi volume 15"),
+            "trova: stop durante la preparazione -> niente altre scritture, niente suono, tutto annullato");
+
+        // stop arrivato tra la registrazione nel guardiano e la scrittura: quella scrittura non si fa
+        b = new Banco(3);
+        final Banco b3 = b;
+        b.g.fermaDopo = "trova-volume";
+        b.g.ferma = new Runnable() {
+            @Override
+            public void run() {
+                b3.trova.ferma();
+            }
+        };
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IllegalStateException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && !b.t.registro.contains("scrivi volume 15") && b.t.avviiSuono.valore() == 0 && b.g.voci.isEmpty(),
+            "trova: stop tra guardiano e scrittura -> la scrittura non si fa, tutto annullato");
+        // stop arrivato dopo l'ultima scrittura e prima del suono: niente suono
+        b = new Banco(3);
+        final Banco b4 = b;
+        b.t.dopoVolume = new Runnable() {
+            @Override
+            public void run() {
+                b4.trova.ferma();
+            }
+        };
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IllegalStateException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.t.avviiSuono.valore() == 0 && b.g.voci.isEmpty(),
+            "trova: stop prima del suono -> niente suono, tutto annullato");
+
+        // stop arrivato dentro avviaSuono, prima di play(): nessun suono
+        b = new Banco(3);
+        final Banco b5 = b;
+        b.t.primaDelSuono = new Runnable() {
+            @Override
+            public void run() {
+                b5.trova.ferma();
+            }
+        };
+        lancia = false;
+        try {
+            b.trova.avvia(60000);
+        } catch (IllegalStateException e) {
+            lancia = true;
+        }
+        controlla(lancia && comeInizio(b.t) && b.t.avviiSuono.valore() == 0 && !b.t.suonoAttivo && b.g.voci.isEmpty(),
+            "trova: stop dentro avviaSuono prima di play -> nessun suono, tutto annullato");
+
+        // secondo avvio mentre il primo e' ancora in preparazione: aspetta e riporta lo stesso esito
+        b = new Banco(3);
+        b.t.dentroModo = new CountDownLatch(1);
+        b.t.rilascioModo = new CountDownLatch(1);
+        Throwable[] esito = new Throwable[2];
+        Thread a1 = avviaIn(b.trova, esito, 0);
+        controlla(b.t.dentroModo.await(10, TimeUnit.SECONDS), "avvio: il primo e' in preparazione");
+        Thread a2 = avviaIn(b.trova, esito, 1);
+        long scad = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (b.trova.attese() < 2 && System.nanoTime() < scad) Thread.yield();
+        controlla(b.trova.attese() == 2, "avvio: il secondo e' in attesa dell'esito del primo");
+        b.t.rompi("avvia-suono", 0, 100, new IOException("nessun suono"));
+        b.t.rilascioModo.countDown();
+        a1.join(10000);
+        a2.join(10000);
+        controlla(esito[0] instanceof IOException && esito[1] instanceof IOException && comeInizio(b.t),
+            "avvio: il secondo riporta l'errore del primo, telefono com'era");
+        controlla(b.trova.attese() == 0, "avvio: finiti gli avvii, nessuno resta in attesa");
+        b = new Banco(3);
+        b.t.dentroModo = new CountDownLatch(1);
+        b.t.rilascioModo = new CountDownLatch(1);
+        esito = new Throwable[2];
+        a1 = avviaIn(b.trova, esito, 0);
+        b.t.dentroModo.await(10, TimeUnit.SECONDS);
+        a2 = avviaIn(b.trova, esito, 1);
+        scad = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (b.trova.attese() < 2 && System.nanoTime() < scad) Thread.yield();
+        b.t.rilascioModo.countDown();
+        a1.join(10000);
+        a2.join(10000);
+        controlla(esito[0] == null && esito[1] == null && b.trova.inCorso() && b.t.avviiSuono.valore() == 1,
+            "avvio: i due avvii riescono insieme con un solo suono");
+        b.trova.ferma();
+        controlla(comeInizio(b.t), "avvio: fermato, tutto com'era");
+    }
+
+    // ---- AnalisiNonDisturbare ----
+
+    private static void proveAnalisi() {
+        // formato letto sul telefono di prova a Non disturbare spento e ACCESO A MANO: booleani maiuscoli,
+        // conditionId vuoto per il manuale senza scadenza, regola manuale accesa con enabled=TRUE e state=STATE_TRUE,
+        // regola automatica DISATTIVATA con state=STATE_TRUE, e in fondo la CRONOLOGIA dei cambi (regole passate
+        // spente e accese)
+        String testa = "mInterruptionFilter=2\nmZenMode=ZEN_MODE_IMPORTANT_INTERRUPTIONS\n";
+        String config = "mConfig=ZenModeConfig[user=0,allowAlarms=true,automaticRules={\n"
+            + "ZenRule[id=REGOLA_NOTTE,state=STATE_TRUE,enabled=FALSE,conditionOverride=OVERRIDE_NONE,name=Notte,"
+            + "zenMode=ZEN_MODE_IMPORTANT_INTERRUPTIONS,conditionId=condition://android/schedule?days=1.2,pkg=android]\n"
+            + "},\n";
+        String manuale = "manualRule=ZenRule[id=MANUAL_RULE,state=STATE_TRUE,enabled=TRUE,conditionOverride=OVERRIDE_NONE,"
+            + "name=null,zenMode=ZEN_MODE_IMPORTANT_INTERRUPTIONS,conditionId=,pkg=android,zenPolicy=null],\n";
+        String fine = "mSuppressedEffects=0\n";
+        String passata = "Zen Log:\n"
+            + "manualRule=ZenRule[id=MANUAL_RULE,state=STATE_FALSE,enabled=TRUE,conditionOverride=OVERRIDE_NONE,name=null,zenMode=ZEN_MODE_OFF,conditionId=,pkg=android]\n"
+            + "ZenRule[id=REGOLA_NOTTE,state=STATE_FALSE,enabled=FALSE,zenMode=ZEN_MODE_OFF,conditionId=condition://android/schedule?days=1.2]\n"
+            + "manualRule=ZenRule[id=MANUAL_RULE,state=STATE_TRUE,enabled=TRUE,conditionOverride=OVERRIDE_NONE,name=null,zenMode=ZEN_MODE_IMPORTANT_INTERRUPTIONS,conditionId=condition://android/countdown/1,pkg=android]\n"
+            + "manualRule=ZenRule[id=MANUAL_RULE,state=STATE_FALSE,enabled=TRUE,conditionOverride=OVERRIDE_NONE,name=null,zenMode=ZEN_MODE_OFF,conditionId=,pkg=android]\n";
+        String ok = testa + config + manuale + fine;
+        String intero = ok + "mConfigs[u=0]=" + config.replace("mConfig=", "") + manuale + fine + passata;
+        controlla(AnalisiNonDisturbare.manualeSenzaScadenza(ok), "analisi: manuale acceso senza scadenza (regola notte disattivata con STATE_TRUE) -> si");
+        controlla(AnalisiNonDisturbare.manualeSenzaScadenza(intero),
+            "analisi: con blocco ripetuto e CRONOLOGIA di regole passate spente/accese/a tempo -> conta solo mConfig -> si");
+        controlla(AnalisiNonDisturbare.manualeSenzaScadenza(ok.replace("enabled=TRUE", "enabled=true")),
+            "analisi: maiuscole e minuscole non contano");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(intero.replace("conditionId=,pkg=android,zenPolicy", "conditionId=condition://android/countdown/1700000000000,pkg=android,zenPolicy")),
+            "analisi: conto alla rovescia nella configurazione corrente -> scadenza -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(ok.replace("conditionId=,", "conditionId=altro,")),
+            "analisi: conditionId non vuoto di altro tipo -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(intero.replace("enabled=FALSE", "enabled=TRUE")),
+            "analisi: regola automatica attiva (enabled=TRUE e STATE_TRUE) -> no");
+        controlla(AnalisiNonDisturbare.manualeSenzaScadenza(intero.replace("enabled=FALSE", "enabled=TRUE").replace("REGOLA_NOTTE,state=STATE_TRUE", "REGOLA_NOTTE,state=STATE_FALSE")),
+            "analisi: regola automatica abilitata ma non vera -> si");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(intero.replace("mZenMode=ZEN_MODE_IMPORTANT_INTERRUPTIONS", "mZenMode=ZEN_MODE_OFF")),
+            "analisi: Non disturbare spento in testa -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(ok.replace("name=null,zenMode=ZEN_MODE_IMPORTANT_INTERRUPTIONS,conditionId=,pkg=android,zenPolicy", "name=null,zenMode=ZEN_MODE_OFF,conditionId=,pkg=android,zenPolicy")),
+            "analisi: regola manuale corrente con zenMode spento -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(ok.replace("MANUAL_RULE,state=STATE_TRUE,enabled=TRUE", "MANUAL_RULE,state=STATE_TRUE,enabled=FALSE")),
+            "analisi: regola manuale non abilitata -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(ok.replace(",enabled=TRUE,conditionOverride=OVERRIDE_NONE,name=null", ",xenabled=TRUE,conditionOverride=OVERRIDE_NONE,name=null")),
+            "analisi: «enabled» e' la fine di un altro nome di campo -> non e' il campo vero -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(ok.substring(0, ok.indexOf("conditionId=,"))),
+            "analisi: testo troncato dentro la regola manuale (niente fine del blocco) -> non so = no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(ok.replace("MANUAL_RULE,state=STATE_TRUE", "MANUAL_RULE,state=STATE_FALSE")
+            .replace("REGOLA_NOTTE,state=STATE_TRUE,enabled=FALSE", "REGOLA_NOTTE,stato=ATTIVA,abilitata=si")),
+            "analisi: manuale inattiva (state=STATE_FALSE), Non disturbare acceso da regola automatica in formato non riconosciuto -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(ok.replace("MANUAL_RULE,state=STATE_TRUE", "MANUAL_RULE,xstate=STATE_TRUE")),
+            "analisi: «state=STATE_TRUE» e' la fine di un altro nome di campo -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(testa + config + fine + passata),
+            "analisi: nessuna regola manuale nella configurazione corrente (solo nella cronologia) -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(testa + config + manuale + manuale + fine),
+            "analisi: due regole manuali nel blocco -> non so = no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(testa + config.replace("mConfig=", "mConfigs[u=0]=") + manuale + fine),
+            "analisi: solo mConfigs[u=0], nessun mConfig -> no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(testa + config + manuale),
+            "analisi: nessun delimitatore di fine -> non so = no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza("<zen mode=\"1\"><manual/></zen>"), "analisi: altro formato -> non so = no");
+        controlla(!AnalisiNonDisturbare.manualeSenzaScadenza(null) && !AnalisiNonDisturbare.manualeSenzaScadenza(""), "analisi: nessun testo -> no");
+    }
+
+    // ---- ComandiShell, eseguiti davvero con un `cmd` finto ----
+
+    private static List<String> esegui(String comando, String modo, String zen, String vol) throws Exception {
+        String prelude = "cmd() { case \"$*\" in "
+            + "\"settings get global mode_ringer\") echo $FINTO_MODO;; "
+            + "\"settings get global zen_mode\") echo $FINTO_ZEN;; "
+            + "\"media_session volume --stream 2 --get\") echo \"[V] volume is $FINTO_VOL in range [0..15]\";; "
+            + "*) echo \"cmd $*\";; esac; }; ";
+        ProcessBuilder pb = new ProcessBuilder("sh", "-c", prelude + comando);
+        pb.environment().put("FINTO_MODO", modo);
+        pb.environment().put("FINTO_ZEN", zen);
+        pb.environment().put("FINTO_VOL", vol);
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+        p.getOutputStream().close();
+        java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream(), "UTF-8"));
+        List<String> righe = new ArrayList<>();
+        String l;
+        while ((l = r.readLine()) != null) righe.add(l);
+        if (!p.waitFor(20, TimeUnit.SECONDS)) {
+            p.destroyForcibly();
+            righe.add("SCADUTO");
+        }
+        return righe;
+    }
+
+    private static void proveComandiShell() throws Exception {
+        String v = ComandiShell.ripristinaVolume(3, 15);
+        controlla(esegui(v, "2", "0", "15").equals(Arrays.asList("cmd media_session volume --stream 2 --set 3")),
+            "shell: volume ancora il nostro (15) -> rimesso");
+        controlla(esegui(v, "2", "0", "5").isEmpty(), "shell: volume cambiato dall'utente -> non si tocca");
+        controlla(esegui(ComandiShell.ripristinaVolume(3, 1), "2", "0", "15").isEmpty(),
+            "shell: il volume 1 non si confonde con 15");
+        String m = ComandiShell.ripristinaModo(2, 0);
+        controlla(esegui(m, "2", "0", "0").equals(Arrays.asList("cmd audio set-ringer-mode SILENT")),
+            "shell: modo ancora «suona» -> rimesso a silenzioso");
+        controlla(esegui(m, "1", "0", "0").isEmpty(), "shell: modo cambiato dall'utente -> non si tocca");
+        String d = ComandiShell.ripristinaNonDisturbare(4);
+        controlla(esegui(d, "2", "0", "0").equals(Arrays.asList("cmd notification set_dnd alarms")),
+            "shell: non disturbare ancora spento -> rimesso al filtro dell'utente");
+        controlla(esegui(d, "2", "1", "0").isEmpty(), "shell: non disturbare riacceso dall'utente -> non si tocca");
+        boolean lancia = false;
+        try {
+            ComandiShell.ripristinaNonDisturbare(1);
+        } catch (IllegalArgumentException e) {
+            lancia = true;
+        }
+        controlla(lancia, "shell: nessun ripristino per «era gia' spento»");
+        controlla(!v.contains("'") && !v.contains("\"") && !m.contains("'") && !m.contains("\"") && !d.contains("\"") && !d.contains("'"),
+            "shell: niente apici nelle righe del guardiano");
+    }
+
+    // ---- Controlli ----
+
+    private static final class Evento {
+        final int tipo;
+        final byte[] corpo;
+
+        Evento(int tipo, byte[] corpo) {
+            this.tipo = tipo;
+            this.corpo = corpo;
+        }
+    }
+
+    private static final class Ambiente {
+        final Finto t = new Finto();
+        final GuardianoFinto g = new GuardianoFinto(t.registro);
+        final LinkedBlockingQueue<Evento> eventi = new LinkedBlockingQueue<>();
+        final Controlli c;
+
+        Ambiente(long periodoMs) {
+            c = new Controlli(t, g, new Registro.Eventi() {
+                @Override
+                public void manda(int tipo, byte[] corpo) {
+                    eventi.add(new Evento(tipo, corpo));
+                }
+            }, periodoMs, 3, 1);
+        }
+
+        byte[] chiedi(int tipo, int... corpo) throws Exception {
+            byte[] b = new byte[corpo.length];
+            for (int i = 0; i < corpo.length; i++) b[i] = (byte) corpo[i];
+            return c.comando(tipo, new DataInputStream(new ByteArrayInputStream(b)));
+        }
+
+        /** true se il comando risponde con un errore (qualunque eccezione). */
+        boolean rifiuta(int tipo, int... corpo) throws Exception {
+            try {
+                chiedi(tipo, corpo);
+                return false;
+            } catch (Exception e) {
+                return true;
+            }
+        }
+
+        Evento prossimo() throws InterruptedException {
+            return eventi.poll(10, TimeUnit.SECONDS);
+        }
+    }
+
+    private static void proveControlli() throws Exception {
+        Controlli.TROVA_ABILITATO = true; // in produzione e' falso: qui si provano i comandi di «trova»
+        try {
+            proveControlliConTrova();
+        } finally {
+            Controlli.TROVA_ABILITATO = false;
+        }
+        proveTrovaSpento();
+    }
+
+    private static void proveTrovaSpento() throws Exception {
+        Ambiente a = new Ambiente(3600000);
+        byte[] s = a.chiedi(0x80);
+        controlla((s[4] & 8) == 0 && (s[4] & 7) == 7, "trova spento: bit «trova possibile» a 0, gli altri tre interruttori restano");
+        int prima = a.t.chiamate.valore();
+        controlla(a.rifiuta(0x84, 0, 30), "trova spento: TROVA_AVVIA risponde ERRORE");
+        controlla(a.t.chiamate.valore() == prima && a.t.registro.isEmpty() && a.g.voci.isEmpty() && a.t.avviiSuono.valore() == 0 && !a.t.suonoAttivo,
+            "trova spento: TROVA_AVVIA non chiama MAI il telefono finto (zero chiamate, zero scritture, zero guardiano, zero suono)");
+        controlla(!a.rifiuta(0x85) && a.t.chiamate.valore() == prima && a.t.registro.isEmpty(), "trova spento: TROVA_FERMA risponde OK senza fare nulla");
+        a.chiedi(0x81, 2);
+        controlla(a.t.modo == 2, "trova spento: la suoneria si cambia ancora (comando dell'utente)");
+        controlla((a.chiedi(0x80)[4] & 8) == 0, "trova spento: il bit resta a 0");
+        a.c.chiudi();
+    }
+
+    private static void proveControlliConTrova() throws Exception {
+        long ORA = 3600000; // controllo periodico spento: nelle prove si chiama controllaOra()
+        Ambiente a = new Ambiente(ORA);
+        controlla(a.c.notificatore() == null, "controlli: prima della prima CONTROLLI_STATO nessun controllo periodico");
+        byte[] s = a.chiedi(0x80);
+        controlla(Arrays.equals(s, new byte[] {1, 1, 0, 0, 15}), "stato: vibra, non disturbare acceso, torcia spenta, trova no, 4 comandi");
+        controlla(a.c.notificatore() != null, "controlli: dopo la prima CONTROLLI_STATO parte il controllo");
+
+        // comandi possibili
+        a = new Ambiente(ORA);
+        a.t.dnd = false;
+        s = a.chiedi(0x80);
+        controlla((s[4] & 2) == 0 && (s[4] & 8) == 0 && s[1] == (byte) 0xff, "stato: senza `set_dnd` niente non disturbare (0xff) e niente trova");
+        a = new Ambiente(ORA);
+        a.t.haTorcia = false;
+        s = a.chiedi(0x80);
+        controlla((s[4] & 4) == 0 && s[2] == (byte) 0xff && (s[4] & 8) != 0, "stato: senza torcia bit a 0 e valore 0xff, il resto resta");
+        a = new Ambiente(ORA);
+        a.t.ripristino = false;
+        s = a.chiedi(0x80);
+        controlla((s[4] & 8) == 0 && (s[4] & 7) == 7, "stato: senza comandi di ripristino niente trova, il resto resta");
+        a = new Ambiente(ORA);
+        a.t.rompi("leggi-modo", 0, 100, new IOException("finto"));
+        s = a.chiedi(0x80);
+        controlla(s[0] == (byte) 0xff && (s[4] & 1) == 0 && (s[4] & 8) == 0, "stato: suoneria illeggibile = 0xff, bit a 0 (e niente trova)");
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.t.rompi("leggi-torcia", 0, 100, new IOException("finto"));
+        s = a.chiedi(0x80);
+        controlla(s[2] == (byte) 0xff && (s[4] & 4) != 0, "stato: torcia non leggibile ora = 0xff, mai un valore inventato");
+
+        // suoneria
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.chiedi(0x81, 2);
+        controlla(a.t.modo == 2 && a.g.voci.isEmpty() && !a.t.registro.contains("imposta trova-modo"),
+            "suoneria: impostata, effetto permanente, nessun ripristino nel guardiano");
+        controlla(a.rifiuta(0x81, 3), "suoneria: modo 3 non valido");
+        a.t.ignoraModo = true;
+        controlla(a.rifiuta(0x81, 0) && a.t.modo == 2, "suoneria: se il telefono non applica il valore, ERRORE");
+        a.t.ignoraModo = false;
+        a.t.rompi("scrivi-modo", 0, 1, new Telefono.NonPermesso("rifiutato"));
+        controlla(a.rifiuta(0x81, 0), "suoneria: comando rifiutato dal telefono -> ERRORE");
+        s = a.chiedi(0x80);
+        controlla((s[4] & 1) == 0 && s[0] == (byte) 0xff && (s[4] & 8) == 0, "suoneria: dopo il rifiuto bit a 0, valore 0xff, niente trova");
+        controlla(a.rifiuta(0x81, 0) && a.t.modo == 2, "suoneria: dopo il rifiuto il comando non si prova piu'");
+
+        // non disturbare
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.chiedi(0x82, 0);
+        controlla(a.t.filtro == 1 && a.g.voci.isEmpty(), "non disturbare: spento (filtro tutto), nessun ripristino");
+        a.chiedi(0x82, 1);
+        controlla(a.t.filtro == 2, "non disturbare: acceso = solo priorita'");
+        controlla(a.rifiuta(0x82, 2), "non disturbare: valore 2 non valido");
+        a.t.rompi("scrivi-filtro", 0, 1, new Telefono.NonPermesso("rifiutato"));
+        controlla(a.rifiuta(0x82, 0) && (a.chiedi(0x80)[4] & 2) == 0, "non disturbare: rifiutato -> ERRORE e bit a 0");
+
+        // torcia
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.chiedi(0x83, 1);
+        controlla(a.t.torcia == 1 && a.chiedi(0x80)[2] == 1, "torcia: accesa e letta");
+        a.chiedi(0x83, 0);
+        a.chiedi(0x83, 0); // chiusura con la torcia gia' spenta: nessuna scrittura in piu'
+        a.c.chiudi();
+        controlla(a.t.torcia == 0 && Collections.frequency(a.t.registro, "scrivi torcia 0") == 2, "torcia: spenta dal PC, la chiusura non la tocca");
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.chiedi(0x83, 1);
+        a.c.chiudi();
+        controlla(a.t.torcia == 0, "torcia: accesa da noi, la chiusura la spegne");
+        controlla(a.rifiuta(0x83, 1), "torcia: dopo la chiusura i comandi danno errore");
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.t.rompi("scrivi-torcia", 0, 1, new Telefono.NonPermesso("rifiutato"));
+        controlla(a.rifiuta(0x83, 1) && (a.chiedi(0x80)[4] & 4) == 0, "torcia: rifiutata -> ERRORE e bit a 0");
+        a.c.chiudi();
+        controlla(Collections.frequency(a.t.registro, "scrivi torcia 0") == 0, "torcia: rifiutata, la chiusura non ha nulla da spegnere");
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.chiedi(0x83, 1);
+        a.t.rompi("scrivi-torcia", 0, 1, new IOException("finto"));
+        a.c.chiudi();
+        controlla(a.t.torcia == 1, "torcia: se spegnerla alla chiusura fallisce non si finge nulla (resta accesa, registrato in log)");
+
+        a = new Ambiente(ORA);
+        a.t.torcia = 1; // gia' accesa dall'utente
+        a.chiedi(0x80);
+        a.chiedi(0x83, 1);
+        a.c.chiudi();
+        controlla(a.t.torcia == 1 && !a.t.registro.contains("scrivi torcia 0"), "torcia: gia' accesa dall'utente, la chiusura la lascia com'e'");
+
+        // trova tramite comandi
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.chiedi(0x84, 0, 30);
+        controlla(a.t.suonoAttivo && a.chiedi(0x80)[3] == 1, "trova: avviato, stato «in corso»");
+        a.chiedi(0x85);
+        controlla(comeInizio(a.t) && a.chiedi(0x80)[3] == 0 && a.g.voci.isEmpty(), "trova: fermato dal PC, tutto com'era");
+        a.chiedi(0x85);
+        controlla(Controlli.limitaSecondi(1) == 5 && Controlli.limitaSecondi(5) == 5 && Controlli.limitaSecondi(60) == 60
+            && Controlli.limitaSecondi(500) == 120 && Controlli.limitaSecondi(65535) == 120, "trova: durata limitata a 5-120 s");
+        a.g.rifiuta = "trova-modo";
+        controlla(a.rifiuta(0x84, 0, 30) && comeInizio(a.t) && !a.t.suonoAttivo, "trova: guardiano false -> ERRORE e telefono com'era");
+        a.g.rifiuta = null;
+        a.t.rompi("scrivi-volume", 0, 1, new Telefono.NonPermesso("rifiutato"));
+        controlla(a.rifiuta(0x84, 0, 30) && (a.chiedi(0x80)[4] & 8) == 0, "trova: telefono rifiuta -> ERRORE e bit 3 a 0");
+        controlla(a.rifiuta(0x84, 0, 30) && comeInizio(a.t), "trova: non disponibile non si riprova");
+        a = new Ambiente(ORA);
+        a.t.manuale = false;
+        a.chiedi(0x80);
+        controlla(a.rifiuta(0x84, 0, 30) && comeInizio(a.t) && a.t.registro.isEmpty() && (a.chiedi(0x80)[4] & 8) != 0,
+            "trova: Non disturbare automatico -> ERRORE, nulla toccato, il comando resta possibile");
+        a = new Ambiente(ORA);
+        a.t.ripristino = false;
+        a.chiedi(0x80);
+        controlla(a.rifiuta(0x84, 0, 30) && !a.t.suonoAttivo, "trova: senza i comandi di ripristino non parte");
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.chiedi(0x84, 0, 30);
+        a.c.chiudi();
+        controlla(comeInizio(a.t) && a.g.voci.isEmpty(), "trova: la chiusura del servizio ferma lo squillo e rimette i valori");
+        controlla(a.rifiuta(0x7f), "tipo sconosciuto -> ERRORE");
+        controlla(a.rifiuta(0x81), "corpo troppo corto -> ERRORE");
+
+        // eventi
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.c.controllaOra();
+        controlla(a.eventi.isEmpty(), "eventi: nessun cambio, nessun evento");
+        a.t.modo = 0; // cambiato a mano sul telefono
+        a.c.controllaOra();
+        Evento e = a.prossimo();
+        controlla(e != null && e.tipo == 0x8e && Arrays.equals(e.corpo, new byte[] {0, 1, 0, 0, 15}),
+            "eventi: cambio fatto a mano sul telefono -> 0x8e con il nuovo stato");
+        a.c.controllaOra();
+        controlla(a.eventi.isEmpty(), "eventi: lo stesso stato non si rimanda");
+        a.t.torcia = 1;
+        a.c.controllaOra();
+        e = a.prossimo();
+        controlla(e != null && e.corpo[2] == 1, "eventi: cambio della torcia");
+
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.chiedi(0x81, 2);
+        e = a.prossimo(); // il thread degli avvisi si sveglia da solo dopo un nostro comando
+        controlla(e != null && e.corpo[0] == 2, "eventi: dopo un comando nostro l'avviso parte subito (senza aspettare il periodo)");
+
+        a = new Ambiente(ORA);
+        a.chiedi(0x80);
+        a.chiedi(0x84, 0, 30);
+        e = a.prossimo();
+        controlla(e != null && e.corpo[3] == 1, "eventi: avvio di trova");
+        a.chiedi(0x85);
+        e = a.prossimo();
+        while (e != null && e.corpo[3] == 1) e = a.prossimo();
+        controlla(e != null && e.corpo[3] == 0 && e.corpo[0] == 1, "eventi: fine di trova con i valori dell'utente");
+
+        // controllo periodico vero (periodo breve): un segnale, non un'attesa
+        a = new Ambiente(5);
+        a.chiedi(0x80);
+        a.t.modo = 2;
+        e = a.prossimo();
+        controlla(e != null && e.corpo[0] == 2, "eventi: il controllo periodico si accorge da solo del cambio");
+        // un errore imprevisto nella lettura non uccide il thread
+        a.t.rompi("leggi-modo", 0, 3, new IllegalStateException("finto"));
+        a.t.modo = 0;
+        e = a.prossimo();
+        while (e != null && e.corpo[0] != 0) e = a.prossimo();
+        controlla(e != null && a.c.notificatore().isAlive(), "eventi: una lettura che lancia non ferma il controllo");
+        Thread n = a.c.notificatore();
+        a.c.chiudi();
+        controlla(!n.isAlive(), "chiusura: il thread degli avvisi e' terminato");
+        a.eventi.clear();
+        a.c.controllaOra();
+        controlla(a.eventi.isEmpty(), "chiusura: dopo il ritorno nessun evento");
+        a.c.chiudi();
+        controlla(true, "chiusura: seconda chiusura innocua");
+    }
+
+    public static void main(String[] args) throws Exception {
+        proveComandiShell();
+        proveTrova();
+        proveTrovaNuove();
+        proveAnalisi();
+        proveControlli();
+        if (falliti > 0) {
+            System.out.println(falliti + " prove fallite");
+            System.exit(1);
+        }
+        System.out.println("tutte le prove su JVM sono passate");
+    }
+}

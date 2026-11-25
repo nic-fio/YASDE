@@ -1,0 +1,53 @@
+package it.yasde;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+/** Prova su JVM del lettore di eventi evdev (parte pura): strutture a 64 e a 32 bit costruite a mano. */
+public final class ProvaEventi {
+    private static int falliti;
+
+    private ProvaEventi() {}
+
+    private static byte[] eventi(int dim, int... tcv) {
+        ByteBuffer b = ByteBuffer.allocate(dim * (tcv.length / 3)).order(ByteOrder.LITTLE_ENDIAN);
+        for (int i = 0; i < tcv.length; i += 3) {
+            b.position(i / 3 * dim + dim - 8);
+            b.putShort((short) tcv[i]).putShort((short) tcv[i + 1]).putInt(tcv[i + 2]);
+        }
+        return b.array();
+    }
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    public static void main(String[] args) {
+        for (int dim : new int[] {24, 16}) {
+            String d = " (" + dim + " byte)";
+            byte[] giu = eventi(dim, 3, 0x39, 5, 3, 0x35, 100, 0, 0, 0);
+            controlla(EventiEvdev.attivita(giu, giu.length, dim), "dito che tocca (tracking id >= 0)" + d);
+            byte[] su = eventi(dim, 3, 0x39, -1, 0, 0, 0);
+            controlla(!EventiEvdev.attivita(su, su.length, dim), "dito che si alza (tracking id -1) non conta" + d);
+            byte[] tasto = eventi(dim, 1, 115, 1, 0, 0, 0);
+            controlla(EventiEvdev.attivita(tasto, tasto.length, dim), "tasto premuto" + d);
+            byte[] rilascio = eventi(dim, 1, 115, 0, 0, 0, 0);
+            controlla(!EventiEvdev.attivita(rilascio, rilascio.length, dim), "tasto rilasciato non conta" + d);
+            byte[] ripetuto = eventi(dim, 1, 115, 2, 0, 0, 0);
+            controlla(!EventiEvdev.attivita(ripetuto, ripetuto.length, dim), "ripetizione del tasto non conta" + d);
+            byte[] coordinate = eventi(dim, 3, 0x35, 300, 3, 0x36, 700, 0, 0, 0);
+            controlla(!EventiEvdev.attivita(coordinate, coordinate.length, dim), "solo coordinate non contano" + d);
+            byte[] sensore = eventi(dim, 2, 3, 40, 0, 0, 0);
+            controlla(!EventiEvdev.attivita(sensore, sensore.length, dim), "evento relativo (sensore) non conta" + d);
+            byte[] misto = eventi(dim, 0, 0, 0, 1, 114, 1, 0, 0, 0);
+            controlla(EventiEvdev.attivita(misto, misto.length, dim), "tasto dopo altri eventi nello stesso blocco" + d);
+            controlla(!EventiEvdev.attivita(tasto, dim - 1, dim), "coda incompleta ignorata" + d);
+            controlla(!EventiEvdev.attivita(tasto, 0, dim), "nessun byte" + d);
+        }
+        if (falliti > 0) {
+            System.out.println("falliti: " + falliti);
+            System.exit(1);
+        }
+    }
+}

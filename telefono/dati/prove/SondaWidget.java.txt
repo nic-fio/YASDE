@@ -1,0 +1,230 @@
+package it.yasde;
+
+import android.content.Context;
+import android.content.ContextWrapper;
+import android.database.Cursor;
+import android.media.session.MediaController;
+import android.net.Uri;
+import android.os.Looper;
+import android.os.StatFs;
+import android.os.UserHandle;
+import android.os.storage.StorageManager;
+import android.provider.CalendarContract;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+
+/**
+ * SONDA DELLA FASE 0, solo per misurare (non fa parte del jar di produzione): quali sorgenti dei widget
+ * si leggono da un processo app_process uid 2000. Stampa SOLO esiti, conteggi e nomi di colonne: mai
+ * titoli, luoghi, nomi o date dell'utente. Non avvia nulla sul telefono e non cambia impostazioni.
+ */
+public final class SondaWidget {
+    private static final String SHELL = "com.android.shell";
+    private static Context ctx;
+
+    private static final class ContestoShell extends ContextWrapper {
+        ContestoShell(Context b) {
+            super(b);
+        }
+
+        @Override
+        public String getPackageName() {
+            return SHELL;
+        }
+
+        public String getOpPackageName() {
+            return SHELL;
+        }
+
+        @Override
+        public String getAttributionTag() {
+            return null;
+        }
+    }
+
+    private static void esito(String nome, String testo) {
+        System.out.println(nome + ": " + testo);
+    }
+
+    private static String errore(Throwable t) {
+        Throwable c = t;
+        while (c.getCause() != null && c != c.getCause()) c = c.getCause();
+        return "NO (" + c.getClass().getSimpleName() + ": " + c.getMessage() + ")";
+    }
+
+    public static void main(String[] args) throws Exception {
+        final CountDownLatch pronto = new CountDownLatch(1);
+        final Looper[] lp = new Looper[1];
+        Thread t = new Thread("sonda-looper") {
+            @Override
+            public void run() {
+                Looper.prepare();
+                lp[0] = Looper.myLooper();
+                try {
+                    Class<?> at = Class.forName("android.app.ActivityThread");
+                    Object th = at.getMethod("currentActivityThread").invoke(null);
+                    if (th == null) th = at.getMethod("systemMain").invoke(null);
+                    ctx = new ContestoShell((Context) at.getMethod("getSystemContext").invoke(th));
+                } catch (Throwable e) {
+                    System.out.println("contesto: " + errore(e));
+                }
+                pronto.countDown();
+                Looper.loop();
+            }
+        };
+        t.setDaemon(true);
+        t.start();
+        pronto.await();
+        if (ctx == null) System.exit(1);
+        memoria();
+        calendario();
+        sessioni(lp[0]);
+        System.exit(0);
+    }
+
+    private static void memoria() {
+        long t0 = System.nanoTime();
+        try {
+            StatFs sf = new StatFs("/storage/emulated/0");
+            esito("StatFs /storage/emulated/0", "totale " + sf.getTotalBytes() / 1000000 + " MB, libero " + sf.getAvailableBytes() / 1000000 + " MB, " + (System.nanoTime() - t0) / 1000 + " us");
+        } catch (Throwable e) {
+            esito("StatFs /storage/emulated/0", errore(e));
+        }
+        try {
+            StatFs sf = new StatFs("/data");
+            esito("StatFs /data", "totale " + sf.getTotalBytes() / 1000000 + " MB, libero " + sf.getAvailableBytes() / 1000000 + " MB");
+        } catch (Throwable e) {
+            esito("StatFs /data", errore(e));
+        }
+        try {
+            Class<?> i = Class.forName("android.app.usage.IStorageStatsManager");
+            Class<?> sm = Class.forName("android.os.ServiceManager");
+            Object b = sm.getMethod("getService", String.class).invoke(null, "storagestats");
+            Object svc = Class.forName("android.app.usage.IStorageStatsManager$Stub").getMethod("asInterface", android.os.IBinder.class).invoke(null, b);
+            Constructor<android.app.usage.StorageStatsManager> c = android.app.usage.StorageStatsManager.class.getDeclaredConstructor(Context.class, i);
+            c.setAccessible(true);
+            android.app.usage.StorageStatsManager m = c.newInstance(ctx, svc);
+            UUID u = StorageManager.UUID_DEFAULT;
+            t0 = System.nanoTime();
+            long tot = m.getTotalBytes(u), lib = m.getFreeBytes(u);
+            esito("StorageStatsManager totale/libero", "totale " + tot / 1000000 + " MB, libero " + lib / 1000000 + " MB, " + (System.nanoTime() - t0) / 1000000 + " ms");
+            UserHandle uh = android.os.Process.myUserHandle();
+            try {
+                t0 = System.nanoTime();
+                android.app.usage.ExternalStorageStats es = m.queryExternalStatsForUser(u, uh);
+                esito("queryExternalStatsForUser (suddivisione)", "OK in " + (System.nanoTime() - t0) / 1000000 + " ms: totale " + es.getTotalBytes() / 1000000 + " MB, audio " + es.getAudioBytes() / 1000000
+                        + " MB, video " + es.getVideoBytes() / 1000000 + " MB, immagini " + es.getImageBytes() / 1000000 + " MB, app " + es.getAppBytes() / 1000000 + " MB");
+            } catch (Throwable e) {
+                esito("queryExternalStatsForUser (suddivisione)", errore(e));
+            }
+            try {
+                t0 = System.nanoTime();
+                android.app.usage.StorageStats s = m.queryStatsForUser(u, uh);
+                esito("queryStatsForUser (app e dati)", "OK in " + (System.nanoTime() - t0) / 1000000 + " ms: app " + s.getAppBytes() / 1000000 + " MB, dati " + s.getDataBytes() / 1000000 + " MB, cache " + s.getCacheBytes() / 1000000 + " MB");
+            } catch (Throwable e) {
+                esito("queryStatsForUser (app e dati)", errore(e));
+            }
+        } catch (Throwable e) {
+            esito("StorageStatsManager", errore(e));
+        }
+    }
+
+    /** Calendario come fa il comando `content`: provider preso con getContentProviderExternal e chiamato come shell. */
+    private static void calendario() {
+        long ora = System.currentTimeMillis();
+        String[] proiezione = {CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN, CalendarContract.Instances.END,
+                CalendarContract.Instances.ALL_DAY, CalendarContract.Instances.EVENT_LOCATION, CalendarContract.Instances.CALENDAR_ID};
+        android.os.IBinder token = new android.os.Binder();
+        Object am = null;
+        try {
+            long t0 = System.nanoTime();
+            am = Class.forName("android.app.ActivityManager").getMethod("getService").invoke(null);
+            Class<?> iam = Class.forName("android.app.IActivityManager");
+            Method get = null;
+            for (Method m : iam.getMethods()) {
+                if (m.getName().equals("getContentProviderExternal") && m.getParameterTypes().length == 4) get = m;
+            }
+            Object holder = get.invoke(am, "com.android.calendar", 0, token, "sonda");
+            if (holder == null) {
+                esito("Calendario Instances", "NO (provider non ottenuto)");
+                return;
+            }
+            Object provider = holder.getClass().getField("provider").get(holder);
+            Object fonte = new android.content.AttributionSource.Builder(2000).setPackageName(SHELL).build();
+            Method q = null;
+            for (Method m : provider.getClass().getMethods()) {
+                if (m.getName().equals("query") && m.getParameterTypes().length == 5) q = m;
+            }
+            Uri.Builder b = CalendarContract.Instances.CONTENT_URI.buildUpon();
+            android.content.ContentUris.appendId(b, ora);
+            android.content.ContentUris.appendId(b, ora + 30L * 86400000L);
+            android.os.Bundle args = new android.os.Bundle();
+            args.putString(android.content.ContentResolver.QUERY_ARG_SQL_SORT_ORDER, CalendarContract.Instances.BEGIN + " ASC");
+            Cursor c = (Cursor) q.invoke(provider, fonte, b.build(), proiezione, args, null);
+            if (c == null) {
+                esito("Calendario Instances", "NO (cursore null)");
+                return;
+            }
+            try {
+                esito("Calendario Instances", "leggibile SI, " + c.getCount() + " eventi nei prossimi 30 giorni, colonne " + java.util.Arrays.toString(c.getColumnNames())
+                        + ", " + (System.nanoTime() - t0) / 1000000 + " ms");
+            } finally {
+                c.close();
+            }
+        } catch (Throwable e) {
+            esito("Calendario Instances", errore(e));
+        } finally {
+            try {
+                if (am != null) {
+                    for (Method m : am.getClass().getMethods()) {
+                        if (m.getName().equals("removeContentProviderExternal") && m.getParameterTypes().length == 2) {
+                            m.invoke(am, "com.android.calendar", token);
+                        }
+                    }
+                }
+            } catch (Throwable e) {
+                // niente da rilasciare
+            }
+        }
+    }
+
+    /** Sessioni multimediali: MediaSessionManager non e' creabile fuori da un'app, si chiama ISessionManager. */
+    private static void sessioni(Looper lp) {
+        try {
+            Object b = Class.forName("android.os.ServiceManager").getMethod("getService", String.class).invoke(null, "media_session");
+            Object svc = Class.forName("android.media.session.ISessionManager$Stub").getMethod("asInterface", android.os.IBinder.class).invoke(null, b);
+            Method gs = null;
+            for (Method m : svc.getClass().getMethods()) {
+                if (m.getName().equals("getSessions")) gs = m;
+            }
+            long t0 = System.nanoTime();
+            Class<?>[] tipi = gs.getParameterTypes();
+            Object[] valori = new Object[tipi.length];
+            StringBuilder firma = new StringBuilder();
+            for (int i = 0; i < tipi.length; i++) {
+                valori[i] = tipi[i] == String.class ? SHELL : (tipi[i] == int.class ? (Object) 0 : null);
+                firma.append(tipi[i].getSimpleName()).append(' ');
+            }
+            esito("firma di getSessions", firma.toString());
+            List<?> l = (List<?>) gs.invoke(svc, valori);
+            esito("ISessionManager.getSessions", "elenco letto SI, " + l.size() + " sessioni attive, " + (System.nanoTime() - t0) / 1000000 + " ms");
+            for (Object tk : l) {
+                MediaController mc = new MediaController(ctx, (android.media.session.MediaSession.Token) tk);
+                boolean meta = false, stato = false;
+                try {
+                    meta = mc.getMetadata() != null;
+                    stato = mc.getPlaybackState() != null;
+                } catch (Throwable e) {
+                    esito("  lettura di una sessione", errore(e));
+                }
+                esito("  sessione", "pacchetto " + mc.getPackageName() + ", metadati presenti " + meta + ", stato presente " + stato);
+            }
+        } catch (Throwable e) {
+            esito("ISessionManager", errore(e));
+        }
+    }
+}
