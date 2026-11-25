@@ -50,4 +50,4 @@ cd "$(dirname "$0")"
 # l'altra, il resto si rifa' da zero.
 # I valori sono gia' validati (solo caratteri sicuri); nel comando remoto vanno
 # comunque tra virgolette.
-tar -c -C . . -C ../data icone-kora.txt | ssh -o BatchMode=yes $S "mkdir -p \"$D\" /media/YASDE/terzi && flock \"$D.lucchetto\" sh -c 'cd \"$D\" && rm -rf sorgente && mkdir sorgente && tar -x -m -C sorgente && nice $POD run --rm -v \"$D\":/lavoro -v \"$VELOCE\":/veloce:ro -v \"$TELEFONO\":/telefono:ro -v /media/YASDE/terzi:/terzi yasde-sviluppo sh /lavoro/sorgente/dentro.sh > \"$L\" 2>&1 < /dev/null; U=\$?; echo \"uscita \$U\" >> \"$L\"; tail -n 25 \"$L\"; exit \$U'"
+tar -c -C . . -C ../data icone-kora.txt | ssh -o BatchMode=yes $S "mkdir -p \"$D\" /media/YASDE/terzi && flock \"$D.lucchetto\" sh -c 'cd \"$D\" && rm -rf sorgente && mkdir sorgente && tar -x -m -C sorgente && nice $POD run --rm -v \"$D\":/lavoro -v \"$VELOCE\":/veloce:ro -v \"$TELEFONO\":/telefono:ro -v /media/YASDE/terzi:/terzi localhost/yasde-sviluppo:schermo sh /lavoro/sorgente/dentro.sh > \"$L\" 2>&1 < /dev/null; U=\$?; echo \"uscita \$U\" >> \"$L\"; tail -n 25 \"$L\"; exit \$U'"

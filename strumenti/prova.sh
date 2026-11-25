@@ -16,8 +16,8 @@ D=/media/YASDE/lavoro/$P
 L=/media/YASDE/log/$P.log
 POD="podman --root /media/YASDE/containers --runroot /media/YASDE/containers-run --cgroup-manager=cgroupfs"
 # Immagine del container: predefinita quella con gtk4-broadwayd (ricetta in
-# strumenti/Containerfile); YASDE_IMMAGINE ne sceglie un'altra
-# (es. localhost/yasde-sviluppo:latest, senza schermo virtuale).
+# strumenti/Containerfile, costruita da strumenti/prepara-server.sh);
+# YASDE_IMMAGINE ne sceglie un'altra.
 IMMAGINE="${YASDE_IMMAGINE:-localhost/yasde-sviluppo:schermo}"
 cd "$(dirname "$0")/.."
 # Un solo comando sul server, sotto un lucchetto per pezzo: due agenti che
