@@ -134,7 +134,7 @@ GRUPPI = [
         ("yasde.desktop", "Desktop entry used only by " + c("appimagetool")), ("prova_pixbuf.c", "Packaging test: image loaders"), ("prova_tls.c", "Packaging test: certificate authorities with the package's OpenSSL"),
         ("prova_tls_rete.c", "Packaging test: TLS handshake over the network")]),
     grp("Development tools", "strumenti", [
-        ("prova.sh", "Builds and tests a piece on the build server"), ("dentro.sh", "The same, inside the container"), ("Containerfile", "Recipe of the build container"), ("sdk.sh", "Downloads the Android SDK when the build server is set up"), ("meson.build", "Builds the tools below"),
+        ("prova.sh", "Builds and tests a piece on the build server"), ("dentro.sh", "The same, inside the container"), ("Containerfile", "Recipe of the build container"), ("prepara-server.sh", "Sets up an empty build server: container image and Android SDK"), ("sdk.sh", "Downloads the Android SDK; run by prepara-server.sh"), ("meson.build", "Builds the tools below"),
         ("yasde-prova.c", "Command line client for the lower pieces"), ("finestra-prova.c", "Bare window for one app (SDL3)"), ("misura-flussi.c", "Measures several video streams in parallel"),
         ("prototipo-gtk.c", "GTK prototype that measured the frame path"), ("demo-sul-tablet.sh", "Opens a piece's demo on the tablet"), ("foto-demo.sh", "Opens a demo on an invisible screen and photographs it"),
         ("app-sul-tablet.sh", "Opens the real program on the tablet"), ("finestra-sul-tablet.sh", "Opens the bare window on the tablet")]),

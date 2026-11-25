@@ -44,10 +44,10 @@ Everything needed to continue the project is here; nothing lives only on a devel
 machine.
 
 1. Clone the repository on the machine where the sources are edited.
-2. Prepare a build server (any Linux machine with `podman`, reachable over SSH) and set
-   the environment variable `YASDE_SERVER` to its name. The commands that build the
-   container image from `strumenti/Containerfile` and download the Android SDK are at
-   the top of `strumenti/sdk.sh`.
+2. Prepare a build server: any Linux machine with `podman`, reachable over SSH without a
+   password, with a writable `/media/YASDE` folder. Set the environment variable
+   `YASDE_SERVER` to its name and run `strumenti/prepara-server.sh` once: it builds the
+   container image from `strumenti/Containerfile` and downloads the Android SDK.
 3. Build and test a piece with `strumenti/prova.sh <piece>`; `tutto` builds and tests
    everything, `veloce` builds the optimized program, `telefono` builds the phone
    component.

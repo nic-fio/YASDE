@@ -1,18 +1,10 @@
 #!/bin/sh
 # Scarica l'SDK di Android che serve a compilare il jar del telefono
 # (piattaforma 35 e build-tools 35.0.0) nella cartella /android-sdk.
-# Si lancia UNA volta, quando si prepara da zero il server di compilazione,
-# dentro il container costruito da strumenti/Containerfile:
-#
-#   POD="podman --root /media/YASDE/containers --runroot /media/YASDE/containers-run --cgroup-manager=cgroupfs"
-#   $POD build -t localhost/yasde-sviluppo:schermo -f strumenti/Containerfile strumenti
-#   mkdir -p /media/YASDE/android-sdk
-#   $POD run --rm -v /media/YASDE/android-sdk:/android-sdk -v "$PWD/strumenti":/s:ro \
-#        localhost/yasde-sviluppo:schermo sh /s/sdk.sh
-#
-# Poi strumenti/prova.sh monta /media/YASDE/android-sdk in sola lettura a ogni
-# compilazione. Tutto il resto dell'ambiente (cache del pacchetto, icone di
-# terzi) lo riscaricano da soli pacchetto/costruisci.sh e pacchetto/icone-kora.sh.
+# Non si lancia a mano: lo esegue strumenti/prepara-server.sh dentro il
+# container, quando si prepara da zero il server di compilazione. Poi
+# strumenti/prova.sh monta /media/YASDE/android-sdk in sola lettura a ogni
+# compilazione.
 set -e
 cd /android-sdk
 curl -fsSL -o ct.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
