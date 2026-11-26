@@ -241,6 +241,103 @@ GtkWidget *ph_dsk_meteo_barra_nuova(bool c_e, double da, double a);
 /* t[i]: temperature delle ore (tutte note), ore[i]: «HH»; n >= 2 per disegnare qualcosa. */
 GtkWidget *ph_dsk_meteo_curva_nuova(const double *t, const char (*ore)[4], size_t n, int altezza);
 
+/* ---- componenti.c: componenti di disegno comuni dei widget --------------------------------------
+ * Tutti: thread GTK, un solo thread; adattano il disegno alla misura che ricevono (nessuna
+ * larghezza fissa; il minimo e il naturale sono solo un suggerimento di GTK: chi li mette puo'
+ * dare gtk_widget_set_size_request o lasciarli espandere). Nessun colore scritto in C: il testo e'
+ * quello della scheda, gli accenti (PhDskAccento) vengono da desktop.css. Tutto cio' che si passa
+ * a una *_imposta viene COPIATO (stringhe e array): chi chiama tiene la propria memoria e puo'
+ * liberarla subito. I numeri sono dati del telefono: valori negativi, zero, NaN o troppo grandi
+ * (anche finiti come 1e308: si riportano in +-1e6) non rompono nulla (si limitano). Anche i TESTI
+ * (titoli, nomi, valori, ore) sono dati ostili: UTF-8 non valido si rende valido (g_utf8_make_valid)
+ * prima di mostrarlo, e anche nelle etichette accessibili. Chiamare *_imposta con un widget che non e' del tipo giusto
+ * non fa nulla. Nessuna callback tranne quella della riga. Si possono richiamare a ogni
+ * aggiornamento dei dati; il ridisegno e' accodato, mai fatto subito. */
+
+/* Anello con la percentuale al centro (scheda A1). Misura: quadrata, prende il lato corto. Va messo
+ * in un contenitore con halign/valign o una misura ragionevole (gtk_widget_set_size_request(w, 96,
+ * 96)); l'anello e' centrato nello spazio.
+ *  percento: 0..100, limitato (negativo -> 0, > 100 -> 100); NaN/infinito = dato non noto: solo il
+ *            binario e il testo "--".
+ *  testo:    cosa scrivere al centro; NULL = "NN%" (la percentuale arrotondata).
+ *  acc:      colore dell'arco. */
+GtkWidget *ph_dsk_anello_nuovo(void);
+void ph_dsk_anello_imposta(GtkWidget *w, double percento, const char *testo, PhDskAccento acc);
+
+/* Barra a fette colorate con la legenda a due colonne (scheda A2). Il widget restituito e' un
+ * contenitore verticale (barra alta 14 px + legenda): espande in orizzontale, in verticale prende
+ * quel che serve. La legenda e' fatta di etichette con i puntini: con poca larghezza i nomi si
+ * accorciano.
+ *            La legenda sta in due colonne; se i nomi non ci stanno per intero passa da sola a una
+ *            colonna (si ridecide a ogni cambio di larghezza: l'altezza della legenda quindi puo'
+ *            crescere, chi mette il componente non deve fissarla).
+ *  f[0..n):  nome e valore_testo gia' formattati e tradotti da chi chiama (la barra non scrive numeri
+ *            da se'); valore = misura della fetta (qualunque unita', negativo = 0);
+ *  totale:   quanto vale tutta la barra (<= 0 = la somma delle fette). Le fette non vanno mai oltre la
+ *            barra; con la somma sotto il totale resta uno spazio vuoto (il «libero»).
+ *  n:        al massimo PH_DSK_FETTE_MAX, oltre si ignora; f == NULL o n == 0: barra vuota. */
+typedef struct {
+    const char *nome;
+    const char *valore_testo;
+    int64_t valore;
+    PhDskAccento acc;
+} PhDskFetta;
+GtkWidget *ph_dsk_fette_nuove(void);
+void ph_dsk_fette_imposta(GtkWidget *w, const PhDskFetta *f, size_t n, int64_t totale);
+
+/* Curva con area sfumata, i gradi sopra i punti e le ore sotto (scheda A3). Si espande nei due versi;
+ * sotto circa 56 px di altezza non si disegna (ci sono solo le etichette).
+ *  t[0..n):  valori (non finiti = media degli altri); n al massimo PH_DSK_CURVA_MAX; n = 0 vuota; n = 1
+ *            un punto; valori tutti uguali: linea a meta' altezza.
+ *  gradi:    NULL = niente etichette sopra; altrimenti n stringhe gia' formattate ("21°"); ore: idem
+ *            per le etichette sotto ("16"). Le etichette si diradano da sole se non ci stanno.
+ *  acc:      colore della linea e dell'area. */
+GtkWidget *ph_dsk_curva_nuova(void);
+void ph_dsk_curva_imposta(GtkWidget *w, const double *t, const char *const *gradi, const char *const *ore,
+                          size_t n, PhDskAccento acc);
+
+/* Tratto minima-massima di un giorno (scheda A3): un binario che occupa tutta la larghezza con sopra
+ * il tratto da `min` a `max` sulla scala scala_min..scala_max (la stessa per tutti i giorni, la
+ * calcola chi chiama), sfumato dall'accento `da` ad `a`. Alto 6-12 px, espande in orizzontale.
+ *  noto = false (o valori non finiti): solo il binario. Minima e massima scambiate si raddrizzano. */
+GtkWidget *ph_dsk_tratto_nuovo(void);
+void ph_dsk_tratto_imposta(GtkWidget *w, bool noto, double min, double max, double scala_min, double scala_max,
+                           PhDskAccento da, PhDskAccento a);
+
+/* Numero grande con l'etichetta piccola in maiuscolo sopra (schede A2, A5, A6). Il corpo del numero
+ * si adatta a larghezza e altezza (da 12 a 44 px).
+ *  etichetta: "" o NULL = nessuna; l'etichetta si scrive IN MAIUSCOLO da se' (passala come testo
+ *             normale e gia' tradotta);
+ *  numero:    "42" / "07:00" (grande); nota: testo piccolo a destra del numero ("GB liberi"), "" = nessuno.
+ *  Testi oltre i buffer interni (64/32/64 byte) si tagliano a un confine di carattere. */
+GtkWidget *ph_dsk_numero_nuovo(void);
+void ph_dsk_numero_imposta(GtkWidget *w, const char *etichetta, const char *numero, const char *nota);
+
+/* Riga d'elenco (scheda A4): tondo o quadrato colorato con sigla (o icona), titolo, sottotitolo
+ * troncato con i puntini, ora a destra. Espande in orizzontale; e' un pulsante (fuoco da
+ * tastiera, Invio/Spazio, etichetta accessibile «titolo, sottotitolo, ora»).
+ *  clic:     callback chiamata dal thread GTK a ogni clic o attivazione da tastiera, con `dati`; NULL =
+ *            riga solo da guardare (non prende il fuoco ne' i clic: il trascinamento del widget passa).
+ *            La callback puo' chiamare qualunque funzione del desktop, anche ricostruire i widget
+ *            (la riga resta viva fino al suo ritorno), ma non deve tenere puntatori alla riga dopo.
+ *            Dopo la distruzione della riga non ne arriva nessuna.
+ *  dati:     di chi chiama, mai liberato dalla riga: deve vivere piu' della riga (o fino alla
+ *            ricostruzione del widget che la contiene).
+ *  imposta:  sigla = NULL o "" -> la prima lettera del titolo maiuscola (ph_dsk_sigla); tondo = true
+ *            tondo, false quadrato con gli angoli morbidi; sottotitolo e ora NULL o "" = nascosti.
+ *            Con un'icona (ph_dsk_riga_icona) la sigla non si vede.
+ *            Se titolo e ora non stanno affiancati (larghezza stretta) l'ora scende sulla riga del
+ *            sottotitolo, a destra: il titolo prende tutto lo spazio, l'ora non si perde. */
+typedef void (*PhDskRigaClic)(void *dati);
+GtkWidget *ph_dsk_riga_nuova(PhDskRigaClic clic, void *dati);
+void ph_dsk_riga_imposta(GtkWidget *r, const char *sigla, PhDskAccento acc, bool tondo, const char *titolo,
+                         const char *sottotitolo, const char *ora);
+/* Mette un widget (per esempio l'icona di un'app) al posto della sigla; NULL la rimette. La riga
+ * ne prende il possesso (lo stacca da sola): chi chiama non lo libera. L'icona passata deve essere
+ * nuova, senza genitore: un'icona che ha gia' un genitore diverso dalla riga NON e' ammessa.
+ * Passare di nuovo la stessa icona gia' messa non fa nulla. */
+void ph_dsk_riga_icona(GtkWidget *r, GtkWidget *icona);
+
 /* Icone nuove dei widget (wx.c). */
 extern const PhShellIcona PH_DSK_ICONA_PREC, PH_DSK_ICONA_SUCC, PH_DSK_ICONA_SUONA, PH_DSK_ICONA_VIBRA,
     PH_DSK_ICONA_SILENZIOSO, PH_DSK_ICONA_LUNA, PH_DSK_ICONA_TORCIA, PH_DSK_ICONA_TROVA;

@@ -79,6 +79,15 @@ typedef struct {
 void ph_dsk_posto_widget_nuovo(int larghezza_area, int altezza_utile, const PhDskWidgetPos *esistenti,
                                size_t n, PhDskMisura nuovo, int *destra, int *alto);
 
+/* Widget predefiniti di un profilo nuovo (orologio, stato, notifiche: destra 16, alto 16 / 120 /
+ * 240, Medio, senza misure salvate): le posizioni sono pensate per le altezze vecchie e i widget si
+ * toccano. Se `w` e' esattamente quel profilo, scrive in alti[0..2] le ordinate di partenza giuste
+ * (16, poi sotto ogni widget con PH_DSK_DISTANZA_WIDGET px di respiro, secondo la misura vera) e
+ * torna true; altrimenti false e `alti` intatto. Serve solo a schermo: il profilo non si riscrive
+ * finche' l'utente non sposta o cambia qualcosa. `alti` ha almeno 3 posti. */
+#define PH_DSK_DISTANZA_WIDGET 12
+bool ph_dsk_predefiniti_alti(const PhCfgWidget *w, size_t n, int *alti);
+
 /* Aggancio a passi di 8 px (onDeskMove): destra = round((iniziale - dx) / 8) * 8,
  * alto = round((iniziale + dy) / 8) * 8, mai negativi. */
 int ph_dsk_aggancia_destra(int destra_iniziale, double dx);
@@ -365,5 +374,6 @@ void ph_dsk_vista_calendario(PhCfgWidgetDim d, bool noto, const PhDskEvento *ev,
 
 #include "logica_wx.h"
 #include "logica_meteo.h"
+#include "logica_comp.h"
 
 #endif

@@ -6,6 +6,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <gtk/gtk.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1886,6 +1887,296 @@ static void prova_meteo(void)
     }
 }
 
+/* ---- Componenti di disegno: geometria pura (logica_comp.c); i widget (componenti.c) si provano
+ * a schermo con la galleria del demo (test shell-desktop-componenti) ---- */
+static bool vicino_d(double a, double b)
+{
+    return fabs(a - b) < 1e-6;
+}
+
+static void prova_componenti_anello(void)
+{
+    VERIFICA(ph_dsk_percento_valido(78.4) == 78 && ph_dsk_percento_valido(99.5) == 100);
+    VERIFICA(ph_dsk_percento_valido(-5) == 0 && ph_dsk_percento_valido(250) == 100);
+    VERIFICA(ph_dsk_percento_valido(NAN) == 0 && ph_dsk_percento_valido(INFINITY) == 0);
+    double da, a;
+    ph_dsk_anello_angoli(0, &da, &a);
+    VERIFICA(vicino_d(da, -G_PI / 2) && vicino_d(a, da)); /* vuoto */
+    ph_dsk_anello_angoli(50, &da, &a);
+    VERIFICA(vicino_d(a - da, G_PI));
+    ph_dsk_anello_angoli(100, &da, &a);
+    VERIFICA(vicino_d(a - da, 2 * G_PI));
+    ph_dsk_anello_angoli(1e9, &da, &a); /* oltre il cento: il cerchio e basta */
+    VERIFICA(vicino_d(a - da, 2 * G_PI));
+    ph_dsk_anello_angoli(-30, &da, &a);
+    VERIFICA(vicino_d(a, da));
+    ph_dsk_anello_angoli(NAN, &da, &a);
+    VERIFICA(vicino_d(a, da));
+    double r, sp;
+    ph_dsk_anello_geometria(96, &r, &sp);
+    VERIFICA(sp > 8.9 && sp < 9.1 && vicino_d(r, (96 - sp) / 2));
+    ph_dsk_anello_geometria(1000, &r, &sp);
+    VERIFICA(vicino_d(sp, 14));
+    ph_dsk_anello_geometria(10, &r, &sp); /* lato piccolo: il tratto non supera un quarto */
+    VERIFICA(vicino_d(sp, 2.5) && r + sp / 2 <= 5.0 + 1e-9);
+    const double ostili[] = {0, -1, NAN, INFINITY, -INFINITY};
+    for (size_t i = 0; i < G_N_ELEMENTS(ostili); i++) {
+        ph_dsk_anello_geometria(ostili[i], &r, &sp);
+        VERIFICA(r == 0 && sp == 0);
+    }
+}
+
+static void prova_componenti_fette(void)
+{
+    int b[PH_DSK_FETTE_MAX + 1];
+    const int64_t v[5] = {21, 34, 3, 18, 10};
+    VERIFICA(ph_dsk_fette_bordi(v, 5, 128, 320, b) == 5);
+    VERIFICA(b[0] == 0 && b[5] == (int)floor(86.0 / 128.0 * 320.0)); /* il resto e' il libero */
+    for (int i = 0; i < 5; i++)
+        VERIFICA(b[i + 1] >= b[i]);
+    /* Totale zero, negativo o minore della somma: contano le fette. */
+    const int64_t due[2] = {10, 10};
+    ph_dsk_fette_bordi(due, 2, 0, 100, b);
+    VERIFICA(b[0] == 0 && b[1] == 50 && b[2] == 100);
+    ph_dsk_fette_bordi(due, 2, -7, 100, b);
+    VERIFICA(b[2] == 100);
+    const int64_t grandi[2] = {80, 80};
+    ph_dsk_fette_bordi(grandi, 2, 100, 100, b); /* somma 160 su totale 100 */
+    VERIFICA(b[1] == 50 && b[2] == 100);
+    /* Negativi: valgono zero. */
+    const int64_t neg[3] = {-5, 10, INT64_MIN};
+    ph_dsk_fette_bordi(neg, 3, 20, 100, b);
+    VERIFICA(b[0] == 0 && b[1] == 0 && b[2] == 50 && b[3] == 50);
+    /* Tutti zero, larghezza non positiva, nessun array. */
+    const int64_t zeri[3] = {0, 0, 0};
+    VERIFICA(ph_dsk_fette_bordi(zeri, 3, 100, 100, b) == 3 && b[0] + b[1] + b[2] + b[3] == 0);
+    VERIFICA(ph_dsk_fette_bordi(due, 2, 100, 0, b) == 2 && b[2] == 0);
+    VERIFICA(ph_dsk_fette_bordi(due, 2, 100, -50, b) == 2 && b[2] == 0);
+    VERIFICA(ph_dsk_fette_bordi(NULL, 4, 100, 100, b) == 0 && b[0] == 0);
+    VERIFICA(ph_dsk_fette_bordi(due, 0, 100, 100, b) == 0);
+    /* Piu' fette del tetto: se ne usano PH_DSK_FETTE_MAX e il buffer non si supera. */
+    int64_t tante[20];
+    for (int i = 0; i < 20; i++)
+        tante[i] = 1;
+    int grande[40];
+    memset(grande, 0x7f, sizeof grande);
+    VERIFICA(ph_dsk_fette_bordi(tante, 20, 20, 160, grande) == PH_DSK_FETTE_MAX);
+    VERIFICA(grande[PH_DSK_FETTE_MAX + 1] == 0x7f7f7f7f && grande[PH_DSK_FETTE_MAX] == 64);
+    /* Valori enormi: nessun trabocco. */
+    const int64_t enormi[2] = {INT64_MAX, INT64_MAX};
+    ph_dsk_fette_bordi(enormi, 2, 5, 200, b);
+    VERIFICA(b[1] == 100 && b[2] == 200);
+    /* Proprieta': su valori qualunque i bordi non calano e l'ultimo non supera la larghezza. */
+    uint64_t seme = 12345;
+    for (int giro = 0; giro < 500; giro++) {
+        int64_t q[PH_DSK_FETTE_MAX];
+        for (int i = 0; i < PH_DSK_FETTE_MAX; i++) {
+            seme = seme * 6364136223846793005ULL + 1442695040888963407ULL;
+            q[i] = (int64_t)(seme >> (giro % 60)) * ((seme & 1) ? 1 : -1);
+        }
+        seme = seme * 6364136223846793005ULL + 1442695040888963407ULL;
+        int64_t tot = (int64_t)(seme >> 20) - (1 << 20);
+        int larg = (int)(seme % 700);
+        int bo[PH_DSK_FETTE_MAX + 1];
+        size_t n = ph_dsk_fette_bordi(q, PH_DSK_FETTE_MAX, tot, larg, bo);
+        VERIFICA(n == PH_DSK_FETTE_MAX && bo[0] == 0 && bo[n] <= larg);
+        for (size_t i = 0; i < n; i++)
+            VERIFICA(bo[i + 1] >= bo[i]);
+    }
+}
+
+static void prova_componenti_curva(void)
+{
+    PhDskCurvaPunti P;
+    const double t[7] = {21, 21, 20, 18, 16, 15, 14};
+    ph_dsk_curva_punti(t, 7, 300, 10, 20, 80, &P);
+    VERIFICA(P.n == 7 && P.imax == 0 && P.imin == 6 && P.tmax == 21 && P.tmin == 14);
+    VERIFICA(vicino_d(P.x[0], 10) && vicino_d(P.x[6], 290));
+    VERIFICA(vicino_d(P.y[0], 20) && vicino_d(P.y[6], 80)); /* massima in alto, minima in basso */
+    for (size_t i = 1; i < P.n; i++)
+        VERIFICA(P.x[i] > P.x[i - 1]);
+    /* Nessun punto, un punto. */
+    ph_dsk_curva_punti(t, 0, 300, 10, 20, 80, &P);
+    VERIFICA(P.n == 0);
+    ph_dsk_curva_punti(NULL, 5, 300, 10, 20, 80, &P);
+    VERIFICA(P.n == 0);
+    ph_dsk_curva_punti(t, 1, 300, 10, 20, 80, &P);
+    VERIFICA(P.n == 1 && vicino_d(P.x[0], 150) && vicino_d(P.y[0], 50));
+    /* Minimi = massimi: linea a meta' altezza. */
+    const double piatta[4] = {18, 18, 18, 18};
+    ph_dsk_curva_punti(piatta, 4, 300, 10, 20, 80, &P);
+    VERIFICA(P.n == 4 && P.imin == 0 && P.imax == 0);
+    for (size_t i = 0; i < 4; i++)
+        VERIFICA(vicino_d(P.y[i], 50));
+    /* Escursione sotto il minimo: non si ingrandisce il rumore. */
+    const double quasi[2] = {20, 20.5};
+    ph_dsk_curva_punti(quasi, 2, 100, 0, 0, 100, &P);
+    VERIFICA(P.y[0] > 25 && P.y[1] < 75 && P.y[0] > P.y[1]);
+    /* Valori non finiti: la media degli altri; sempre dentro le ordinate (anche scambiate). */
+    const double sporca[4] = {10, NAN, INFINITY, 20};
+    ph_dsk_curva_punti(sporca, 4, 200, 0, 90, 10, &P);
+    VERIFICA(P.n == 4 && vicino_d(P.tmin, 10) && vicino_d(P.tmax, 20));
+    for (size_t i = 0; i < P.n; i++)
+        VERIFICA(P.y[i] >= 10 && P.y[i] <= 90 && isfinite(P.x[i]));
+    const double nulla[2] = {NAN, NAN};
+    ph_dsk_curva_punti(nulla, 2, 200, 0, 0, 100, &P);
+    VERIFICA(P.n == 2 && isfinite(P.y[0]) && isfinite(P.y[1]));
+    /* Larghezza o margini assurdi, troppi punti. */
+    ph_dsk_curva_punti(t, 7, -50, 500, NAN, INFINITY, &P);
+    VERIFICA(P.n == 7);
+    for (size_t i = 0; i < P.n; i++)
+        VERIFICA(isfinite(P.x[i]) && isfinite(P.y[i]));
+    double molti[200];
+    for (int i = 0; i < 200; i++)
+        molti[i] = i;
+    ph_dsk_curva_punti(molti, 200, 300, 0, 0, 50, &P);
+    VERIFICA(P.n == PH_DSK_CURVA_MAX);
+    /* Passo delle etichette. */
+    VERIFICA(ph_dsk_curva_passo_etichette(0, 300, 20) == 1 && ph_dsk_curva_passo_etichette(1, 300, 20) == 1);
+    VERIFICA(ph_dsk_curva_passo_etichette(12, 0, 20) == 12 && ph_dsk_curva_passo_etichette(12, NAN, 20) == 12);
+    VERIFICA(ph_dsk_curva_passo_etichette(12, 300, 0) == 1 && ph_dsk_curva_passo_etichette(12, 300, NAN) == 1);
+    VERIFICA(ph_dsk_curva_passo_etichette(7, 1000, 20) == 1);
+    size_t passo = ph_dsk_curva_passo_etichette(12, 300, 24);
+    VERIFICA(passo == 2 && (double)passo * 300.0 / 11.0 >= 24.0);
+    VERIFICA(ph_dsk_curva_passo_etichette(12, 5, 24) == 12); /* mai oltre n */
+}
+
+static void prova_componenti_tratto(void)
+{
+    double x0, x1;
+    VERIFICA(ph_dsk_tratto_px(12, 22, 8, 26, 180, 6, &x0, &x1) && vicino_d(x0, 40) && vicino_d(x1, 140));
+    VERIFICA(ph_dsk_tratto_px(22, 12, 8, 26, 180, 6, &x0, &x1) && vicino_d(x0, 40) && vicino_d(x1, 140));
+    VERIFICA(ph_dsk_tratto_px(12, 22, 26, 8, 180, 6, &x0, &x1) && vicino_d(x0, 40) && vicino_d(x1, 140));
+    /* Fuori scala: si ritaglia. */
+    VERIFICA(ph_dsk_tratto_px(-100, 100, 8, 26, 180, 6, &x0, &x1) && vicino_d(x0, 0) && vicino_d(x1, 180));
+    /* Scala senza ampiezza: tutta la larghezza. */
+    VERIFICA(ph_dsk_tratto_px(5, 5, 5, 5, 180, 6, &x0, &x1) && vicino_d(x0, 0) && vicino_d(x1, 180));
+    /* Minima = massima: largo almeno il minimo, dentro la barra, anche ai bordi. */
+    VERIFICA(ph_dsk_tratto_px(15, 15, 8, 26, 180, 6, &x0, &x1) && vicino_d(x1 - x0, 6) && x0 > 0 && x1 < 180);
+    VERIFICA(ph_dsk_tratto_px(26, 26, 8, 26, 180, 6, &x0, &x1) && vicino_d(x1, 180) && vicino_d(x1 - x0, 6));
+    VERIFICA(ph_dsk_tratto_px(8, 8, 8, 26, 180, 6, &x0, &x1) && vicino_d(x0, 0) && vicino_d(x1 - x0, 6));
+    /* Minimo piu' largo della barra: tutta la barra. */
+    VERIFICA(ph_dsk_tratto_px(10, 11, 8, 26, 4, 50, &x0, &x1) && vicino_d(x0, 0) && vicino_d(x1, 4));
+    /* Valori non utilizzabili. */
+    VERIFICA(!ph_dsk_tratto_px(NAN, 22, 8, 26, 180, 6, &x0, &x1) && x0 == 0 && x1 == 0);
+    VERIFICA(!ph_dsk_tratto_px(12, 22, 8, INFINITY, 180, 6, &x0, &x1));
+    VERIFICA(!ph_dsk_tratto_px(12, 22, 8, 26, 0, 6, &x0, &x1) && !ph_dsk_tratto_px(12, 22, 8, 26, -5, 6, &x0, &x1));
+    VERIFICA(ph_dsk_tratto_px(12, 22, 8, 26, 180, NAN, &x0, &x1) && x1 > x0);
+}
+
+static void prova_componenti_testi(void)
+{
+    char s[16];
+    ph_dsk_sigla("Alex", s, sizeof s);
+    VERIFICA_STR(s, "A");
+    ph_dsk_sigla("  mario", s, sizeof s);
+    VERIFICA_STR(s, "M");
+    ph_dsk_sigla("\xc3\xa9lan", s, sizeof s); /* é -> É */
+    VERIFICA_STR(s, "\xc3\x89");
+    ph_dsk_sigla("\xf0\x9f\x98\x80 ciao", s, sizeof s); /* un'emoji e' una lettera sola */
+    VERIFICA_STR(s, "\xf0\x9f\x98\x80");
+    ph_dsk_sigla("", s, sizeof s);
+    VERIFICA_STR(s, "?");
+    ph_dsk_sigla(NULL, s, sizeof s);
+    VERIFICA_STR(s, "?");
+    ph_dsk_sigla(" \t\n", s, sizeof s);
+    VERIFICA_STR(s, "?");
+    ph_dsk_sigla("\xff\xfe" "abc", s, sizeof s); /* UTF-8 non valido */
+    VERIFICA_STR(s, "?");
+    char piccolo[2] = {'x', 'x'};
+    ph_dsk_sigla("\xf0\x9f\x98\x80", piccolo, 2); /* non ci sta: segnaposto, mai oltre il buffer */
+    VERIFICA_STR(piccolo, "?");
+    char uno[1] = {'x'};
+    ph_dsk_sigla("Alex", uno, 1);
+    VERIFICA(uno[0] == '\0');
+    ph_dsk_sigla("Alex", s, 0); /* cap 0: non scrive */
+    /* Numero grande. */
+    VERIFICA(vicino_d(ph_dsk_numero_corpo(200, 60, 2, 12, 44), 44));
+    VERIFICA(ph_dsk_numero_corpo(200, 60, 10, 12, 44) < 33 && ph_dsk_numero_corpo(200, 60, 10, 12, 44) > 32);
+    VERIFICA(vicino_d(ph_dsk_numero_corpo(200, 30, 2, 12, 44), 30 / 1.15)); /* l'altezza e' il limite */
+    VERIFICA(vicino_d(ph_dsk_numero_corpo(0, 60, 2, 12, 44), 12) && vicino_d(ph_dsk_numero_corpo(200, -1, 2, 12, 44), 12));
+    VERIFICA(vicino_d(ph_dsk_numero_corpo(200, 60, 0, 12, 44), 12) && vicino_d(ph_dsk_numero_corpo(NAN, 60, 2, 12, 44), 12));
+    VERIFICA(vicino_d(ph_dsk_numero_corpo(10, 10, 20, 12, 44), 12)); /* mai sotto il minimo */
+    VERIFICA(vicino_d(ph_dsk_numero_corpo(200, 60, 2, 30, 20), 30)); /* massimo sotto il minimo: vale il minimo */
+    /* Accenti. */
+    VERIFICA(ph_dsk_accento_valido(-1, PH_DSK_ACC_N) == 0 && ph_dsk_accento_valido(3, PH_DSK_ACC_N) == 3);
+    VERIFICA(ph_dsk_accento_valido(PH_DSK_ACC_N, PH_DSK_ACC_N) == 0 && ph_dsk_accento_valido(2, 0) == 0);
+}
+
+/* Valori finiti ma enormi (1e308, DBL_MAX): niente inf, niente NaN, nulla fuori dalle ordinate. */
+static void prova_componenti_enormi(void)
+{
+    PhDskCurvaPunti P;
+    const double s1[2] = {-1e308, 1e308};
+    ph_dsk_curva_punti(s1, 2, 300, 10, 20, 80, &P);
+    for (size_t i = 0; i < P.n; i++)
+        VERIFICA(isfinite(P.x[i]) && isfinite(P.y[i]) && P.y[i] >= 20 && P.y[i] <= 80);
+    /* Valori precisi: senza il ritaglio la differenza e' inf e il massimo cadrebbe a meta' (ultima difesa). */
+    VERIFICA(P.n == 2 && isfinite(P.tmin) && isfinite(P.tmax) && vicino_d(P.y[1], 20) && vicino_d(P.y[0], 80));
+    const double s2[3] = {1e308, 1e308, NAN};
+    ph_dsk_curva_punti(s2, 3, 300, 10, 20, 80, &P);
+    for (size_t i = 0; i < P.n; i++)
+        VERIFICA(isfinite(P.x[i]) && isfinite(P.y[i]) && P.y[i] >= 20 && P.y[i] <= 80);
+    const double s3[4] = {DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX};
+    ph_dsk_curva_punti(s3, 4, DBL_MAX, DBL_MAX, -DBL_MAX, DBL_MAX, &P);
+    for (size_t i = 0; i < P.n; i++)
+        VERIFICA(isfinite(P.x[i]) && isfinite(P.y[i]));
+    double x0, x1;
+    VERIFICA(ph_dsk_tratto_px(-1e308, 1e308, -1e308, 1e308, 180, 6, &x0, &x1) && isfinite(x0) && isfinite(x1) &&
+             x0 >= 0 && x1 <= 180 && x1 >= x0);
+    VERIFICA(ph_dsk_tratto_px(DBL_MAX, -DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX, DBL_MAX, &x0, &x1) && isfinite(x0) &&
+             isfinite(x1) && x0 <= x1);
+    VERIFICA(ph_dsk_tratto_px(5, 6, -1e308, 1e308, 180, 6, &x0, &x1) && isfinite(x0) && isfinite(x1) && x1 - x0 >= 5.9);
+    /* Disposizione adattiva. */
+    VERIFICA(ph_dsk_legenda_colonne(160, 97, 14, 5) == 1);   /* due colonne da 73: il nome non ci sta */
+    VERIFICA(ph_dsk_legenda_colonne(340, 97, 14, 5) == 2);
+    VERIFICA(ph_dsk_legenda_colonne(208, 97, 14, 5) == 2);   /* esattamente al limite: (208-14)/2 = 97 */
+    VERIFICA(ph_dsk_legenda_colonne(207, 97, 14, 5) == 1);
+    VERIFICA(ph_dsk_legenda_colonne(340, 97, 14, 1) == 1 && ph_dsk_legenda_colonne(340, 97, 14, 0) == 1);
+    VERIFICA(ph_dsk_legenda_colonne(0, 97, 14, 5) == 1 && ph_dsk_legenda_colonne(NAN, 97, 14, 5) == 1);
+    VERIFICA(ph_dsk_legenda_colonne(340, NAN, 14, 5) == 1 && ph_dsk_legenda_colonne(-5, 97, 14, 5) == 1);
+    VERIFICA(ph_dsk_riga_ora_sotto(148, 32, 130, 30, 10));   /* 32+10+130+10+30 = 212 > 148 */
+    VERIFICA(!ph_dsk_riga_ora_sotto(340, 32, 130, 30, 10));
+    VERIFICA(!ph_dsk_riga_ora_sotto(212, 32, 130, 30, 10) && ph_dsk_riga_ora_sotto(211, 32, 130, 30, 10));
+    VERIFICA(!ph_dsk_riga_ora_sotto(148, 32, 130, 0, 10));   /* senza ora niente da spostare */
+    VERIFICA(!ph_dsk_riga_ora_sotto(0, 32, 130, 30, 10) && !ph_dsk_riga_ora_sotto(NAN, 32, 130, 30, 10));
+    VERIFICA(!ph_dsk_riga_ora_sotto(148, 32, NAN, 30, 10));
+}
+
+static void prova_predefiniti_distanziati(void)
+{
+    PhCfgWidget w[3] = {{.tipo = PH_CFG_WIDGET_OROLOGIO, .destra = 16, .alto = 16, .dimensione = PH_CFG_WIDGET_MEDIO},
+                        {.tipo = PH_CFG_WIDGET_STATO, .destra = 16, .alto = 120, .dimensione = PH_CFG_WIDGET_MEDIO},
+                        {.tipo = PH_CFG_WIDGET_NOTIFICHE, .destra = 16, .alto = 240, .dimensione = PH_CFG_WIDGET_MEDIO}};
+    int alti[3] = {-7, -7, -7};
+    VERIFICA(ph_dsk_predefiniti_alti(w, 3, alti) && alti[0] == 16);
+    /* Tra un widget e il successivo ci sono esattamente PH_DSK_DISTANZA_WIDGET px (12). */
+    for (size_t i = 0; i + 1 < 3; i++) {
+        PhDskMisura m = ph_dsk_misura_da_profilo(w[i].tipo, 0, w[i].dimensione, 0, 0);
+        VERIFICA(alti[i + 1] - (alti[i] + m.altezza) == 12);
+    }
+    /* Qualunque cambiamento dell'utente: il profilo non e' piu' quello di fabbrica, nulla si tocca. */
+    for (int caso = 0; caso < 8; caso++) {
+        PhCfgWidget x[3];
+        memcpy(x, w, sizeof x);
+        size_t n = 3;
+        switch (caso) {
+        case 0: x[1].alto = 128; break;
+        case 1: x[2].destra = 24; break;
+        case 2: x[0].stile = 1; break;
+        case 3: x[1].dimensione = PH_CFG_WIDGET_GRANDE; break;
+        case 4: x[2].larghezza = 250; x[2].altezza = 128; break;
+        case 5: x[0].tipo = PH_CFG_WIDGET_METEO; break;
+        case 6: n = 2; break;
+        default: x[0].opzione = 3; break;
+        }
+        int a2[3] = {-7, -7, -7};
+        VERIFICA(!ph_dsk_predefiniti_alti(x, n, a2) && a2[0] == -7 && a2[1] == -7 && a2[2] == -7);
+    }
+    VERIFICA(!ph_dsk_predefiniti_alti(NULL, 3, alti) && !ph_dsk_predefiniti_alti(w, 3, NULL));
+}
+
+
 int main(void)
 {
     ph_lingua_imposta(PH_LINGUA_IT);
@@ -1904,6 +2195,13 @@ int main(void)
     prova_catalogo();
     prova_orologio_stili();
     prova_forme();
+    prova_componenti_anello();
+    prova_componenti_fette();
+    prova_componenti_curva();
+    prova_componenti_tratto();
+    prova_componenti_testi();
+    prova_componenti_enormi();
+    prova_predefiniti_distanziati();
     prova_calendario_mese();
     prova_wx_altri();
     prova_meteo();

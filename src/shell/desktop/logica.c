@@ -303,6 +303,26 @@ PhDskMisura ph_dsk_misura_vincola(PhCfgWidgetTipo tipo, unsigned stile, PhDskMis
                          stringi(m.altezza, l.min.altezza, l.max.altezza)};
 }
 
+bool ph_dsk_predefiniti_alti(const PhCfgWidget *w, size_t n, int *alti)
+{
+    static const PhCfgWidgetTipo tipi[3] = {PH_CFG_WIDGET_OROLOGIO, PH_CFG_WIDGET_STATO, PH_CFG_WIDGET_NOTIFICHE};
+    static const int alti_vecchi[3] = {16, 120, 240};
+    if (w == NULL || alti == NULL || n != 3)
+        return false;
+    for (size_t i = 0; i < 3; i++)
+        if (w[i].tipo != tipi[i] || w[i].destra != 16 || w[i].alto != alti_vecchi[i] ||
+            w[i].dimensione != PH_CFG_WIDGET_MEDIO || w[i].larghezza != 0 || w[i].altezza != 0 ||
+            w[i].stile != 0 || w[i].opzione != 0)
+            return false;
+    int y = 16;
+    for (size_t i = 0; i < 3; i++) {
+        alti[i] = y;
+        PhDskMisura m = ph_dsk_misura_da_profilo(tipi[i], 0, PH_CFG_WIDGET_MEDIO, 0, 0);
+        y += m.altezza + PH_DSK_DISTANZA_WIDGET;
+    }
+    return true;
+}
+
 PhDskMisura ph_dsk_misura_da_profilo(PhCfgWidgetTipo tipo, unsigned stile, PhCfgWidgetDim dim,
                                      int larghezza, int altezza)
 {

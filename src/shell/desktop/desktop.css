@@ -519,3 +519,69 @@ button.ph-desktop-luogo-riga {
 button.ph-desktop-luogo-riga:hover { background-color: var(--ph-sopra-ghost); }
 .ph-desktop-luogo-nome { font-size: 13px; font-weight: 600; }
 .ph-desktop-luogo-dettaglio { font-size: 11px; color: var(--ph-testo-3); }
+
+/* ---- Componenti di disegno comuni (componenti.c) ----
+ * Colori d'accento dei widget, pensati per il vetro scuro (fondo quasi nero, testo chiaro):
+ * piu' luminosi di quelli della pagina di proposta, che stava su vetro chiaro. Il testo che ci sta
+ * sopra (sigla del tondo) e' --ph-su-accento, scuro sul vetro scuro. Le variabili stanno sulla
+ * scheda dei widget e sulla scheda della galleria del demo. I componenti disegnati in C leggono
+ * il colore dalle «sonde» (figli invisibili ph-desktop-sonda-*): la sonda e' colorata qui. */
+.ph-desktop-widget, .ph-desktop-galleria {
+  --ph-desktop-verde: #4ade80;    /* colore-dato: verde della batteria, per il vetro scuro */
+  --ph-desktop-ambra: #fbbf24;    /* colore-dato: ambra (audio, sveglia), per il vetro scuro */
+  --ph-desktop-corallo: #fb7c6d;  /* colore-dato: corallo (app, oggi in calendario), per il vetro scuro */
+  --ph-desktop-indaco: #8b9cf8;   /* colore-dato: indaco (video, posta), per il vetro scuro */
+  --ph-desktop-viola: #b394f5;    /* colore-dato: viola, per il vetro scuro */
+  --ph-desktop-ardesia: #94a3b8;  /* colore-dato: grigio ardesia (altro), per il vetro scuro */
+}
+.ph-desktop-galleria { color: var(--ph-testo); } /* la galleria del demo: stesso testo dei widget */
+.ph-desktop-sonda-tema { color: var(--ph-accento); }
+.ph-desktop-sonda-verde { color: var(--ph-desktop-verde); }
+.ph-desktop-sonda-ambra { color: var(--ph-desktop-ambra); }
+.ph-desktop-sonda-corallo { color: var(--ph-desktop-corallo); }
+.ph-desktop-sonda-indaco { color: var(--ph-desktop-indaco); }
+.ph-desktop-sonda-viola { color: var(--ph-desktop-viola); }
+.ph-desktop-sonda-ardesia { color: var(--ph-desktop-ardesia); }
+.ph-desktop-sonda-testo2 { color: var(--ph-testo-2); }
+.ph-desktop-sonda-solco { color: var(--ph-avanzamento-fondo); }
+/* Le stesse tinte come sfondo (chip delle righe, quadratini della legenda). */
+.ph-desktop-tinta-tema { background-color: var(--ph-accento); }
+.ph-desktop-tinta-verde { background-color: var(--ph-desktop-verde); }
+.ph-desktop-tinta-ambra { background-color: var(--ph-desktop-ambra); }
+.ph-desktop-tinta-corallo { background-color: var(--ph-desktop-corallo); }
+.ph-desktop-tinta-indaco { background-color: var(--ph-desktop-indaco); }
+.ph-desktop-tinta-viola { background-color: var(--ph-desktop-viola); }
+.ph-desktop-tinta-ardesia { background-color: var(--ph-desktop-ardesia); }
+
+/* Riga d'elenco: pulsante senza fondo, che si illumina al passaggio e col fuoco. */
+button.ph-desktop-riga-elenco {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 6px;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 10px;
+  color: var(--ph-testo);
+}
+button.ph-desktop-riga-elenco:hover { background-color: var(--ph-sopra-riga); }
+button.ph-desktop-riga-elenco:focus-visible {
+  outline: 2px solid var(--ph-fuoco);
+  outline-offset: 1px;
+}
+.ph-desktop-chip {
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ph-su-accento);
+}
+.ph-desktop-chip.ph-desktop-chip-tondo { border-radius: 16px; }
+.ph-desktop-riga-titolo { font-size: 13px; font-weight: 600; }
+.ph-desktop-riga-sotto { font-size: 12px; color: var(--ph-testo-2); }
+.ph-desktop-riga-ora { font-size: 11px; color: var(--ph-testo-2); }
+/* Legenda della barra a fette. */
+.ph-desktop-legenda-quadrato { min-width: 9px; min-height: 9px; border-radius: 3px; }
+.ph-desktop-legenda-nome { font-size: 12px; }
+.ph-desktop-legenda-valore { font-size: 12px; font-weight: 600; }

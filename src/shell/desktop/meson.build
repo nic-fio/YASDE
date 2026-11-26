@@ -7,7 +7,7 @@ risorse_desktop_lib = static_library('risorse_desktop', risorse_desktop,
 
 pixbuf_dep = dependency('gdk-pixbuf-2.0')
 shell_desktop_lib = static_library('shell_desktop',
-  ['desktop.c', 'logica.c', 'logica_wx.c', 'logica_meteo.c', 'immagine.c', 'sfondo.c', 'icone.c', 'widget.c', 'orologio.c', 'wx.c', 'wx_calendario.c', 'wx_telefono.c', 'wx_controlli.c', 'wx_elenchi.c', 'wx_meteo.c', 'meteo_disegno.c', 'meteo_luogo.c', 'dialoghi.c'],
+  ['desktop.c', 'logica.c', 'logica_wx.c', 'logica_meteo.c', 'logica_comp.c', 'componenti.c', 'immagine.c', 'sfondo.c', 'icone.c', 'widget.c', 'orologio.c', 'wx.c', 'wx_calendario.c', 'wx_telefono.c', 'wx_controlli.c', 'wx_elenchi.c', 'wx_meteo.c', 'meteo_disegno.c', 'meteo_luogo.c', 'dialoghi.c'],
   objects: risorse_desktop_lib.extract_all_objects(recursive: false),
   include_directories: inc, dependencies: [shell_comune_dep, pixbuf_dep])
 shell_desktop_dep = declare_dependency(link_with: shell_desktop_lib, include_directories: inc,
@@ -37,4 +37,16 @@ test('shell-desktop-tessere', demo_desktop, args: ['--prova', '6000', '--mostra'
 # le rimozioni, i menu e i dialoghi, il cambio di profilo e la chiusura con tutto vivo (sotto ASan).
 # La sequenza si chiude da sola; 25 s e' solo il limite di sicurezza.
 test('shell-desktop-insieme', demo_desktop, args: ['--prova', '25000', '--mostra', 'stress@300'],
+  env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
+
+# Galleria dei componenti di disegno (anello, fette, curva, tratto, riga, numero): disegnati con
+# la misura data, tinte che arrivano dal CSS, clic delle righe.
+test('shell-desktop-componenti', demo_desktop, args: ['--prova', '6000', '--mostra',
+  'componenti@300,componenti-verifica@1500'],
+  env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
+
+# Widget predefiniti di un profilo nuovo: a 12 px l'uno dall'altro a schermo, profilo riscritto
+# solo alla prima modifica dell'utente.
+test('shell-desktop-predefiniti', demo_desktop, args: ['--prova', '6000', '--mostra',
+  'predefiniti-attendi@10,predefiniti-verifica@1200'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 60)

@@ -301,6 +301,26 @@ void ph_dsk_widget_riposiziona(PhDesktop *d)
         widget_colloca(g_ptr_array_index(d->widget, i));
 }
 
+/* Scrive nel profilo il posto con cui i widget sono mostrati ora. Serve prima di ogni modifica fatta
+ * dall'utente (spostare, ridimensionare, aggiungere, togliere, cambiare stile): i widget
+ * predefiniti di un profilo nuovo si mostrano piu' distanziati di come sono scritti
+ * (ph_dsk_predefiniti_alti) e, cambiato il profilo, quella correzione a schermo non si
+ * riconoscerebbe piu' e gli altri tornerebbero a toccarsi. Con i valori gia' uguali non cambia
+ * nulla; il chiamante salva subito dopo. */
+static void posizioni_fissa(PhDesktop *d)
+{
+    PhCfgTelefono *p = ph_dsk_profilo(d);
+    if (p == NULL)
+        return;
+    for (size_t i = 0; i < d->widget->len; i++) {
+        const PhDskWidget *w = g_ptr_array_index(d->widget, i);
+        if (w->indice < p->n_widget && p->widget[w->indice].tipo == w->tipo) {
+            p->widget[w->indice].destra = w->destra;
+            p->widget[w->indice].alto = w->alto;
+        }
+    }
+}
+
 /* ---- Trascinamento -------------------------------------------------------------------- */
 static void trascina_inizio(GtkGestureDrag *g, double x, double y, gpointer dati)
 {
@@ -353,8 +373,7 @@ static void trascina_fine(GtkGestureDrag *g, double ox, double oy, gpointer dati
     PhCfgTelefono *p = ph_dsk_profilo(d);
     if (p == NULL || w->indice >= p->n_widget || p->widget[w->indice].tipo != w->tipo)
         return;
-    p->widget[w->indice].destra = w->destra;
-    p->widget[w->indice].alto = w->alto;
+    posizioni_fissa(d); /* anche gli altri: vedi sopra (w ha gia' il posto nuovo) */
     ph_dsk_salva(d);
 }
 
@@ -386,6 +405,7 @@ static bool ridim_salva(PhDskWidget *w)
     PhCfgTelefono *p = ph_dsk_profilo(d);
     if (p == NULL || w->indice >= p->n_widget || p->widget[w->indice].tipo != w->tipo)
         return false;
+    posizioni_fissa(d);
     PhCfgWidget *c = &p->widget[w->indice];
     PhCfgWidgetDim livello = ph_dsk_livello(w->tipo, w->stile, (PhDskMisura){w->larghezza, w->altezza});
     c->larghezza = w->larghezza;
@@ -506,7 +526,8 @@ static GtkWidget *etichetta_nuova(const char *classe, bool ellissi)
     return l;
 }
 
-static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget *cfg)
+/* `alto`: l'ordinata con cui si mostra (di norma quella del profilo, vedi ph_dsk_predefiniti_alti). */
+static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget *cfg, int alto)
 {
     PhDskWidget *w = g_new0(PhDskWidget, 1);
     w->d = d;
@@ -516,7 +537,7 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
     w->stile = ph_dsk_stile_valido_di(cfg->tipo, (unsigned)cfg->stile);
     w->opzione = ph_dsk_citta_valida((unsigned)cfg->opzione);
     w->destra = cfg->destra;
-    w->alto = cfg->alto;
+    w->alto = alto;
     /* Misura dal profilo (0/0 = quella equivalente al livello salvato); il livello di contenuto
      * si ricava sempre dalla misura. */
     PhDskMisura mis = ph_dsk_misura_da_profilo(cfg->tipo, w->stile, cfg->dimensione, cfg->larghezza,
@@ -889,11 +910,14 @@ void ph_dsk_widget_ricostruisci(PhDesktop *d)
     g_ptr_array_set_size(d->widget, 0);
     PhCfgTelefono *p = ph_dsk_profilo(d);
     if (p != NULL) {
+        /* Profilo nuovo mai toccato: i tre predefiniti si mostrano a distanza giusta. */
+        int alti[3];
+        bool distanzia = ph_dsk_predefiniti_alti(p->widget, p->n_widget, alti);
         for (size_t i = 0; i < p->n_widget && i < PH_CFG_MAX_WIDGET; i++) {
             /* Un tipo fuori catalogo non si mostra e NON si cancella dal profilo. */
             if (ph_dsk_widget_nome(p->widget[i].tipo) == NULL)
                 continue;
-            g_ptr_array_add(d->widget, widget_nuovo(d, i, &p->widget[i]));
+            g_ptr_array_add(d->widget, widget_nuovo(d, i, &p->widget[i], distanzia ? alti[i] : p->widget[i].alto));
         }
     }
     timer_programma(d);
@@ -931,6 +955,7 @@ void ph_dsk_widget_aggiungi(PhDesktop *d, PhCfgWidgetTipo tipo)
     const char *nome = ph_dsk_widget_nome(tipo);
     if (p == NULL || nome == NULL || p->n_widget >= PH_CFG_MAX_WIDGET)
         return;
+    posizioni_fissa(d); /* il posto del nuovo si calcola sui posti con cui si vedono gli altri */
     PhDskWidgetPos pos[PH_CFG_MAX_WIDGET];
     size_t np = 0;
     for (size_t i = 0; i < p->n_widget; i++) {
@@ -965,6 +990,7 @@ void ph_dsk_widget_rimuovi(PhDesktop *d, unsigned id)
     PhCfgTelefono *p = ph_dsk_profilo(d);
     if (w == NULL || p == NULL || w->indice >= p->n_widget || p->widget[w->indice].tipo != w->tipo)
         return;
+    posizioni_fissa(d);
     size_t i = w->indice;
     memmove(&p->widget[i], &p->widget[i + 1], (p->n_widget - i - 1) * sizeof p->widget[0]);
     p->n_widget--;
@@ -989,6 +1015,7 @@ void ph_dsk_widget_stile_imposta(PhDesktop *d, unsigned id, unsigned stile, unsi
     PhCfgTelefono *p = ph_dsk_profilo(d);
     if (w == NULL || p == NULL || w->indice >= p->n_widget || p->widget[w->indice].tipo != w->tipo)
         return;
+    posizioni_fissa(d);
     PhCfgWidget *c = &p->widget[w->indice];
     unsigned nuovo = ph_dsk_stile_valido_di(w->tipo, stile);
     if (nuovo != w->stile) {

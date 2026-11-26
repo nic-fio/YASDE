@@ -2,7 +2,9 @@
  * qualcosa senza mouse, per le fotografie di strumenti/foto-demo.sh. Lavora solo
  * con le funzioni interne del pezzo e con i widget trovati per classe CSS.
  * cosa: widget3, menu-desktop, menu-icona, menu-widget, sfondo, sfondo-solido,
- * sfondo-sfumato, sfondo-immagine, sfondo-scegli-prima, catalogo, chiudi. */
+ * sfondo-sfumato, sfondo-immagine, sfondo-scegli-prima, catalogo, componenti[:0|1|2],
+ * componenti-verifica, chiudi. */
+#include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -307,12 +309,457 @@ static void vetro_esci(void)
     }
 }
 
+/* ---- Galleria dei componenti di disegno (componenti.c) -------------------------------------------
+ * «componenti[:0|1|2]»: schede di vetro scuro con ogni componente e dati finti, a tre misure (200,
+ * 280, 380 px di larghezza); con 0, 1 o 2 solo quella misura (per le fotografie su schermi bassi).
+ * Le schede si dispongono in colonne e vanno a capo quando finisce l'altezza. «componenti-verifica»
+ * controlla che tutto sia stato disegnato con lo spazio dato, che le tinte arrivino dal CSS e che i
+ * clic delle righe arrivino alla callback; se non viene eseguita il processo esce con errore. */
+static const struct {
+    int larg;
+    int alte[5]; /* altezza della scheda per componente: anello, fette, curva, righe, numeri */
+} GAL_MISURE[3] = {{200, {150, 250, 220, 190, 150}}, {280, {190, 200, 240, 190, 150}}, {380, {230, 200, 280, 190, 150}}};
+
+static unsigned gal_clic, gal_clic_attesi, gal_dischi, gal_tratti;
+static unsigned gal_n_misure;
+static bool gal_verificata, gal_costruita;
+
+static void gal_esci(void)
+{
+    if (gal_costruita && !gal_verificata) {
+        fprintf(stderr, "componenti: la verifica non e' stata eseguita\n");
+        _exit(1);
+    }
+}
+
+static void gal_clic_riga(void *dati)
+{
+    gal_clic++;
+    fprintf(stderr, "demo: clic sulla riga \"%s\"\n", (const char *)dati);
+}
+
+static void gal_anello(GtkWidget *c, int w, int h, int k)
+{
+    static const double pct[3] = {78, 5, 100};
+    static const PhDskAccento acc[3] = {PH_DSK_ACC_VERDE, PH_DSK_ACC_CORALLO, PH_DSK_ACC_TEMA};
+    GtkWidget *a = ph_dsk_anello_nuovo();
+    int lato = MIN(w - 40, h - 32);
+    gtk_widget_set_size_request(a, lato, lato);
+    gtk_widget_set_halign(a, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(a, GTK_ALIGN_CENTER);
+    gtk_widget_set_vexpand(a, TRUE);
+    ph_dsk_anello_imposta(a, pct[k], NULL, acc[k]);
+    gtk_box_append(GTK_BOX(c), a);
+    gal_dischi++;
+}
+
+static void gal_fette(GtkWidget *c, int k)
+{
+    static const PhDskFetta f[5] = {{"Images", "21 GB", 21, PH_DSK_ACC_TEMA},
+                                    {"Videos", "34 GB", 34, PH_DSK_ACC_INDACO},
+                                    {"Audio", "3 GB", 3, PH_DSK_ACC_AMBRA},
+                                    {"Apps", "18 GB", 18, PH_DSK_ACC_CORALLO},
+                                    {"Other", "10 GB", 10, PH_DSK_ACC_ARDESIA}};
+    GtkWidget *n = ph_dsk_numero_nuovo();
+    gtk_widget_set_size_request(n, -1, 60);
+    ph_dsk_numero_imposta(n, "Storage", "42", "GB free of 128 GB");
+    gtk_box_append(GTK_BOX(c), n);
+    GtkWidget *fe = ph_dsk_fette_nuove();
+    /* La terza misura mostra anche cosa succede con dati incoerenti: somma oltre il totale. */
+    ph_dsk_fette_imposta(fe, f, G_N_ELEMENTS(f), k == 2 ? 60 : 128);
+    gtk_box_append(GTK_BOX(c), fe);
+}
+
+static void gal_curva(GtkWidget *c, int k)
+{
+    static const size_t punti[3] = {5, 7, 12};
+    static const int altezza[3] = {70, 86, 104};
+    size_t n = punti[k];
+    double t[PH_DSK_CURVA_MAX];
+    char gradi[PH_DSK_CURVA_MAX][16], ore[PH_DSK_CURVA_MAX][16];
+    const char *g[PH_DSK_CURVA_MAX], *o[PH_DSK_CURVA_MAX];
+    for (size_t i = 0; i < n; i++) {
+        t[i] = 17 + 5 * sin((double)i * 0.7 + 1.2);
+        g_snprintf(gradi[i], sizeof gradi[i], "%d\302\260", (int)lround(t[i]));
+        g_snprintf(ore[i], sizeof ore[i], "%02d", (int)((16 + 2 * i) % 24));
+        g[i] = gradi[i];
+        o[i] = ore[i];
+    }
+    GtkWidget *cu = ph_dsk_curva_nuova();
+    gtk_widget_set_size_request(cu, -1, altezza[k]);
+    ph_dsk_curva_imposta(cu, t, g, o, n, PH_DSK_ACC_TEMA);
+    gtk_box_append(GTK_BOX(c), cu);
+    gal_dischi++;
+    static const struct {
+        const char *giorno, *testo;
+        double min, max;
+    } gg[3] = {{"Fri", "12\302\260 / 22\302\260", 12, 22}, {"Sat", "11\302\260 / 20\302\260", 11, 20},
+               {"Sun", "13\302\260 / 24\302\260", 13, 24}};
+    for (size_t i = 0; i < 3; i++) {
+        GtkWidget *riga = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+        GtkWidget *e = gtk_label_new(gg[i].giorno);
+        gtk_widget_set_size_request(e, 30, -1);
+        gtk_label_set_xalign(GTK_LABEL(e), 0);
+        GtkWidget *tr = ph_dsk_tratto_nuovo();
+        ph_dsk_tratto_imposta(tr, true, gg[i].min, gg[i].max, 8, 26, PH_DSK_ACC_TEMA, PH_DSK_ACC_AMBRA);
+        GtkWidget *v = gtk_label_new(gg[i].testo);
+        gtk_label_set_xalign(GTK_LABEL(v), 1);
+        gtk_box_append(GTK_BOX(riga), e);
+        gtk_box_append(GTK_BOX(riga), tr);
+        gtk_box_append(GTK_BOX(riga), v);
+        gtk_box_append(GTK_BOX(c), riga);
+        gal_tratti++;
+    }
+}
+
+static void gal_righe(GtkWidget *c)
+{
+    static const struct {
+        const char *titolo, *sotto, *ora;
+        PhDskAccento acc;
+        bool tondo, clic;
+    } r[3] = {{"Alex", "See you at 8? I booked the table by the window", "15:52", PH_DSK_ACC_VERDE, true, true},
+              {"Invoice for October", "Your invoice is ready", "15:20", PH_DSK_ACC_INDACO, false, true},
+              {"Dentist", "Today at 17:30", "14:30", PH_DSK_ACC_CORALLO, false, false}};
+    for (size_t i = 0; i < 3; i++) {
+        GtkWidget *riga = ph_dsk_riga_nuova(r[i].clic ? gal_clic_riga : NULL, (void *)r[i].titolo);
+        ph_dsk_riga_imposta(riga, NULL, r[i].acc, r[i].tondo, r[i].titolo, r[i].sotto, r[i].ora);
+        gtk_box_append(GTK_BOX(c), riga);
+        if (r[i].clic)
+            gal_clic_attesi++;
+    }
+}
+
+static void gal_numeri(GtkWidget *c)
+{
+    GtkWidget *a = ph_dsk_numero_nuovo();
+    gtk_widget_set_size_request(a, -1, 56);
+    ph_dsk_numero_imposta(a, "Thu", "26", "November");
+    GtkWidget *b = ph_dsk_numero_nuovo();
+    gtk_widget_set_size_request(b, -1, 56);
+    ph_dsk_numero_imposta(b, "Next alarm", "07:00", "Friday \302\267 in 15 h");
+    gtk_box_append(GTK_BOX(c), a);
+    gtk_box_append(GTK_BOX(c), b);
+}
+
+static void galleria_costruisci(PhShell *sh, PhDesktop *d, PhCfgTelefono *p, int solo)
+{
+    p->n_widget = 0; /* via i widget veri: lo schermo e' della galleria */
+    ph_dsk_widget_ricostruisci(d);
+    int x = 16, y = 16, colonna = 0, lim = d->area_a - PH_DSK_BARRA - 12;
+    for (int k = 0; k < 3; k++) {
+        if (solo >= 0 && solo != k)
+            continue;
+        gal_n_misure++;
+        for (int q = 0; q < 5; q++) {
+            int w = GAL_MISURE[k].larg, h = GAL_MISURE[k].alte[q];
+            if (y + h > lim && y > 16) { /* a capo: nuova colonna */
+                x += colonna + 12;
+                y = 16;
+                colonna = 0;
+            }
+            GtkWidget *c = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+            gtk_widget_add_css_class(c, "ph-desktop-galleria");
+            gtk_widget_add_css_class(c, "ph-desktop-forma-mattonella");
+            gtk_widget_set_size_request(c, w, h);
+            ph_shell_vetro_registra(sh, c, PH_DSK_RAGGIO_MATTONELLA, PH_VETRO_SCURO);
+            ph_shell_libero_metti(d->libero, c, x, y, w, h);
+            switch (q) {
+            case 0: gal_anello(c, w, h, k); break;
+            case 1: gal_fette(c, k); break;
+            case 2: gal_curva(c, k); break;
+            case 3: gal_righe(c); break;
+            default: gal_numeri(c); break;
+            }
+            y += h + 12;
+            if (w > colonna)
+                colonna = w;
+        }
+        x += colonna + 12;
+        y = 16;
+        colonna = 0;
+    }
+    gal_costruita = true;
+    atexit(gal_esci);
+}
+
+/* Conta i disegni (anello, fette, curva, tratto, numero) e quanti hanno gia' ricevuto una misura. */
+static void gal_conta_disegni(GtkWidget *w, unsigned *visti, unsigned *con_misura)
+{
+    for (GtkWidget *c = gtk_widget_get_first_child(w); c != NULL; c = gtk_widget_get_next_sibling(c)) {
+        if (g_strcmp0(gtk_widget_get_css_name(c), "ph-desktop-disegno") == 0) {
+            (*visti)++;
+            if (gtk_widget_get_width(c) > 0 && gtk_widget_get_height(c) > 0)
+                (*con_misura)++;
+        }
+        gal_conta_disegni(c, visti, con_misura);
+    }
+}
+
+/* Disposizione adattiva: alla larghezza di 200 px (contenuto 160) la legenda delle fette sta in UNA
+ * colonna e l'ora della riga col titolo lungo scende sotto; a 380 px la legenda e' a due colonne e
+ * l'ora sta a destra. NULL se tutto e' come atteso, altrimenti il motivo (il layout arriva in
+ * ritardo di un fotogramma: chi chiama riprova fino alla scadenza). */
+static const char *gal_disposizione(GtkWidget *radice)
+{
+    for (int i = 0;; i++) {
+        GtkWidget *g = trova(radice, "ph-desktop-legenda", i);
+        if (g == NULL)
+            break;
+        /* Le colonne sono le ascisse diverse delle voci (la legenda dispone da sola i suoi figli). */
+        int w = gtk_widget_get_width(g), colonne = 0;
+        float visti[PH_DSK_FETTE_MAX];
+        for (GtkWidget *c = gtk_widget_get_first_child(g); c != NULL; c = gtk_widget_get_next_sibling(c)) {
+            graphene_rect_t b;
+            if (!gtk_widget_compute_bounds(c, g, &b))
+                return "legenda: voce senza misura";
+            bool nuova = true;
+            for (int k = 0; k < colonne; k++)
+                if (fabsf(visti[k] - b.origin.x) < 1.0f)
+                    nuova = false;
+            if (nuova && colonne < PH_DSK_FETTE_MAX)
+                visti[colonne++] = b.origin.x;
+        }
+        if ((w > 0 && w <= 170 && colonne != 1) || (w >= 300 && colonne != 2))
+            return "legenda: colonne diverse da quelle attese per la larghezza";
+    }
+    for (int i = 0;; i++) {
+        GtkWidget *b = trova(radice, "ph-desktop-riga-elenco", i);
+        if (b == NULL)
+            break;
+        GtkWidget *titolo = trova(b, "ph-desktop-riga-titolo", 0), *ora = trova(b, "ph-desktop-riga-ora", 0),
+                  *sotto = trova(b, "ph-desktop-riga-sotto", 0);
+        if (g_strcmp0(gtk_label_get_text(GTK_LABEL(titolo)), "Invoice for October") != 0)
+            continue;
+        int w = gtk_widget_get_width(b);
+        /* Sotto: l'ora comincia dove finisce il titolo (a destra di lui non c'e' posto). */
+        graphene_rect_t bo, bt;
+        if (!gtk_widget_compute_bounds(ora, b, &bo) || !gtk_widget_compute_bounds(titolo, b, &bt))
+            return "riga: ora o titolo senza misura";
+        bool sotto_ora = bo.origin.y >= bt.origin.y + bt.size.height - 1.0f;
+        (void)sotto;
+        if ((w > 0 && w <= 170 && !sotto_ora) || (w >= 300 && sotto_ora))
+            return "riga: l'ora non e' dove deve stare per la larghezza";
+    }
+    return NULL;
+}
+
+/* Testi guasti e icona rimessa due volte: nessun testo non valido arriva alle etichette, nessun uso di
+ * memoria liberata (ASan). */
+static void gal_ostili(void)
+{
+    GtkWidget *r = ph_dsk_riga_nuova(NULL, NULL);
+    g_object_ref_sink(r);
+    ph_dsk_riga_imposta(r, NULL, PH_DSK_ACC_TEMA, true, "T\xff" "x", "S\xc3", "1\xfe");
+    static const char *const classi[] = {"ph-desktop-riga-titolo", "ph-desktop-riga-sotto", "ph-desktop-riga-ora"};
+    for (size_t i = 0; i < G_N_ELEMENTS(classi); i++) {
+        GtkWidget *l = trova(r, classi[i], 0);
+        if (l == NULL || !g_utf8_validate(gtk_label_get_text(GTK_LABEL(l)), -1, NULL))
+            g_error("componenti: testo non valido nella riga (%s)", classi[i]);
+    }
+    GtkWidget *ic = gtk_image_new();
+    ph_dsk_riga_icona(r, ic);
+    ph_dsk_riga_icona(r, ic); /* la stessa: non deve fare nulla */
+    ph_dsk_riga_icona(r, NULL);
+    g_object_unref(r);
+    GtkWidget *fe = ph_dsk_fette_nuove();
+    g_object_ref_sink(fe);
+    const PhDskFetta f[1] = {{"N\xffome", "1\xc3", 5, PH_DSK_ACC_TEMA}};
+    ph_dsk_fette_imposta(fe, f, 1, 10);
+    GtkWidget *l1 = trova(fe, "ph-desktop-legenda-nome", 0), *l2 = trova(fe, "ph-desktop-legenda-valore", 0);
+    if (l1 == NULL || l2 == NULL || !g_utf8_validate(gtk_label_get_text(GTK_LABEL(l1)), -1, NULL) ||
+        !g_utf8_validate(gtk_label_get_text(GTK_LABEL(l2)), -1, NULL))
+        g_error("componenti: testo non valido nella legenda");
+    g_object_unref(fe);
+}
+
+/* Nessun richiamo a fotogramma (gtk_widget_add_tick_callback) deve restare registrato su un
+ * componente: terrebbe acceso l'orologio dei fotogrammi anche a desktop fermo. GTK collega un
+ * gestore del segnale "update" dell'orologio con il widget come dato per ogni widget che ha un
+ * richiamo a fotogramma: si cerca, in tutto cio' che sta dentro le schede della galleria, un widget
+ * con quel gestore. (Un contatore di fotogrammi non va: Broadway senza browser non ne produce.) */
+static int gal_richiami_a_fotogramma(GtkWidget *w, GdkFrameClock *fc, guint id)
+{
+    int n = 0;
+    for (GtkWidget *c = gtk_widget_get_first_child(w); c != NULL; c = gtk_widget_get_next_sibling(c)) {
+        if (g_signal_handler_find(fc, (GSignalMatchType)(G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DATA), id, 0, NULL, NULL,
+                                  c) != 0)
+            n++;
+        n += gal_richiami_a_fotogramma(c, fc, id);
+    }
+    return n;
+}
+
+static void gal_senza_richiami(GtkWidget *radice)
+{
+    GdkFrameClock *fc = gtk_widget_get_frame_clock(radice);
+    if (fc == NULL)
+        g_error("componenti: nessun orologio dei fotogrammi");
+    guint id = g_signal_lookup("update", GDK_TYPE_FRAME_CLOCK);
+    int tot = 0, schede = 0;
+    for (int i = 0;; i++, schede++) {
+        GtkWidget *scheda = trova(radice, "ph-desktop-galleria", i);
+        if (scheda == NULL)
+            break;
+        tot += gal_richiami_a_fotogramma(scheda, fc, id);
+    }
+    if (schede == 0)
+        g_error("componenti: nessuna scheda controllata per i richiami a fotogramma");
+    if (tot != 0)
+        g_error("componenti: %d widget dei componenti hanno un richiamo a fotogramma registrato", tot);
+}
+
+static void galleria_controlla(GtkWidget *radice, unsigned visti)
+{
+    gal_ostili();
+    /* Le tinte vengono dal CSS: la sonda del verde ha il colore della variabile. */
+    GtkWidget *sonda = trova(radice, "ph-desktop-sonda-verde", 0);
+    if (sonda == NULL)
+        g_error("componenti: nessuna sonda del verde");
+    GdkRGBA verde;
+    gtk_widget_get_color(sonda, &verde);
+    if (lround(verde.red * 255) != 0x4a || lround(verde.green * 255) != 0xde || lround(verde.blue * 255) != 0x80)
+        g_error("componenti: la sonda del verde ha il colore %.2f %.2f %.2f, non quello del CSS", verde.red,
+                verde.green, verde.blue);
+    /* I clic delle righe cliccabili arrivano alla callback; quella solo da guardare non ne da'. */
+    unsigned prima = gal_clic;
+    unsigned righe_cliccabili = 0;
+    for (int i = 0;; i++) {
+        GtkWidget *r = trova(radice, "ph-desktop-riga-elenco", i);
+        if (r == NULL)
+            break;
+        g_signal_emit_by_name(r, "clicked");
+        righe_cliccabili++;
+    }
+    if (righe_cliccabili == 0 || gal_clic - prima != gal_clic_attesi)
+        g_error("componenti: %u clic arrivati su %u righe, attesi %u", gal_clic - prima, righe_cliccabili,
+                gal_clic_attesi);
+    g_message("componenti: %u disegni, tinta verde dal CSS, %u clic", visti, gal_clic - prima);
+    gal_senza_richiami(radice);
+    gal_verificata = true;
+}
+
+/* La misura arriva con il layout del fotogramma: si controlla a ogni fotogramma finche' tutti i
+ * disegni ne hanno una (scadenza 4 s: poi la prova cade), senza aspettare un tempo fisso. */
+static gboolean galleria_fotogramma(GtkWidget *radice, GdkFrameClock *clock, gpointer dati)
+{
+    (void)clock;
+    gint64 *scadenza = dati;
+    unsigned visti = 0, con_misura = 0;
+    gal_conta_disegni(radice, &visti, &con_misura);
+    /* Per ogni misura: anello, barra a fette, un numero nelle fette, curva, 3 tratti, 2 numeri. */
+    unsigned attesi = 9 * gal_n_misure;
+    const char *disposizione = NULL;
+    if (gal_n_misure != 0 && visti == attesi && con_misura == visti) {
+        disposizione = gal_disposizione(radice);
+        if (disposizione == NULL) {
+            galleria_controlla(radice, visti);
+            return G_SOURCE_REMOVE;
+        }
+    }
+    if (g_get_monotonic_time() > *scadenza)
+        g_error("componenti: dopo 4 s i disegni sono %u (attesi %u), con una misura vera %u; %s", visti, attesi,
+                con_misura, disposizione != NULL ? disposizione : "disposizione non controllata");
+    return G_SOURCE_CONTINUE;
+}
+
+static void galleria_verifica(GtkWidget *radice)
+{
+    gint64 *scadenza = g_new(gint64, 1); /* vive quanto il processo: il callback e' l'ultimo a usarlo */
+    *scadenza = g_get_monotonic_time() + 4 * G_USEC_PER_SEC;
+    gtk_widget_add_tick_callback(radice, galleria_fotogramma, scadenza, NULL);
+}
+
+/* Widget predefiniti di un profilo nuovo: a schermo stanno a 12 px l'uno dall'altro, il profilo
+ * non viene riscritto finche' l'utente non cambia qualcosa; alla prima modifica (qui un cambio di
+ * stile) i posti mostrati finiscono nel profilo, cosi' gli altri non tornano a toccarsi. */
+static bool predefiniti_verificati;
+static void predefiniti_esci(void)
+{
+    if (!predefiniti_verificati) {
+        fprintf(stderr, "predefiniti: la verifica non e' stata eseguita\n");
+        _exit(1);
+    }
+}
+
+static void predefiniti_controlla(PhDesktop *d, PhCfgTelefono *p)
+{
+    static const int alti_profilo[3] = {16, 120, 240};
+    for (size_t i = 0; i < 3; i++)
+        if (p->widget[i].alto != alti_profilo[i])
+            g_error("predefiniti: il profilo e' stato riscritto prima di una modifica dell'utente");
+    for (size_t i = 0; i + 1 < 3; i++) {
+        const PhDskWidget *a = g_ptr_array_index(d->widget, i), *b = g_ptr_array_index(d->widget, i + 1);
+        if (b->alto - (a->alto + a->altezza) != PH_DSK_DISTANZA_WIDGET)
+            g_error("predefiniti: tra il widget %zu e il successivo ci sono %d px, attesi %d", i,
+                    b->alto - (a->alto + a->altezza), PH_DSK_DISTANZA_WIDGET);
+    }
+    int mostrati[3];
+    for (size_t i = 0; i < 3; i++)
+        mostrati[i] = ((const PhDskWidget *)g_ptr_array_index(d->widget, i))->alto;
+    /* Una modifica dell'utente: il profilo prende i posti mostrati e dopo la ricostruzione non cambiano. */
+    unsigned id = ((const PhDskWidget *)g_ptr_array_index(d->widget, 0))->id;
+    ph_dsk_widget_stile_imposta(d, id, PH_DSK_OROLOGIO_CLASSICO, 0);
+    for (size_t i = 0; i < 3; i++) {
+        const PhDskWidget *w = g_ptr_array_index(d->widget, i);
+        if (p->widget[i].alto != mostrati[i] && i > 0)
+            g_error("predefiniti: dopo la modifica il profilo non ha il posto mostrato (%zu)", i);
+        if (i > 0 && w->alto != mostrati[i])
+            g_error("predefiniti: dopo la modifica il widget %zu si e' spostato", i);
+    }
+    predefiniti_verificati = true;
+    g_message("predefiniti: widget a %d px l'uno dall'altro, profilo riscritto solo alla modifica",
+              PH_DSK_DISTANZA_WIDGET);
+}
+
+/* Il profilo del telefono finto arriva dopo un po': si controlla a ogni fotogramma finche' ci sono
+ * i tre widget (scadenza 4 s: poi la prova cade). */
+static gboolean predefiniti_fotogramma(GtkWidget *radice, GdkFrameClock *clock, gpointer dati)
+{
+    (void)clock;
+    gint64 *scadenza = dati;
+    PhDesktop *d = g_object_get_data(G_OBJECT(radice), "ph-desktop");
+    PhCfgTelefono *p = d != NULL ? ph_dsk_profilo(d) : NULL;
+    if (p != NULL && d->widget->len == 3 && p->n_widget == 3) {
+        predefiniti_controlla(d, p);
+        return G_SOURCE_REMOVE;
+    }
+    if (g_get_monotonic_time() > *scadenza)
+        g_error("predefiniti: dopo 4 s i widget a schermo non sono i tre predefiniti");
+    return G_SOURCE_CONTINUE;
+}
+
+/* «componenti» prima che il profilo del telefono finto sia arrivato: si riprova a ogni fotogramma. */
+typedef struct {
+    PhShell *sh;
+    int solo;
+    gint64 scadenza;
+} GalAttesa;
+
+static gboolean galleria_attesa_profilo(GtkWidget *radice, GdkFrameClock *clock, gpointer dati)
+{
+    (void)clock;
+    GalAttesa *a = dati;
+    PhDesktop *d = g_object_get_data(G_OBJECT(radice), "ph-desktop");
+    PhCfgTelefono *p = d != NULL ? ph_dsk_profilo(d) : NULL;
+    if (p != NULL) {
+        galleria_costruisci(a->sh, d, p, a->solo);
+        return G_SOURCE_REMOVE;
+    }
+    if (g_get_monotonic_time() > a->scadenza)
+        g_error("componenti: dopo 4 s il profilo non e' arrivato");
+    return G_SOURCE_CONTINUE;
+}
+
 void ph_demo_mostra(PhShell *sh, const char *cosa)
 {
     GtkWidget *radice = ph_shell_radice(sh);
     PhDesktop *d = g_object_get_data(G_OBJECT(radice), "ph-desktop");
     PhCfgTelefono *p = d != NULL ? ph_dsk_profilo(d) : NULL;
-    if (d == NULL || p == NULL || cosa == NULL)
+    /* Le verifiche con attesa a fotogrammi partono anche se il profilo non e' ancora arrivato. */
+    bool attende = cosa != NULL && (strcmp(cosa, "predefiniti-verifica") == 0 || strcmp(cosa, "componenti-verifica") == 0 ||
+                                    strcmp(cosa, "componenti") == 0 || g_str_has_prefix(cosa, "componenti:"));
+    if (d == NULL || cosa == NULL || (p == NULL && !attende))
         return;
     if (strcmp(cosa, "widget3") == 0) {
         /* Tutti e cinque i widget, nelle tre dimensioni. */
@@ -497,6 +944,25 @@ void ph_demo_mostra(PhShell *sh, const char *cosa)
         }
         verifica_vetro_fatta = true;
         g_message("verifica-vetro: widget vetro scuro, menu e dialoghi vetro chiaro");
+    } else if (strcmp(cosa, "componenti") == 0 || g_str_has_prefix(cosa, "componenti:")) {
+        int solo = cosa[10] == ':' ? atoi(cosa + 11) : -1;
+        if (p != NULL)
+            galleria_costruisci(sh, d, p, solo);
+        else { /* il profilo non e' ancora arrivato: si aspetta a fotogrammi, con scadenza */
+            GalAttesa *a = g_new0(GalAttesa, 1);
+            a->sh = sh;
+            a->solo = solo;
+            a->scadenza = g_get_monotonic_time() + 4 * G_USEC_PER_SEC;
+            gtk_widget_add_tick_callback(radice, galleria_attesa_profilo, a, g_free);
+        }
+    } else if (strcmp(cosa, "predefiniti-attendi") == 0) {
+        atexit(predefiniti_esci);
+    } else if (strcmp(cosa, "predefiniti-verifica") == 0) {
+        gint64 *scadenza = g_new(gint64, 1); /* vive quanto il processo */
+        *scadenza = g_get_monotonic_time() + 4 * G_USEC_PER_SEC;
+        gtk_widget_add_tick_callback(radice, predefiniti_fotogramma, scadenza, NULL);
+    } else if (strcmp(cosa, "componenti-verifica") == 0) {
+        galleria_verifica(radice);
     } else if (strcmp(cosa, "stress") == 0) {
         stress_avvia(sh);
     } else if (strcmp(cosa, "luogo") == 0) {
@@ -1182,6 +1648,10 @@ static bool st_chiusura(Stress *s)
     int in_volo = ph_finto_meteo_ricerche_non_annullate(ph_demo_finto());
     if (in_volo < 1)
         g_error("prova d'insieme: nessuna ricerca in volo prima della chiusura (%d)", in_volo);
+    /* La prova della barra deve aver controllato almeno una barra: se nessuna e' stata vista il
+     * conto non prova niente. */
+    if (st_barre_viste == 0)
+        g_error("prova d'insieme: nessuna barra di avanzamento e' stata controllata");
     ph_demo_finto_comando("perdi:3");
     fprintf(stderr, "prova d'insieme: %u attese deboli scadute\n", s->scadute);
     stress_finito = true;
