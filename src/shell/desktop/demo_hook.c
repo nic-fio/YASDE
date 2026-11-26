@@ -22,6 +22,10 @@ void ph_demo_controlli(PhShell *sh, const char *cosa); /* agente D: demo_control
 /* agente A: inizio */
 static void vecchi_avvia(PhShell *sh, PhDesktop *d, PhCfgTelefono *p); /* in fondo al file */
 static void vecchi_foto(PhDesktop *d, PhCfgTelefono *p, const char *quale);
+uint64_t ph_dsk_widget_adesso_ms(int *scarto_s); /* widget.c: l'«adesso» dei widget (ora congelata se c'e') */
+/* Ora congelata di «vecchi» e delle sue foto: le 13:30, quando il «Lunch» del finto (13:00-14:00) e'
+ * in corso e restano tre impegni dopo. Cosi' a qualunque ora vera si vedono sempre gli stessi impegni. */
+#define VECCHI_ORA (13 * 3600 + 30 * 60)
 /* agente A: fine */
 
 /* Il n-esimo widget (in ordine di profondita') con la classe CSS data. */
@@ -1782,6 +1786,16 @@ static bool st_agente_b(Stress *s)
         if (gtk_widget_get_width(t) != gtk_widget_get_height(t) || gtk_widget_get_width(t) != lato || lato < 24)
             g_error("prova d'insieme: il tondo della sveglia %dx%d e' %dx%d, atteso un cerchio di %d", sve->larghezza,
                     sve->altezza, gtk_widget_get_width(t), gtk_widget_get_height(t), lato);
+        /* L'icona sta al centro esatto del tondo (1 px di tolleranza). */
+        GtkWidget *icona = gtk_widget_get_first_child(t);
+        graphene_rect_t ri;
+        if (icona == NULL || !gtk_widget_compute_bounds(icona, t, &ri) ||
+            fabs(ri.origin.x + ri.size.width / 2.0 - gtk_widget_get_width(t) / 2.0) > 1.0 ||
+            fabs(ri.origin.y + ri.size.height / 2.0 - gtk_widget_get_height(t) / 2.0) > 1.0)
+            g_error("prova d'insieme: l'icona della sveglia %dx%d non e' al centro del tondo (x %.1f y %.1f l %.1f a %.1f, tondo %dx%d)",
+                    sve->larghezza, sve->altezza, icona != NULL ? ri.origin.x : -1.0, icona != NULL ? ri.origin.y : -1.0,
+                    icona != NULL ? ri.size.width : -1.0, icona != NULL ? ri.size.height : -1.0, gtk_widget_get_width(t),
+                    gtk_widget_get_height(t));
         if (++s->n < G_N_ELEMENTS(AB_SVE))
             s->k = 1;
         else
@@ -2049,6 +2063,7 @@ static void vecchi_imposta(PhDesktop *d, PhCfgTelefono *p, const VecchiMis *m)
 
 static void vecchi_foto(PhDesktop *d, PhCfgTelefono *p, const char *quale)
 {
+    ph_dsk_orologio_ora_fissa(VECCHI_ORA); /* il calendario mostra impegni, non lo stato vuoto */
     if (strcmp(quale, "grandi") == 0)
         vecchi_imposta(d, p, VM_GRANDI);
     else if (strcmp(quale, "minime") == 0)
@@ -2144,6 +2159,24 @@ static int vecchi_geometria(PhDesktop *d)
     int sh = gtk_widget_get_height(w->scheda), sl = gtk_widget_get_width(w->scheda);
     if (sh <= 0 || sl <= 0)
         return 0;
+    /* Calendario del giorno: la colonna degli impegni comincia subito dopo quella del giorno (circa
+     * 14 px), non attaccata al bordo destro con un vuoto in mezzo. */
+    PhDskWidget *cw = vecchi_widget(d, PH_CFG_WIDGET_CALENDARIO);
+    GtkWidget *colg = trova(cw->corpo, "ph-desktop-giorno-colonna", 0), *imp = trova(cw->corpo, "ph-desktop-giorno-impegni", 0);
+    if (colg != NULL) {
+        if (imp == NULL)
+            g_error("vecchi: calendario: giorno a sinistra senza la colonna degli impegni");
+        if (gtk_widget_get_width(colg) <= 0 || gtk_widget_get_width(imp) <= 0)
+            return 0;
+        graphene_rect_t bc, bi;
+        if (!gtk_widget_compute_bounds(colg, cw->corpo, &bc) || !gtk_widget_compute_bounds(imp, cw->corpo, &bi))
+            return 0;
+        float vuoto = bi.origin.x - (bc.origin.x + bc.size.width);
+        if (vuoto < 0 || vuoto >= 24)
+            g_error("vecchi: calendario %dx%d: tra la colonna del giorno e quella degli impegni ci sono %.0f px "
+                    "(attesi meno di 24: il giorno finisce a %.0f, gli impegni cominciano a %.0f)",
+                    cw->larghezza, cw->altezza, vuoto, bc.origin.x + bc.size.width, bi.origin.x);
+    }
     GtkWidget *leg = trova(w->corpo, "ph-desktop-legenda", 0);
     if (leg == NULL || !gtk_widget_is_visible(leg))
         return 1;
@@ -2215,32 +2248,37 @@ static void vecchi_controlla(PhDesktop *d, const char *fase)
     for (size_t i = 0; i < d->n_eventi; i++)
         ev[i] = (PhDskEvento){d->eventi[i].titolo, d->eventi[i].inizio_ms, d->eventi[i].fine_ms,
                               d->eventi[i].tutto_il_giorno};
-    uint64_t ora_ms = (uint64_t)(g_get_real_time() / 1000);
-    GDateTime *dt = g_date_time_new_now_local();
-    int scarto = (int)(g_date_time_get_utc_offset(dt) / G_USEC_PER_SEC);
-    g_date_time_unref(dt);
+    /* L'ora e' quella congelata (VECCHI_ORA, le 13:30): gli impegni del finto sono a orari fissi della
+     * giornata, quindi a qualunque ora vera si hanno SEMPRE gli stessi: «Lunch» (13:00-14:00) in corso,
+     * poi Client call, Gym e Dinner. La prova non dipende dall'orologio. */
+    int scarto = 0;
+    uint64_t ora_ms = ph_dsk_widget_adesso_ms(&scarto);
     PhDskCalDisp cd = ph_dsk_calendario_disp(w->larghezza, w->altezza);
     size_t idx[PH_SRV_CALENDARIO_MAX];
+    size_t restano = ph_dsk_eventi_di_oggi(ev, d->n_eventi, ora_ms, scarto, PH_SRV_CALENDARIO_MAX, idx);
     size_t k = ph_dsk_eventi_di_oggi(ev, d->n_eventi, ora_ms, scarto,
                                      cd.max_impegni < PH_SRV_CALENDARIO_MAX ? cd.max_impegni : PH_SRV_CALENDARIO_MAX, idx);
+    size_t attesi_k = cd.max_impegni < 4 ? cd.max_impegni : 4;
+    if (restano != 4 || k != attesi_k)
+        g_error("vecchi (%s): calendario: alle 13:30 il finto deve dare 4 impegni (dati %zu) e se ne vedono %zu "
+                "(attesi %zu): la prova non esercita cio' che deve",
+                fase, restano, k, attesi_k);
     int impegni = vecchi_conta(w->corpo, "ph-desktop-giorno-impegno");
     int in_corso = 0;
     for (size_t i = 0; i < k; i++)
         in_corso += ph_dsk_impegno_in_corso(&ev[idx[i]], ora_ms) ? 1 : 0;
-    /* Un minuto di scarto tra la lettura qui e quella del widget: l'«ora» puo' differire solo al
-     * confine, che il finto non incrocia (impegni a orari tondi: si accetta di non verificarlo). */
+    if (in_corso != 1)
+        g_error("vecchi (%s): calendario: attesi 1 impegno in corso, trovati %d", fase, in_corso);
     if ((size_t)impegni != k || vecchi_conta(w->corpo, "ph-desktop-giorno-impegno-ora") != in_corso)
         g_error("vecchi (%s): calendario: %d impegni (attesi %zu), %d «ora» (attesi %d)", fase, impegni, k,
                 vecchi_conta(w->corpo, "ph-desktop-giorno-impegno-ora"), in_corso);
-    if (k > 0) {
-        GtkWidget *primo = trova(w->corpo, "ph-desktop-giorno-impegno", 0);
-        if (!GTK_IS_BUTTON(primo))
-            g_error("vecchi (%s): calendario: con l'app nota l'impegno deve essere un pulsante", fase);
-        vecchi_aperta[0] = '\0';
-        g_signal_emit_by_name(primo, "clicked");
-        if (strcmp(vecchi_aperta, d->app_calendario) != 0)
-            g_error("vecchi (%s): calendario: il clic non ha aperto l'app del calendario", fase);
-    }
+    GtkWidget *primo = trova(w->corpo, "ph-desktop-giorno-impegno", 0);
+    if (primo == NULL || !GTK_IS_BUTTON(primo))
+        g_error("vecchi (%s): calendario: con l'app nota l'impegno deve essere un pulsante", fase);
+    vecchi_aperta[0] = '\0';
+    g_signal_emit_by_name(primo, "clicked");
+    if (strcmp(vecchi_aperta, d->app_calendario) != 0)
+        g_error("vecchi (%s): calendario: il clic non ha aperto l'app del calendario", fase);
     if (cd.colonna_giorno != (vecchi_conta(w->corpo, "ph-desktop-w-sotto-nom") > 0) ||
         cd.colonna_giorno == gtk_widget_get_visible(w->titolo))
         g_error("vecchi (%s): calendario: giorno a sinistra %d ma titolo visibile %d", fase, cd.colonna_giorno,
@@ -2372,15 +2410,52 @@ typedef struct {
     gint64 scadenza;
     int fase;
     bool applicata; /* la misura della fase e' stata messa: si aspetta il layout e si controlla */
+    bool svuotato;  /* fasi «vuoto»: gli impegni sono stati tolti e il widget rifatto */
 } Vecchi;
 
 static void vecchi_avanza(Vecchi *v)
 {
     v->fase++;
     v->applicata = false;
+    v->svuotato = false;
     v->scadenza = g_get_monotonic_time() + 5 * G_USEC_PER_SEC;
 }
 
+/* Stato vuoto del calendario (nessun impegno): il testo si legge PER INTERO, mai con i puntini, e non
+ * va a capo lettera per lettera. Torna 0 se il layout non e' ancora arrivato. */
+static int vecchi_vuoto(PhDesktop *d, const char *fase)
+{
+    PhDskWidget *w = vecchi_widget(d, PH_CFG_WIDGET_CALENDARIO);
+    if (vecchi_conta(w->corpo, "ph-desktop-giorno-impegno") != 0)
+        g_error("vecchi (%s): calendario vuoto ma ci sono impegni", fase);
+    GtkWidget *l = trova(w->corpo, "ph-desktop-w-sotto", 0);
+    if (l == NULL || !GTK_IS_LABEL(l))
+        g_error("vecchi (%s): calendario vuoto: manca il testo dello stato vuoto", fase);
+    if (gtk_widget_get_width(l) <= 0)
+        return 0;
+    PangoLayout *lay = gtk_label_get_layout(GTK_LABEL(l));
+    if (gtk_label_get_ellipsize(GTK_LABEL(l)) != PANGO_ELLIPSIZE_NONE || pango_layout_is_ellipsized(lay))
+        g_error("vecchi (%s): il testo dello stato vuoto e' troncato con i puntini (\"%s\")", fase,
+                gtk_label_get_text(GTK_LABEL(l)));
+    if (pango_layout_get_line_count(lay) > 2)
+        g_error("vecchi (%s): il testo dello stato vuoto va a capo in %d righe (larghezza %d)", fase,
+                pango_layout_get_line_count(lay), gtk_widget_get_width(l));
+    return 1;
+}
+
+/* Toglie gli impegni (come un telefono con il calendario vuoto) e rifa' i widget. */
+static void vecchi_svuota_calendario(PhDesktop *d)
+{
+    for (size_t i = 0; i < d->n_eventi; i++) {
+        g_free(d->eventi[i].titolo);
+        d->eventi[i].titolo = NULL;
+    }
+    d->n_eventi = 0;
+    d->eventi_noti = true; /* elenco vuoto vero: «nessun impegno», non «dati assenti» */
+    ph_dsk_widget_aggiorna_tutti(d);
+}
+
+#define VECCHI_FASI 6
 static gboolean vecchi_tick(gpointer dati)
 {
     Vecchi *v = dati;
@@ -2389,21 +2464,23 @@ static gboolean vecchi_tick(gpointer dati)
     ph_srv_notifiche(d->srv, &n_notifiche, NULL);
     bool pronto = d->memoria_nota && d->dettaglio_noto && d->eventi_noti && d->app_calendario != NULL &&
                   n_notifiche > 0;
-    if (!pronto) {
+    if (v->fase < 4 && !pronto) {
         if (g_get_monotonic_time() > v->scadenza)
             g_error("vecchi: dopo 5 s mancano dati: memoria %d dettaglio %d eventi %d app calendario %d notifiche %zu",
                     d->memoria_nota, d->dettaglio_noto, d->eventi_noti, d->app_calendario != NULL, n_notifiche);
         return G_SOURCE_CONTINUE;
     }
     PhCfgTelefono *p = ph_dsk_profilo(d);
-    static const VecchiMis *const MISURE[4] = {VM_GRANDI, VM_MANIGLIA, VM_BANDA, VM_MINIME};
-    static const char *const NOMI[4] = {"grandi", "maniglia", "fascia 290", "minime"};
-    if (v->fase < 4 && !v->applicata) {
+    static const VecchiMis *const MISURE[VECCHI_FASI] = {VM_GRANDI, VM_MANIGLIA, VM_BANDA, VM_MINIME, VM_GRANDI,
+                                                         VM_MINIME};
+    static const char *const NOMI[VECCHI_FASI] = {"grandi", "maniglia", "fascia 290", "minime", "vuoto 320",
+                                                  "vuoto 200"};
+    if (v->fase < VECCHI_FASI && !v->applicata) {
         vecchi_imposta(d, p, MISURE[v->fase]);
         v->applicata = true;
         return G_SOURCE_CONTINUE; /* il layout arriva con il fotogramma */
     }
-    if (v->fase < 4 && !vecchi_geometria(d)) {
+    if (v->fase < VECCHI_FASI && !vecchi_geometria(d)) {
         if (g_get_monotonic_time() > v->scadenza)
             g_error("vecchi (%s): dopo 5 s la misura vera dei widget non e' arrivata", NOMI[v->fase]);
         return G_SOURCE_CONTINUE;
@@ -2429,14 +2506,37 @@ static gboolean vecchi_tick(gpointer dati)
         vecchi_controlla(d, NOMI[3]);
         vecchi_riga();
         vecchi_senza_app_calendario(d);
-        vecchi_finito = true;
-        g_message("vecchi: quattro widget controllati a quattro misure (maniglia vera compresa), clic, "
-                  "legenda dentro la scheda e ritocchi dei componenti");
-        g_free(v);
-        return G_SOURCE_REMOVE;
+        break;
+    case 4:
+    case 5:
+        /* Prima si lascia finire le richieste in volo (il finto rimanderebbe i suoi impegni), poi si
+         * svuota il calendario, e al fotogramma dopo si guarda il testo vero. */
+        if (!v->svuotato) {
+            if (d->annulla_calendario != NULL || d->annulla_app_cal != NULL || !d->eventi_noti) {
+                if (g_get_monotonic_time() > v->scadenza)
+                    g_error("vecchi (%s): le richieste del calendario non finiscono", NOMI[v->fase]);
+                return G_SOURCE_CONTINUE;
+            }
+            vecchi_svuota_calendario(d);
+            v->svuotato = true;
+            return G_SOURCE_CONTINUE;
+        }
+        if (!vecchi_vuoto(d, NOMI[v->fase])) {
+            if (g_get_monotonic_time() > v->scadenza)
+                g_error("vecchi (%s): dopo 5 s il testo dello stato vuoto non ha una misura", NOMI[v->fase]);
+            return G_SOURCE_CONTINUE;
+        }
+        break;
     default: break;
     }
     vecchi_avanza(v);
+    if (v->fase >= VECCHI_FASI) {
+        vecchi_finito = true;
+        g_message("vecchi: quattro widget controllati a sei misure (maniglia vera compresa), clic, "
+                  "legenda dentro la scheda, stato vuoto del calendario e ritocchi dei componenti");
+        g_free(v);
+        return G_SOURCE_REMOVE;
+    }
     return G_SOURCE_CONTINUE;
 }
 
@@ -2446,6 +2546,7 @@ static void vecchi_avvia(PhShell *sh, PhDesktop *d, PhCfgTelefono *p)
         return;
     vecchi_iniziato = true;
     atexit(vecchi_esci);
+    ph_dsk_orologio_ora_fissa(VECCHI_ORA); /* la prova non dipende dall'ora vera */
     PhShellGestoreFinestre gf = {.io = NULL,
                                  .apri_app = vecchi_apri,
                                  .elenco = vecchi_elenco,

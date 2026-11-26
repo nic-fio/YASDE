@@ -45,7 +45,8 @@ S3 = p("The format is a subset of TOML written from scratch (" + c("src/config/t
         [c("[[widget]]") + " " + c("tipo"), c("orologio") + ", " + c("stato") + ", " + c("notifiche") + ", " + c("memoria") + ", " + c("calendario") + ", " + c("note") + ", " + c("meteo") + ", " + c("riproduzione") + ", "
          + c("calendario-mese") + ", " + c("sveglia") + ", " + c("batteria") + ", " + c("interruttori") + ", " + c("trova") + ", " + c("app-frequenti") + ", " + c("trasferimenti") + "; an unknown type drops the entry; at most " + c("PH_CFG_MAX_WIDGET") + " (32)", "—"],
         [c("[[widget]]") + " " + c("destra") + ", " + c("alto"), "pixels from the right and top edge, 0 to 16384", "16"],
-        [c("[[widget]]") + " " + c("dimensione"), c("piccolo") + " | " + c("medio") + " | " + c("grande"), c("medio")],
+        [c("[[widget]]") + " " + c("dimensione"), c("piccolo") + " | " + c("medio") + " | " + c("grande") + ": the old three-size level; it is still written (older versions read it) and it is the size of a profile that has no free size", c("medio")],
+        [c("[[widget]]") + " " + c("larghezza") + ", " + c("altezza"), "free size in pixels: 0 or 48 to 2048 (another value, or a wrong type, becomes 0 without failing the load); written only when not 0. With 0 the size is the one equivalent to " + c("dimensione") + ". The desktop then holds the size inside the limits of the type", "0, 0"],
         [c("[[widget]]") + " " + c("stile") + ", " + c("opzione"), "graphic variant 0 to 15; style-dependent value 0 to 255", "0, 0"],
         [c("[audio] volume"), "0 to 100 (the mute is not saved)", "100"],
         [c("[cartelle] invio") + ", " + c("ricezione"), "last send folder (on the phone) and receive folder (on the PC), empty if none", "empty"],
@@ -56,8 +57,9 @@ S3 = p("The format is a subset of TOML written from scratch (" + c("src/config/t
         [c("[[compatibilita]]") + " " + c("app"), "apps with the " + ui("Compatibility") + " switch on, at most " + c("PH_CFG_MAX_COMPAT") + " (128)", "none"],
         [c("[[finestra]]") + " " + c("app") + ", " + c("x") + ", " + c("y") + ", " + c("larghezza") + ", " + c("altezza"), "remembered window rectangle (one per app, at most 64); x and y −32768..32767, sizes 1..16384", "none"],
     ], "«TAB» — The keys of the three configuration files") + \
-    p("<b>Defaults of a new phone.</b> With no file (or a file set aside) the desktop has three medium widgets, Clock, Phone status and Recent notifications, at 16 px from the right "
-      "edge and 16, 120 and 240 px from the top. A valid file always has the last word: without any " + c("[[widget]]") + " there are no widgets.")
+    p("<b>Defaults of a new phone.</b> With no file (or a file set aside) the desktop has three widgets, Clock, Phone status and Recent notifications, with no saved free size (so the size equivalent to medium), at 16 px from the right "
+      "edge and 16, 120 and 240 px from the top in the profile. On the screen, while the profile is exactly this one, the desktop shows them one under the other from 16 px with " + c("PH_DSK_DISTANZA_WIDGET") + " (12 px) between them, "
+      "according to their real heights (" + c("ph_dsk_predefiniti_alti") + "); the profile is rewritten only when the user moves or changes something. A valid file always has the last word: without any " + c("[[widget]]") + " there are no widgets.")
 
 S4 = p("A damaged file must never crash the program or destroy data.", lead=True) + ul([
     "<b>Syntax error</b> (unclosed quote, huge number, null byte, invalid UTF-8, line too long, a text that is not UTF-8 in the file…): the load function returns -1 with a message "

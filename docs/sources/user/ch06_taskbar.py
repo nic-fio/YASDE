@@ -14,7 +14,7 @@ S1 = p("The taskbar is the strip at the bottom of the YASDE window. On the left 
     [ui("Notifications"), "A bell with the number of notifications. Opens the notifications panel (" + rif("The notifications panel") + ")."],
     ["Clock", "The time of the PC, as HH:MM. Click it for the calendar (see below)."],
 ], "«TAB» — The taskbar, from left to right") + \
-    p("The taskbar is dark glass; the launcher, the panels, the menus, the dialogs and the widgets are light glass and let you glimpse, blurred, what is behind them. "
+    p("The taskbar and the widgets are dark glass; the launcher, the panels, the menus and the dialogs are light glass. Both let you glimpse, blurred, what is behind them. "
       "On computers without graphics acceleration they have a plain, almost opaque background. Nothing changes in how they work.") + \
     shot("desktop.png", "«FIG» — The taskbar at the bottom of the desktop")
 

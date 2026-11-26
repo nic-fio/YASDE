@@ -147,6 +147,19 @@ static void adesso(uint64_t *ms, int *scarto, char *ora, size_t cap_ora, char *d
     g_date_time_unref(dt);
 }
 
+/* L'«adesso» dei widget (quello congelato da ph_dsk_orologio_ora_fissa, se c'e'): serve alle prove
+ * del demo, per ragionare sullo stesso istante dei widget. */
+uint64_t ph_dsk_widget_adesso_ms(int *scarto_s)
+{
+    uint64_t ms;
+    int scarto;
+    char ora[16], data[96];
+    adesso(&ms, &scarto, ora, sizeof ora, data, sizeof data);
+    if (scarto_s != NULL)
+        *scarto_s = scarto;
+    return ms;
+}
+
 /* L'orologio nello stile scelto. */
 static void orologio_aggiorna(PhDskWidget *w, PhDskVista *v)
 {
@@ -481,6 +494,11 @@ static void calendario_giorno_aggiorna(PhDskWidget *w, PhDskVista *v)
         GtkWidget *col = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
         gtk_widget_set_size_request(col, 64, -1);
         gtk_widget_set_valign(col, GTK_ALIGN_START);
+        /* Larghezza fissa: senza questo l'espansione del numero si propaga alla colonna e lo spazio in piu' si
+         * divide con gli impegni, che finiscono stretti a destra con un vuoto in mezzo. */
+        gtk_widget_set_hexpand(col, FALSE);
+        gtk_widget_set_halign(col, GTK_ALIGN_START);
+        gtk_widget_add_css_class(col, "ph-desktop-giorno-colonna");
         GtkWidget *nu = ph_dsk_numero_nuovo();
         gtk_widget_set_size_request(nu, 64, 52);
         ph_dsk_numero_imposta(nu, ph_dsk_giorno_breve(g_date_time_get_day_of_week(dt) - 1), num, "");
@@ -491,7 +509,9 @@ static void calendario_giorno_aggiorna(PhDskWidget *w, PhDskVista *v)
     }
     GtkWidget *impegni = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
     gtk_widget_set_hexpand(impegni, TRUE);
+    gtk_widget_set_halign(impegni, GTK_ALIGN_FILL); /* tutta la larghezza che resta, subito dopo il giorno */
     gtk_widget_set_valign(impegni, GTK_ALIGN_START);
+    gtk_widget_add_css_class(impegni, "ph-desktop-giorno-impegni");
     if (d->eventi_noti) { /* senza dati non si scrive niente: ne' «nessun impegno» ne' impegni finti */
         PhDskEvento ev[PH_SRV_CALENDARIO_MAX];
         size_t n = d->n_eventi < PH_SRV_CALENDARIO_MAX ? d->n_eventi : PH_SRV_CALENDARIO_MAX;
@@ -504,8 +524,14 @@ static void calendario_giorno_aggiorna(PhDskWidget *w, PhDskVista *v)
         size_t idx[PH_SRV_CALENDARIO_MAX];
         size_t max = disp.max_impegni < PH_SRV_CALENDARIO_MAX ? disp.max_impegni : PH_SRV_CALENDARIO_MAX;
         size_t k = ph_dsk_eventi_di_oggi(ev, n, ms, scarto, max, idx);
-        if (k == 0)
-            gtk_box_append(GTK_BOX(impegni), etichetta_corpo(ph_t("Nessun impegno"), "ph-desktop-w-sotto", true));
+        if (k == 0) {
+            /* Lo stato vuoto si legge per intero: mai con i puntini, va a capo nello spazio che c'e'. */
+            GtkWidget *vuoto = etichetta_corpo(ph_t("Nessun impegno"), "ph-desktop-w-sotto", false);
+            gtk_label_set_wrap(GTK_LABEL(vuoto), TRUE);
+            gtk_label_set_wrap_mode(GTK_LABEL(vuoto), PANGO_WRAP_WORD_CHAR);
+            gtk_widget_set_hexpand(vuoto, TRUE);
+            gtk_box_append(GTK_BOX(impegni), vuoto);
+        }
         for (size_t i = 0; i < k; i++) {
             char orario[48];
             ph_dsk_evento_orario(&ev[idx[i]], NULL, orario, sizeof orario);

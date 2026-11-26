@@ -211,7 +211,8 @@ static void sveglia_inizia(PhDskWidget *w)
     gtk_widget_set_hexpand(x->tondo, FALSE);
     gtk_widget_set_vexpand(x->tondo, FALSE);
     GtkWidget *icona = ph_shell_icona_nuova(&ICONA_SVEGLIA);
-    gtk_widget_set_hexpand(icona, FALSE);
+    /* L'icona si espande dentro il tondo per stare al centro (il tondo, con hexpand esplicito FALSE, no). */
+    gtk_widget_set_hexpand(icona, TRUE);
     gtk_widget_set_halign(icona, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(icona, GTK_ALIGN_CENTER);
     gtk_box_append(GTK_BOX(x->tondo), icona);
