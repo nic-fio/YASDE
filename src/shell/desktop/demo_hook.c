@@ -14,9 +14,15 @@
 #include "shell/servizi_backend.h"
 
 void ph_demo_mostra(PhShell *sh, const char *cosa);
+void ph_demo_meteo(PhShell *sh, const char *cosa); /* agente C: demo_meteo.c */
 PhFinto *ph_demo_finto(void);                /* demo.c */
 void ph_demo_finto_comando(const char *c);   /* demo.c */
 static void stress_avvia(PhShell *sh);
+void ph_demo_controlli(PhShell *sh, const char *cosa); /* agente D: demo_controlli.c */
+/* agente A: inizio */
+static void vecchi_avvia(PhShell *sh, PhDesktop *d, PhCfgTelefono *p); /* in fondo al file */
+static void vecchi_foto(PhDesktop *d, PhCfgTelefono *p, const char *quale);
+/* agente A: fine */
 
 /* Il n-esimo widget (in ordine di profondita') con la classe CSS data. */
 static GtkWidget *trova_conta(GtkWidget *radice, const char *classe, int *n)
@@ -759,6 +765,18 @@ void ph_demo_mostra(PhShell *sh, const char *cosa)
     /* Le verifiche con attesa a fotogrammi partono anche se il profilo non e' ancora arrivato. */
     bool attende = cosa != NULL && (strcmp(cosa, "predefiniti-verifica") == 0 || strcmp(cosa, "componenti-verifica") == 0 ||
                                     strcmp(cosa, "componenti") == 0 || g_str_has_prefix(cosa, "componenti:"));
+    /* agente D: prova a schermo degli Interruttori rapidi (demo_controlli.c) */
+    if (cosa != NULL && strncmp(cosa, "controlli-", 10) == 0) {
+        ph_demo_controlli(sh, cosa);
+        return;
+    }
+    /* fine agente D */
+    /* agente C: prova a schermo del Meteo, stile «Adesso» (demo_meteo.c) */
+    if (cosa != NULL && strncmp(cosa, "meteoa-", 7) == 0) {
+        ph_demo_meteo(sh, cosa);
+        return;
+    }
+    /* fine agente C */
     if (d == NULL || cosa == NULL || (p == NULL && !attende))
         return;
     if (strcmp(cosa, "widget3") == 0) {
@@ -963,6 +981,10 @@ void ph_demo_mostra(PhShell *sh, const char *cosa)
         gtk_widget_add_tick_callback(radice, predefiniti_fotogramma, scadenza, NULL);
     } else if (strcmp(cosa, "componenti-verifica") == 0) {
         galleria_verifica(radice);
+    } else if (strcmp(cosa, "vecchi") == 0) { /* agente A */
+        vecchi_avvia(sh, d, p);
+    } else if (g_str_has_prefix(cosa, "vecchi:")) { /* agente A: foto, nessun controllo */
+        vecchi_foto(d, p, cosa + 7);
     } else if (strcmp(cosa, "stress") == 0) {
         stress_avvia(sh);
     } else if (strcmp(cosa, "luogo") == 0) {
@@ -1634,6 +1656,214 @@ static bool st_profilo_nuovo(Stress *s)
     return false;
 }
 
+/* ---- agente B (passo 2b): batteria e sveglia ----
+ * Clic: senza l'app nell'elenco del telefono non si apre nulla; con l'app si apre quella (anche col
+ * pacchetto che il telefono finto da' con la sveglia). Gestori: dopo la rimozione del widget la sua
+ * scheda (tenuta in vita apposta) non ha piu' nessun gestore di notify::width-request /
+ * height-request (lo provano le verifiche con g_signal_has_handler_pending; ridimensionare la
+ * scheda dopo, sotto ASan, e' una guardia in piu'). Forma: il tondo della sveglia resta un cerchio
+ * a due misure (larghezza e altezza allocate uguali). Batteria: a ogni misura anello, stato e
+ * gettoni stanno dentro il cerchio, e i gettoni visibili sono quelli che la logica decide. */
+#include "logica_telefono.h"
+
+static void ab_clic_e_gestori(Stress *s)
+{
+    st_tutti_i_tipi(s, st_profilo(s));
+    ph_dsk_widget_ricostruisci(s->d);
+    PhDskWidget *bat = NULL, *sve = NULL;
+    for (size_t i = 0; i < s->d->widget->len; i++) {
+        PhDskWidget *w = st_widget(s, i);
+        if (w->tipo == PH_CFG_WIDGET_BATTERIA)
+            bat = w;
+        else if (w->tipo == PH_CFG_WIDGET_SVEGLIA)
+            sve = w;
+    }
+    if (bat == NULL || sve == NULL)
+        g_error("prova d'insieme: batteria o sveglia mancano dal copione");
+    PhDskWidget *due[2] = {bat, sve};
+    for (int i = 0; i < 2; i++) {
+        const char *r = ph_dsk_wx_telefono_clic_prova(due[i], "it.inesistente.prova");
+        if (r != NULL)
+            g_error("prova d'insieme: il clic ha aperto un'app che il telefono non ha (%s)", r);
+        r = ph_dsk_wx_telefono_clic_prova(due[i], "it.finto.orologio");
+        if (r == NULL || strcmp(r, "it.finto.orologio") != 0)
+            g_error("prova d'insieme: il clic non ha aperto l'app nota");
+        r = ph_dsk_wx_telefono_clic_prova(due[i], "");
+        if (r != NULL)
+            g_error("prova d'insieme: il clic con un pacchetto vuoto ha aperto qualcosa");
+    }
+    /* Il finto non ha l'app Impostazioni: il clic vero sulla batteria non fa nulla. */
+    if (ph_dsk_wx_telefono_clic_prova(bat, NULL) != NULL)
+        g_error("prova d'insieme: la batteria ha aperto un'app che il finto non ha");
+
+    guint sig = g_signal_lookup("notify", GTK_TYPE_WIDGET);
+    GQuark q_l = g_quark_from_static_string("width-request"), q_a = g_quark_from_static_string("height-request");
+    GtkWidget *schede[2] = {g_object_ref(bat->scheda), g_object_ref(sve->scheda)};
+    for (int i = 0; i < 2; i++)
+        if (!g_signal_has_handler_pending(schede[i], sig, q_l, TRUE) ||
+            !g_signal_has_handler_pending(schede[i], sig, q_a, TRUE))
+            g_error("prova d'insieme: il widget %d non ha i gestori della misura (la prova non proverebbe nulla)", i);
+    PhCfgTelefono *p = st_profilo(s);
+    memset(p->widget, 0, sizeof p->widget);
+    p->n_widget = 0;
+    ph_dsk_widget_ricostruisci(s->d); /* via tutti: `ferma` di ognuno */
+    for (int i = 0; i < 2; i++) {
+        if (g_signal_has_handler_pending(schede[i], sig, q_l, TRUE) ||
+            g_signal_has_handler_pending(schede[i], sig, q_a, TRUE))
+            g_error("prova d'insieme: il widget %d ha ancora i gestori della misura dopo la rimozione", i);
+        gtk_widget_set_size_request(schede[i], 333 + i, 222 + i); /* guardia: ASan se qualcosa e' rimasto */
+        g_object_unref(schede[i]);
+    }
+}
+
+/* Tutti i tipi sul desktop, con la misura data al widget `tipo`; torna quel widget. */
+static PhDskWidget *ab_misura(Stress *s, PhCfgWidgetTipo tipo, int larghezza, int altezza)
+{
+    PhCfgTelefono *p = st_profilo(s);
+    st_tutti_i_tipi(s, p);
+    for (size_t i = 0; i < p->n_widget; i++) {
+        if (p->widget[i].tipo == tipo) {
+            p->widget[i].larghezza = larghezza;
+            p->widget[i].altezza = altezza;
+        }
+    }
+    ph_dsk_widget_ricostruisci(s->d);
+    for (size_t i = 0; i < s->d->widget->len; i++)
+        if (st_widget(s, i)->tipo == tipo)
+            return st_widget(s, i);
+    g_error("prova d'insieme: widget %d non trovato", (int)tipo);
+    return NULL;
+}
+
+/* Il rettangolo di `w` nelle coordinate della scheda; false se non si sa (non ancora disegnato). */
+static bool ab_rettangolo(GtkWidget *w, GtkWidget *scheda, graphene_rect_t *r)
+{
+    return gtk_widget_get_width(w) > 0 && gtk_widget_get_height(w) > 0 && gtk_widget_compute_bounds(w, scheda, r);
+}
+
+/* Tutti e quattro gli angoli del rettangolo dentro il cerchio (centro e raggio), 1 px di tolleranza. */
+static bool ab_nel_cerchio(const graphene_rect_t *r, double cx, double cy, double raggio)
+{
+    const double xs[2] = {r->origin.x, r->origin.x + r->size.width}, ys[2] = {r->origin.y, r->origin.y + r->size.height};
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 2; j++)
+            if (hypot(xs[i] - cx, ys[j] - cy) > raggio + 1.0)
+                return false;
+    return true;
+}
+
+static const int AB_SVE[][2] = {{200, 72}, {480, 128}};
+static const int AB_BAT[] = {136, 176, 216, 256, 320};
+
+static bool st_agente_b(Stress *s)
+{
+    switch (s->k) {
+    case 0:
+        ab_clic_e_gestori(s);
+        s->n = 0;
+        s->k = 1;
+        break;
+    case 1: /* sveglia a una misura */
+        ph_demo_finto_comando("ok:sveglia");
+        ph_finto_sveglia_assente(ph_demo_finto(), false); /* il copione l'aveva tolta: serve il suo pacchetto */
+        ab_misura(s, PH_CFG_WIDGET_SVEGLIA, AB_SVE[s->n][0], AB_SVE[s->n][1]);
+        s->k = 2;
+        break;
+    case 2: { /* il tondo e' un cerchio, della misura che la logica ha deciso */
+        PhDskWidget *sve = NULL;
+        for (size_t i = 0; i < s->d->widget->len; i++)
+            if (st_widget(s, i)->tipo == PH_CFG_WIDGET_SVEGLIA)
+                sve = st_widget(s, i);
+        GtkWidget *t = st_trova(s, "ph-desktop-tel-tondo");
+        if (!st_finche(s, sve != NULL && t != NULL && gtk_widget_get_width(t) > 0 && gtk_widget_get_height(t) > 0, 3000,
+                       "il tondo della sveglia disegnato"))
+            break;
+        int lato = ph_dsk_sve_disposizione(sve->larghezza, sve->altezza, true).tondo_lato;
+        if (gtk_widget_get_width(t) != gtk_widget_get_height(t) || gtk_widget_get_width(t) != lato || lato < 24)
+            g_error("prova d'insieme: il tondo della sveglia %dx%d e' %dx%d, atteso un cerchio di %d", sve->larghezza,
+                    sve->altezza, gtk_widget_get_width(t), gtk_widget_get_height(t), lato);
+        if (++s->n < G_N_ELEMENTS(AB_SVE))
+            s->k = 1;
+        else
+            s->k = 3;
+        break;
+    }
+    case 3: { /* col pacchetto che il finto da' con la sveglia (arriva con i dati: attesa con scadenza) */
+        PhDskWidget *sve = NULL;
+        for (size_t i = 0; i < s->d->widget->len; i++)
+            if (st_widget(s, i)->tipo == PH_CFG_WIDGET_SVEGLIA)
+                sve = st_widget(s, i);
+        const char *r = sve != NULL ? ph_dsk_wx_telefono_clic_prova(sve, NULL) : NULL;
+        if (!st_finche(s, r != NULL, 3000, "il clic della sveglia con il pacchetto del telefono"))
+            break;
+        if (strcmp(r, "it.finto.orologio") != 0)
+            g_error("prova d'insieme: la sveglia ha aperto %s invece dell'app data dal telefono", r);
+        s->n = 0;
+        s->k = 4;
+        break;
+    }
+    case 4: /* batteria a una misura */
+        ph_demo_finto_comando("ok:batteria");
+        ab_misura(s, PH_CFG_WIDGET_BATTERIA, AB_BAT[s->n], AB_BAT[s->n]);
+        s->k = 5;
+        break;
+    case 5: { /* niente esce dal cerchio, e i gettoni sono quelli decisi dalla logica */
+        PhDskWidget *bat = NULL;
+        for (size_t i = 0; i < s->d->widget->len; i++)
+            if (st_widget(s, i)->tipo == PH_CFG_WIDGET_BATTERIA)
+                bat = st_widget(s, i);
+        GtkWidget *stato = st_trova(s, "ph-desktop-tel-stato");
+        GtkWidget *anello = bat != NULL ? gtk_widget_get_first_child(gtk_widget_get_parent(stato != NULL ? stato : bat->scheda)) : NULL;
+        bool pronto = bat != NULL && stato != NULL && anello != NULL && gtk_label_get_text(GTK_LABEL(stato))[0] != '\0' &&
+                      gtk_widget_get_width(stato) > 0 && gtk_widget_get_width(anello) > 0;
+        if (!st_finche(s, pronto, 3000, "la batteria disegnata con i dati"))
+            break;
+        double cx = bat->larghezza / 2.0, cy = bat->altezza / 2.0, raggio = (bat->larghezza < bat->altezza ? bat->larghezza : bat->altezza) / 2.0;
+        const bool tutti[PH_DSK_BAT_G_N] = {true, true, true}; /* il finto da' temperatura, salute e tensione */
+        PhDskBatDisp dp = ph_dsk_bat_disposizione(bat->larghezza, bat->altezza, tutti);
+        int attesi = dp.gettone[0] + dp.gettone[1] + dp.gettone[2], visti = 0;
+        graphene_rect_t r;
+        /* Tutto misurato nello stesso riferimento (il contenitore delle schede): il cerchio e' quello della
+         * scheda come GTK lo ha davvero disposto, non la misura chiesta. */
+        GtkWidget *rif = s->d->libero;
+        graphene_rect_t rs;
+        if (!ab_rettangolo(bat->scheda, rif, &rs))
+            g_error("prova d'insieme: batteria %d: scheda non misurabile", bat->larghezza);
+        cx = rs.origin.x + rs.size.width / 2.0;
+        cy = rs.origin.y + rs.size.height / 2.0;
+        raggio = (rs.size.width < rs.size.height ? rs.size.width : rs.size.height) / 2.0;
+        if (gtk_widget_get_width(anello) != dp.lato_anello || gtk_widget_get_height(anello) != dp.lato_anello)
+            g_error("prova d'insieme: l'anello della batteria %d e' %dx%d, deciso %d", bat->larghezza,
+                    gtk_widget_get_width(anello), gtk_widget_get_height(anello), dp.lato_anello);
+        if (!ab_rettangolo(anello, rif, &r) || !ab_nel_cerchio(&r, cx, cy, raggio))
+            g_error("prova d'insieme: l'anello della batteria %d esce dal cerchio (x %.0f y %.0f l %.0f a %.0f, scheda %dx%d)",
+                    bat->larghezza, r.origin.x, r.origin.y, r.size.width, r.size.height, bat->larghezza, bat->altezza);
+        if (dp.stato && (!ab_rettangolo(stato, rif, &r) || !ab_nel_cerchio(&r, cx, cy, raggio)))
+            g_error("prova d'insieme: lo stato della batteria %d esce dal cerchio", bat->larghezza);
+        for (int i = 0;; i++) {
+            GtkWidget *g = trova(s->radice, "ph-desktop-tel-gettone", i);
+            if (g == NULL)
+                break;
+            if (!gtk_widget_is_visible(g))
+                continue;
+            visti++;
+            if (!ab_rettangolo(g, rif, &r) || !ab_nel_cerchio(&r, cx, cy, raggio))
+                g_error("prova d'insieme: un gettone della batteria %d esce dal cerchio", bat->larghezza);
+        }
+        if (visti != attesi)
+            g_error("prova d'insieme: batteria %d: %d gettoni visibili, la logica ne vuole %d", bat->larghezza, visti,
+                    attesi);
+        if (++s->n < G_N_ELEMENTS(AB_BAT)) {
+            s->k = 4;
+            break;
+        }
+        return true;
+    }
+    }
+    return false;
+}
+/* ---- fine agente B ---- */
+
 /* Fine: un widget di ogni tipo, un dialogo con una ricerca in volo, il telefono che si perde, e la
  * finestra si chiude. */
 static bool st_chiusura(Stress *s)
@@ -1661,7 +1891,8 @@ static bool st_chiusura(Stress *s)
     return true;
 }
 
-static bool (*const ST_PASSI[])(Stress *) = {st_collegato, st_tipi, st_insieme, st_profilo_nuovo, st_chiusura};
+static bool (*const ST_PASSI[])(Stress *) = {st_collegato, st_tipi, st_insieme, st_profilo_nuovo,
+                                                     st_agente_b /* agente B */, st_chiusura};
 
 static gboolean stress_tick(gpointer dati)
 {
@@ -1725,4 +1956,508 @@ static void stress_avvia(PhShell *sh)
     stress_iniziato = true;
     atexit(stress_esci);
     g_idle_add(stress_tick, s);
+}
+
+/* ---- agente A: widget Memoria, Notifiche, Calendario del giorno e Stato per misura vera ---------------
+ * "vecchi": la prova. Mette i quattro widget in misure libere, aspetta i dati del telefono finto e, a
+ * ogni misura, controlla che cio' che si vede sia quello che la logica pura decide, che i clic aprano
+ * l'app giusta (o niente) e che i ritocchi di componenti.c reggano. Le misure sono: grandi, quelle da
+ * cambiare con la maniglia (si passa dai tasti freccia della maniglia vera), la fascia di larghezza
+ * in cui la legenda della memoria puo' stare in una o in due colonne, le minime.
+ * "vecchi:grandi" e "vecchi:minime": solo per le foto, i quattro widget fermi a quella misura, senza
+ * controlli ne' uscita. Se la prova non arriva in fondo il processo esce 1. */
+static char vecchi_aperta[256];
+static bool vecchi_iniziato, vecchi_finito;
+
+static void vecchi_apri(void *io, const char *pacchetto)
+{
+    (void)io;
+    g_strlcpy(vecchi_aperta, pacchetto, sizeof vecchi_aperta);
+}
+
+static size_t vecchi_elenco(void *io, PhShellFinestra *out, size_t max)
+{
+    (void)io;
+    (void)out;
+    (void)max;
+    return 0;
+}
+
+static void vecchi_clic_barra(void *io, unsigned id)
+{
+    (void)io;
+    (void)id;
+}
+
+static void vecchi_specchio(void *io, bool mostra)
+{
+    (void)io;
+    (void)mostra;
+}
+
+static bool vecchi_specchio_aperto(void *io)
+{
+    (void)io;
+    return false;
+}
+
+static void vecchi_esci(void)
+{
+    if (vecchi_iniziato && !vecchi_finito) {
+        fprintf(stderr, "vecchi: la verifica non e' arrivata in fondo\n");
+        _exit(1);
+    }
+}
+
+/* Le misure: notifiche, memoria, calendario del giorno, stato (in quest'ordine). */
+typedef struct {
+    PhCfgWidgetTipo tipo;
+    int destra, alto, l, a;
+} VecchiMis;
+static const VecchiMis VM_GRANDI[4] = {{PH_CFG_WIDGET_NOTIFICHE, 16, 16, 320, 240},
+                                       {PH_CFG_WIDGET_MEMORIA, 352, 16, 320, 208},
+                                       {PH_CFG_WIDGET_CALENDARIO, 16, 280, 320, 210},
+                                       {PH_CFG_WIDGET_STATO, 352, 240, 320, 164}};
+static const VecchiMis VM_MANIGLIA[4] = {{PH_CFG_WIDGET_NOTIFICHE, 16, 16, 250, 148},
+                                         {PH_CFG_WIDGET_MEMORIA, 352, 16, 200, 120},
+                                         {PH_CFG_WIDGET_CALENDARIO, 16, 280, 250, 150},
+                                         {PH_CFG_WIDGET_STATO, 352, 250, 250, 124}};
+/* La fascia dove le colonne della legenda possono divergere dalla stima (280-305 di larghezza). */
+static const VecchiMis VM_BANDA[4] = {{PH_CFG_WIDGET_NOTIFICHE, 16, 16, 320, 240},
+                                      {PH_CFG_WIDGET_MEMORIA, 352, 16, 290, 208},
+                                      {PH_CFG_WIDGET_CALENDARIO, 16, 280, 320, 210},
+                                      {PH_CFG_WIDGET_STATO, 352, 240, 320, 164}};
+static const VecchiMis VM_MINIME[4] = {{PH_CFG_WIDGET_NOTIFICHE, 16, 16, 200, 104},
+                                       {PH_CFG_WIDGET_MEMORIA, 352, 16, 200, 120},
+                                       {PH_CFG_WIDGET_CALENDARIO, 16, 280, 200, 110},
+                                       {PH_CFG_WIDGET_STATO, 352, 250, 200, 100}};
+
+static void vecchi_imposta(PhDesktop *d, PhCfgTelefono *p, const VecchiMis *m)
+{
+    memset(p->widget, 0, sizeof p->widget);
+    for (int i = 0; i < 4; i++) {
+        p->widget[i].tipo = m[i].tipo;
+        p->widget[i].destra = m[i].destra;
+        p->widget[i].alto = m[i].alto;
+        p->widget[i].larghezza = m[i].l;
+        p->widget[i].altezza = m[i].a;
+        p->widget[i].dimensione = PH_CFG_WIDGET_MEDIO;
+    }
+    p->n_widget = 4;
+    ph_dsk_widget_ricostruisci(d);
+}
+
+static void vecchi_foto(PhDesktop *d, PhCfgTelefono *p, const char *quale)
+{
+    if (strcmp(quale, "grandi") == 0)
+        vecchi_imposta(d, p, VM_GRANDI);
+    else if (strcmp(quale, "minime") == 0)
+        vecchi_imposta(d, p, VM_MINIME);
+}
+
+static int vecchi_conta(GtkWidget *radice, const char *classe)
+{
+    int n = 0;
+    while (trova(radice, classe, n) != NULL)
+        n++;
+    return n;
+}
+
+static int vecchi_conta_visibili(GtkWidget *radice, const char *classe)
+{
+    int n = 0;
+    for (int i = 0;; i++) {
+        GtkWidget *x = trova(radice, classe, i);
+        if (x == NULL)
+            break;
+        n += gtk_widget_is_visible(x) ? 1 : 0; /* un antenato nascosto lo rende invisibile */
+    }
+    return n;
+}
+
+static PhDskWidget *vecchi_widget(PhDesktop *d, PhCfgWidgetTipo tipo)
+{
+    for (size_t i = 0; i < d->widget->len; i++) {
+        PhDskWidget *w = g_ptr_array_index(d->widget, i);
+        if (w->tipo == tipo)
+            return w;
+    }
+    g_error("vecchi: widget di tipo %d non trovato", (int)tipo);
+}
+
+/* Il primo controllo del tipo dato (un gesto del clic, un controllo dei tasti) del widget. */
+static GObject *vecchi_controllo(GtkWidget *w, GType tipo)
+{
+    GListModel *m = gtk_widget_observe_controllers(w);
+    GObject *trovato = NULL;
+    for (guint i = 0; i < g_list_model_get_n_items(m) && trovato == NULL; i++) {
+        GObject *c = g_list_model_get_item(m, i);
+        if (g_type_is_a(G_OBJECT_TYPE(c), tipo))
+            trovato = c;
+        g_object_unref(c); /* il widget lo tiene vivo */
+    }
+    g_object_unref(m);
+    return trovato;
+}
+
+/* Premi una freccia sulla maniglia VERA del widget (come da tastiera): passa da ridim_tasto, cioe'
+ * dallo stesso percorso del trascinamento (misura, geometria, contenuto, profilo). Il widget puo'
+ * essere ricostruito a ogni passo: si ritrova ogni volta. */
+static void vecchi_maniglia(PhDesktop *d, PhCfgWidgetTipo tipo, guint tasto, int volte)
+{
+    for (int i = 0; i < volte; i++) {
+        PhDskWidget *w = vecchi_widget(d, tipo);
+        GObject *k = vecchi_controllo(w->maniglia, GTK_TYPE_EVENT_CONTROLLER_KEY);
+        if (k == NULL)
+            g_error("vecchi: la maniglia non ha il controllo dei tasti");
+        gboolean preso = FALSE;
+        g_signal_emit_by_name(k, "key-pressed", tasto, 0u, (GdkModifierType)0, &preso);
+        if (!preso)
+            g_error("vecchi: la maniglia non ha preso la freccia");
+    }
+}
+
+/* Quante colonne userebbe la legenda della memoria (-1 se la barra non c'e'). */
+static int vecchi_colonne(PhDskWidget *w)
+{
+    GtkWidget *leg = trova(w->corpo, "ph-desktop-legenda", 0);
+    if (leg == NULL)
+        return -1;
+    int ul, ua;
+    ph_dsk_vecchi_utile(w->larghezza, w->altezza, &ul, &ua);
+    return ph_dsk_fette_legenda_colonne(gtk_widget_get_parent(leg), ul);
+}
+
+static size_t vecchi_fette_attese(PhDesktop *d)
+{
+    PhDskMemFetta fe[PH_DSK_MEM_N];
+    uint64_t libera = d->memoria_libera > d->memoria_totale ? d->memoria_totale : d->memoria_libera;
+    return ph_dsk_memoria_fette(d->dettaglio_noto ? &d->dettaglio : NULL, d->memoria_totale - libera, fe);
+}
+
+/* La legenda della memoria sta dentro la scheda (non tagliata sotto o a destra). Torna 0 se la
+ * misura vera non e' ancora arrivata (il layout arriva con il fotogramma), 1 se va bene; se e'
+ * fuori, la prova cade. */
+static int vecchi_geometria(PhDesktop *d)
+{
+    PhDskWidget *w = vecchi_widget(d, PH_CFG_WIDGET_MEMORIA);
+    int sh = gtk_widget_get_height(w->scheda), sl = gtk_widget_get_width(w->scheda);
+    if (sh <= 0 || sl <= 0)
+        return 0;
+    GtkWidget *leg = trova(w->corpo, "ph-desktop-legenda", 0);
+    if (leg == NULL || !gtk_widget_is_visible(leg))
+        return 1;
+    if (gtk_widget_get_height(leg) <= 0)
+        return 0;
+    graphene_rect_t b;
+    if (!gtk_widget_compute_bounds(leg, w->scheda, &b))
+        return 0;
+    int pad_o, pad_v;
+    ph_dsk_imbottitura(w->forma, &pad_o, &pad_v);
+    if (b.origin.y + b.size.height > sh + pad_v + 1 || b.origin.x + b.size.width > sl + pad_o + 1 || b.origin.x < 0)
+        g_error("vecchi: la legenda della memoria esce dalla scheda: sotto a %.0f su %d, a destra a %.0f su %d "
+                "(%dx%d, colonne %d)",
+                b.origin.y + b.size.height, sh + pad_v, b.origin.x + b.size.width, sl + pad_o, w->larghezza,
+                w->altezza, vecchi_colonne(w));
+    return 1;
+}
+
+static void vecchi_controlla(PhDesktop *d, const char *fase)
+{
+    /* Notifiche: tante righe quante la logica dice per la misura, ognuna un pulsante verso la sua app. */
+    PhDskWidget *w = vecchi_widget(d, PH_CFG_WIDGET_NOTIFICHE);
+    size_t n = 0;
+    const PhSrvNotifica *tutte = ph_srv_notifiche(d->srv, &n, NULL);
+    size_t visibili = 0;
+    const char *prima_app = NULL;
+    for (size_t i = 0; i < n; i++)
+        if (!ph_shell_notifica_nascosta(d->sh, tutte[i].chiave, tutte[i].ora_ms)) {
+            if (prima_app == NULL)
+                prima_app = tutte[i].pacchetto;
+            visibili++;
+        }
+    size_t max = ph_dsk_notifiche_righe_max(w->larghezza, w->altezza);
+    size_t attese = visibili < max ? visibili : max;
+    int righe = vecchi_conta(w->corpo, "ph-desktop-riga-elenco");
+    if (attese == 0 || (size_t)righe != attese)
+        g_error("vecchi (%s): notifiche: %d righe, attese %zu (%zu visibili, ne stanno %zu a %dx%d)", fase, righe,
+                attese, visibili, max, w->larghezza, w->altezza);
+    vecchi_aperta[0] = '\0';
+    g_signal_emit_by_name(trova(w->corpo, "ph-desktop-riga-elenco", 0), "clicked");
+    if (prima_app == NULL || strcmp(vecchi_aperta, prima_app) != 0)
+        g_error("vecchi (%s): il clic sulla prima notifica non ha aperto la sua app", fase);
+
+    /* Memoria: numero sempre; barra e legenda secondo la logica (con le colonne vere del componente). */
+    w = vecchi_widget(d, PH_CFG_WIDGET_MEMORIA);
+    if (!d->memoria_nota)
+        g_error("vecchi (%s): memoria non nota", fase);
+    size_t nf = vecchi_fette_attese(d);
+    int colonne = vecchi_colonne(w);
+    PhDskMemoriaDisp disp = ph_dsk_memoria_disp(w->larghezza, w->altezza, nf, colonne);
+    if (disp.barra != (colonne >= 0))
+        g_error("vecchi (%s): memoria: barra %d ma legenda %s", fase, disp.barra, colonne >= 0 ? "presente" : "assente");
+    int voci = vecchi_conta_visibili(w->corpo, "ph-desktop-legenda-nome");
+    if (voci != (disp.barra && disp.legenda ? (int)nf : 0))
+        g_error("vecchi (%s): memoria: %d voci visibili in legenda, attese %d (barra %d, legenda %d, fette %zu)",
+                fase, voci, disp.barra && disp.legenda ? (int)nf : 0, disp.barra, disp.legenda, nf);
+    if (!gtk_widget_get_visible(w->corpo))
+        g_error("vecchi (%s): memoria: il corpo non si vede", fase);
+    /* La dicitura «libero su N GB» sta sotto il numero (un'etichetta a parte) o accanto (disegnata). */
+    if (!disp.nota_accanto != (vecchi_conta(w->corpo, "ph-desktop-w-sotto-nom") == 1))
+        g_error("vecchi (%s): memoria: dicitura %s ma l'etichetta sotto %s", fase,
+                disp.nota_accanto ? "accanto" : "sotto", vecchi_conta(w->corpo, "ph-desktop-w-sotto-nom") == 1 ? "c'e'" : "manca");
+
+    /* Calendario: impegni in numero giusto, «ora» solo su quelli in corso, pulsanti verso l'app nota. */
+    w = vecchi_widget(d, PH_CFG_WIDGET_CALENDARIO);
+    if (!d->eventi_noti || d->app_calendario == NULL)
+        g_error("vecchi (%s): calendario: dati o app non noti", fase);
+    PhDskEvento ev[PH_SRV_CALENDARIO_MAX];
+    for (size_t i = 0; i < d->n_eventi; i++)
+        ev[i] = (PhDskEvento){d->eventi[i].titolo, d->eventi[i].inizio_ms, d->eventi[i].fine_ms,
+                              d->eventi[i].tutto_il_giorno};
+    uint64_t ora_ms = (uint64_t)(g_get_real_time() / 1000);
+    GDateTime *dt = g_date_time_new_now_local();
+    int scarto = (int)(g_date_time_get_utc_offset(dt) / G_USEC_PER_SEC);
+    g_date_time_unref(dt);
+    PhDskCalDisp cd = ph_dsk_calendario_disp(w->larghezza, w->altezza);
+    size_t idx[PH_SRV_CALENDARIO_MAX];
+    size_t k = ph_dsk_eventi_di_oggi(ev, d->n_eventi, ora_ms, scarto,
+                                     cd.max_impegni < PH_SRV_CALENDARIO_MAX ? cd.max_impegni : PH_SRV_CALENDARIO_MAX, idx);
+    int impegni = vecchi_conta(w->corpo, "ph-desktop-giorno-impegno");
+    int in_corso = 0;
+    for (size_t i = 0; i < k; i++)
+        in_corso += ph_dsk_impegno_in_corso(&ev[idx[i]], ora_ms) ? 1 : 0;
+    /* Un minuto di scarto tra la lettura qui e quella del widget: l'«ora» puo' differire solo al
+     * confine, che il finto non incrocia (impegni a orari tondi: si accetta di non verificarlo). */
+    if ((size_t)impegni != k || vecchi_conta(w->corpo, "ph-desktop-giorno-impegno-ora") != in_corso)
+        g_error("vecchi (%s): calendario: %d impegni (attesi %zu), %d «ora» (attesi %d)", fase, impegni, k,
+                vecchi_conta(w->corpo, "ph-desktop-giorno-impegno-ora"), in_corso);
+    if (k > 0) {
+        GtkWidget *primo = trova(w->corpo, "ph-desktop-giorno-impegno", 0);
+        if (!GTK_IS_BUTTON(primo))
+            g_error("vecchi (%s): calendario: con l'app nota l'impegno deve essere un pulsante", fase);
+        vecchi_aperta[0] = '\0';
+        g_signal_emit_by_name(primo, "clicked");
+        if (strcmp(vecchi_aperta, d->app_calendario) != 0)
+            g_error("vecchi (%s): calendario: il clic non ha aperto l'app del calendario", fase);
+    }
+    if (cd.colonna_giorno != (vecchi_conta(w->corpo, "ph-desktop-w-sotto-nom") > 0) ||
+        cd.colonna_giorno == gtk_widget_get_visible(w->titolo))
+        g_error("vecchi (%s): calendario: giorno a sinistra %d ma titolo visibile %d", fase, cd.colonna_giorno,
+                gtk_widget_get_visible(w->titolo));
+
+    /* Stato: ESATTAMENTE le righe che ci stanno nell'altezza (o tutte quelle che il telefono da'). */
+    w = vecchi_widget(d, PH_CFG_WIDGET_STATO);
+    PhSrvTelefono t;
+    PhSrvCollegamento c;
+    ph_srv_telefono(d->srv, &t);
+    ph_srv_collegamento(d->srv, &c);
+    PhDskVista tutte_le_righe;
+    ph_dsk_vista_stato(PH_CFG_WIDGET_GRANDE, &t, &c, &tutte_le_righe);
+    size_t attese_stato = tutte_le_righe.n_righe < ph_dsk_stato_righe(w->larghezza, w->altezza)
+                              ? tutte_le_righe.n_righe
+                              : ph_dsk_stato_righe(w->larghezza, w->altezza);
+    size_t visibili_stato = 0;
+    for (size_t i = 0; i < PH_DSK_RIGHE_MAX; i++)
+        visibili_stato += gtk_widget_get_visible(w->riga[i]) ? 1 : 0;
+    if (visibili_stato != attese_stato)
+        g_error("vecchi (%s): stato: %zu righe visibili, attese %zu (a %dx%d)", fase, visibili_stato, attese_stato,
+                w->larghezza, w->altezza);
+}
+
+/* Il clic della memoria: apre Impostazioni solo se il telefono ce l'ha. Il telefono finto non ha
+ * com.android.settings: di norma il clic non apre niente; con il pacchetto di prova (l'app finta
+ * delle impostazioni) apre quella e il cursore diventa una mano. */
+static void vecchi_impostazioni(PhDesktop *d)
+{
+    PhDskWidget *w = vecchi_widget(d, PH_CFG_WIDGET_MEMORIA);
+    GtkGesture *cl = GTK_GESTURE(vecchi_controllo(w->corpo, GTK_TYPE_GESTURE_CLICK));
+    if (cl == NULL)
+        g_error("vecchi: memoria: nessun controllo del clic");
+    vecchi_aperta[0] = '\0';
+    g_signal_emit_by_name(cl, "released", 1, 5.0, 5.0);
+    if (vecchi_aperta[0] != '\0')
+        g_error("vecchi: memoria: Impostazioni non c'e' sul telefono ma il clic ha aperto %s", vecchi_aperta);
+    if (gtk_widget_get_cursor(w->corpo) != NULL)
+        g_error("vecchi: memoria: il cursore e' una mano senza nessuna app da aprire");
+    ph_dsk_impostazioni_pacchetto_prova("it.finto.impostazioni");
+    ph_dsk_widget_aggiorna_tutti(d);
+    w = vecchi_widget(d, PH_CFG_WIDGET_MEMORIA);
+    cl = GTK_GESTURE(vecchi_controllo(w->corpo, GTK_TYPE_GESTURE_CLICK));
+    g_signal_emit_by_name(cl, "released", 1, 5.0, 5.0);
+    if (strcmp(vecchi_aperta, "it.finto.impostazioni") != 0)
+        g_error("vecchi: memoria: il clic non ha aperto Impostazioni (aperto \"%s\")", vecchi_aperta);
+    if (gtk_widget_get_cursor(w->corpo) == NULL)
+        g_error("vecchi: memoria: con Impostazioni il cursore dovrebbe essere una mano");
+    ph_dsk_impostazioni_pacchetto_prova(NULL);
+    ph_dsk_widget_aggiorna_tutti(d);
+}
+
+/* Senza l'app del calendario (non nota) gli impegni si vedono ma non sono pulsanti e non prendono i
+ * clic: il trascinamento del widget passa. */
+static void vecchi_senza_app_calendario(PhDesktop *d)
+{
+    g_clear_pointer(&d->app_calendario, g_free);
+    ph_dsk_widget_aggiorna_tutti(d);
+    PhDskWidget *w = vecchi_widget(d, PH_CFG_WIDGET_CALENDARIO);
+    GtkWidget *primo = trova(w->corpo, "ph-desktop-giorno-impegno", 0);
+    if (primo != NULL && (GTK_IS_BUTTON(primo) || gtk_widget_get_can_target(primo)))
+        g_error("vecchi: calendario: senza l'app nota l'impegno e' ancora un pulsante o prende i clic");
+}
+
+static bool vecchi_ha_tinta(GtkWidget *w)
+{
+    for (int i = 0; i < PH_DSK_ACC_N; i++) {
+        char classe[48];
+        snprintf(classe, sizeof classe, "ph-desktop-tinta-%s", ph_dsk_accento_nome(i));
+        if (gtk_widget_has_css_class(w, classe))
+            return true;
+    }
+    return false;
+}
+
+/* Il minimo della riga d'elenco con l'ora visibile non conta solo il titolo: deve far stare il
+ * sottotitolo e l'ora insieme. Con l'icona vera nessun fondo tinto dietro (e tornato quando l'icona
+ * si toglie). E il layout manager non guarda piu' figli liberati dopo la distruzione della scatola
+ * (sotto ASan, senza il ritocco, qui si legge memoria liberata). */
+static void vecchi_riga(void)
+{
+    GtkWidget *r = ph_dsk_riga_nuova(NULL, NULL);
+    g_object_ref_sink(r);
+    ph_dsk_riga_imposta(r, NULL, PH_DSK_ACC_TEMA, true, "Un titolo piuttosto lungo", "Sotto", "15:52");
+    GtkWidget *ora = trova(r, "ph-desktop-riga-ora", 0);
+    int minimo = 0, larg_ora = 0;
+    gtk_widget_measure(r, GTK_ORIENTATION_HORIZONTAL, -1, &minimo, NULL, NULL, NULL);
+    gtk_widget_measure(ora, GTK_ORIENTATION_HORIZONTAL, -1, &larg_ora, NULL, NULL, NULL);
+    /* chip 32 + spazio 10 + (sottotitolo + ora + 8): il sottotitolo qui ha minimo ~0, quindi si
+     * controlla almeno chip + spazio + ora + 8. */
+    if (larg_ora < 10 || minimo < 32 + 10 + larg_ora + 8)
+        g_error("vecchi: minimo della riga %d con l'ora larga %d: l'ora non ci sta", minimo, larg_ora);
+
+    GtkWidget *chip = trova(r, "ph-desktop-chip", 0);
+    if (chip == NULL || !vecchi_ha_tinta(chip) || gtk_widget_has_css_class(chip, "ph-desktop-chip-vero"))
+        g_error("vecchi: la sigla deve avere il fondo tinto");
+    GtkWidget *ic = gtk_image_new();
+    ph_dsk_riga_icona(r, ic);
+    if (vecchi_ha_tinta(chip) || !gtk_widget_has_css_class(chip, "ph-desktop-chip-vero"))
+        g_error("vecchi: con l'icona vera il fondo tinto deve sparire");
+    ph_dsk_riga_imposta(r, NULL, PH_DSK_ACC_VERDE, true, "Altro", "Sotto", "15:52"); /* a icona messa: resta senza fondo */
+    if (vecchi_ha_tinta(chip))
+        g_error("vecchi: con l'icona vera un nuovo imposta ha rimesso il fondo tinto");
+    ph_dsk_riga_icona(r, NULL);
+    if (!vecchi_ha_tinta(chip) || gtk_widget_has_css_class(chip, "ph-desktop-chip-vero") ||
+        !gtk_widget_has_css_class(chip, "ph-desktop-tinta-verde"))
+        g_error("vecchi: tolta l'icona il fondo tinto (verde) deve tornare");
+
+    GtkWidget *scatola = gtk_button_get_child(GTK_BUTTON(r));
+    GtkLayoutManager *lm = gtk_widget_get_layout_manager(scatola);
+    if (lm == NULL)
+        g_error("vecchi: la scatola della riga non ha il suo layout manager");
+    g_object_ref(lm);
+    g_object_ref(scatola);
+    gtk_button_set_child(GTK_BUTTON(r), NULL); /* senza genitore: il dispose a mano e' ammesso */
+    GtkLayoutManagerClass *k = GTK_LAYOUT_MANAGER_GET_CLASS(lm);
+    g_object_run_dispose(G_OBJECT(scatola)); /* figli staccati e liberati, il layout manager resta */
+    int a = -1, b = -1, c = -1, e = -1;
+    k->measure(lm, scatola, GTK_ORIENTATION_HORIZONTAL, -1, &a, &b, &c, &e);
+    if (a != 0 || b != 0)
+        g_error("vecchi: il layout manager di una scatola distrutta misura %d/%d, non 0", a, b);
+    g_object_unref(lm);
+    g_object_unref(scatola);
+    g_object_unref(r);
+}
+
+typedef struct {
+    PhDesktop *d;
+    gint64 scadenza;
+    int fase;
+    bool applicata; /* la misura della fase e' stata messa: si aspetta il layout e si controlla */
+} Vecchi;
+
+static void vecchi_avanza(Vecchi *v)
+{
+    v->fase++;
+    v->applicata = false;
+    v->scadenza = g_get_monotonic_time() + 5 * G_USEC_PER_SEC;
+}
+
+static gboolean vecchi_tick(gpointer dati)
+{
+    Vecchi *v = dati;
+    PhDesktop *d = v->d;
+    size_t n_notifiche = 0;
+    ph_srv_notifiche(d->srv, &n_notifiche, NULL);
+    bool pronto = d->memoria_nota && d->dettaglio_noto && d->eventi_noti && d->app_calendario != NULL &&
+                  n_notifiche > 0;
+    if (!pronto) {
+        if (g_get_monotonic_time() > v->scadenza)
+            g_error("vecchi: dopo 5 s mancano dati: memoria %d dettaglio %d eventi %d app calendario %d notifiche %zu",
+                    d->memoria_nota, d->dettaglio_noto, d->eventi_noti, d->app_calendario != NULL, n_notifiche);
+        return G_SOURCE_CONTINUE;
+    }
+    PhCfgTelefono *p = ph_dsk_profilo(d);
+    static const VecchiMis *const MISURE[4] = {VM_GRANDI, VM_MANIGLIA, VM_BANDA, VM_MINIME};
+    static const char *const NOMI[4] = {"grandi", "maniglia", "fascia 290", "minime"};
+    if (v->fase < 4 && !v->applicata) {
+        vecchi_imposta(d, p, MISURE[v->fase]);
+        v->applicata = true;
+        return G_SOURCE_CONTINUE; /* il layout arriva con il fotogramma */
+    }
+    if (v->fase < 4 && !vecchi_geometria(d)) {
+        if (g_get_monotonic_time() > v->scadenza)
+            g_error("vecchi (%s): dopo 5 s la misura vera dei widget non e' arrivata", NOMI[v->fase]);
+        return G_SOURCE_CONTINUE;
+    }
+    switch (v->fase) {
+    case 0:
+        vecchi_controlla(d, NOMI[0]);
+        vecchi_impostazioni(d);
+        break;
+    case 1:
+        vecchi_controlla(d, "maniglia, prima");
+        /* Dal percorso vero della maniglia, senza cambiare livello: il contenuto si rifa' solo da qui. */
+        vecchi_maniglia(d, PH_CFG_WIDGET_NOTIFICHE, GDK_KEY_Down, 6); /* 148 -> 196: da 2 a 3 righe */
+        vecchi_maniglia(d, PH_CFG_WIDGET_MEMORIA, GDK_KEY_Down, 10);  /* 120 -> 200: compare la legenda */
+        vecchi_maniglia(d, PH_CFG_WIDGET_CALENDARIO, GDK_KEY_Down, 1); /* 150 -> 158: da 2 a 3 impegni */
+        vecchi_maniglia(d, PH_CFG_WIDGET_STATO, GDK_KEY_Down, 2);      /* 124 -> 140: da 1 a 2 righe */
+        vecchi_controlla(d, "maniglia, dopo");
+        break;
+    case 2:
+        vecchi_controlla(d, NOMI[2]);
+        break;
+    case 3:
+        vecchi_controlla(d, NOMI[3]);
+        vecchi_riga();
+        vecchi_senza_app_calendario(d);
+        vecchi_finito = true;
+        g_message("vecchi: quattro widget controllati a quattro misure (maniglia vera compresa), clic, "
+                  "legenda dentro la scheda e ritocchi dei componenti");
+        g_free(v);
+        return G_SOURCE_REMOVE;
+    default: break;
+    }
+    vecchi_avanza(v);
+    return G_SOURCE_CONTINUE;
+}
+
+static void vecchi_avvia(PhShell *sh, PhDesktop *d, PhCfgTelefono *p)
+{
+    if (vecchi_iniziato)
+        return;
+    vecchi_iniziato = true;
+    atexit(vecchi_esci);
+    PhShellGestoreFinestre gf = {.io = NULL,
+                                 .apri_app = vecchi_apri,
+                                 .elenco = vecchi_elenco,
+                                 .clic_barra = vecchi_clic_barra,
+                                 .specchio = vecchi_specchio,
+                                 .specchio_aperto = vecchi_specchio_aperto};
+    ph_shell_registra_finestre(sh, &gf);
+    /* Subito i quattro widget (servono per far partire le richieste dei loro dati): la prima misura. */
+    vecchi_imposta(d, p, VM_GRANDI);
+    Vecchi *v = g_new0(Vecchi, 1);
+    v->d = d;
+    v->applicata = true;
+    v->scadenza = g_get_monotonic_time() + 5 * G_USEC_PER_SEC;
+    g_timeout_add(100, vecchi_tick, v);
 }

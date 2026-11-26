@@ -497,11 +497,19 @@ struct _PhDskScatola {
 };
 G_DEFINE_FINAL_TYPE(PhDskScatola, ph_dsk_scatola, GTK_TYPE_WIDGET)
 
+/* Definita sotto, con la disposizione della riga: dimentica i figli (ormai staccati e liberati). */
+static void riga_lm_dimentica(GtkLayoutManager *lm);
+
 static void scatola_dispose(GObject *obj)
 {
     GtkWidget *c;
+    GtkLayoutManager *lm = gtk_widget_get_layout_manager(GTK_WIDGET(obj));
     while ((c = gtk_widget_get_first_child(GTK_WIDGET(obj))) != NULL)
         gtk_widget_unparent(c);
+    /* Il layout manager puo' vivere piu' della scatola e essere interrogato ancora: con i
+     * puntini ai figli appena liberati userebbe memoria che non c'e' piu'. */
+    if (lm != NULL)
+        riga_lm_dimentica(lm);
     G_OBJECT_CLASS(ph_dsk_scatola_parent_class)->dispose(obj);
 }
 
@@ -744,6 +752,22 @@ void ph_dsk_fette_imposta(GtkWidget *w, const PhDskFetta *f, size_t n, int64_t t
     gtk_widget_queue_resize(st->legenda);
 }
 
+void ph_dsk_fette_legenda_visibile(GtkWidget *w, bool visibile)
+{
+    FetteStato *st = w != NULL ? g_object_get_data(G_OBJECT(w), "ph-dsk-fette") : NULL;
+    g_return_if_fail(st != NULL);
+    gtk_widget_set_visible(st->legenda, visibile);
+}
+
+int ph_dsk_fette_legenda_colonne(GtkWidget *w, int larghezza)
+{
+    FetteStato *st = w != NULL ? g_object_get_data(G_OBJECT(w), "ph-dsk-fette") : NULL;
+    g_return_val_if_fail(st != NULL, 1);
+    /* La stessa regola e lo stesso spazio con cui la legenda decide da sola (legenda_alloca). */
+    LegendaInfo i = legenda_info(st->legenda);
+    return ph_dsk_legenda_colonne(larghezza, i.larg_max, LEGENDA_SPAZIO, i.n);
+}
+
 /* ---- Curva: interfaccia ----------------------------------------------------------------------------------------- */
 GtkWidget *ph_dsk_curva_nuova(void)
 {
@@ -836,6 +860,15 @@ struct _PhDskRigaLm {
 };
 G_DEFINE_FINAL_TYPE(PhDskRigaLm, ph_dsk_riga_lm, GTK_TYPE_LAYOUT_MANAGER)
 
+static void riga_lm_dimentica(GtkLayoutManager *lm)
+{
+    if (!PH_IS_DSK_RIGA_LM(lm)) /* la scatola puo' avere un'altra disposizione (la legenda) */
+        return;
+    PhDskRigaLm *m = PH_DSK_RIGA_LM(lm);
+    m->chip = m->titolo = m->sotto = m->ora = NULL;
+    m->larg_titolo = m->larg_ora = 0;
+}
+
 typedef struct {
     bool ora_vis, sotto_vis, ora_sotto;
     int ow, oh;     /* misura dell'ora */
@@ -893,10 +926,15 @@ static void riga_misura(GtkLayoutManager *lm, GtkWidget *w, GtkOrientation o, in
         return;
     }
     bool ora_vis = gtk_widget_should_layout(m->ora);
-    int mt = 0, ms = 0;
+    int mt = 0, ms = 0, ow = 0;
     gtk_widget_measure(m->titolo, GTK_ORIENTATION_HORIZONTAL, -1, &mt, NULL, NULL, NULL);
     gtk_widget_measure(m->sotto, GTK_ORIENTATION_HORIZONTAL, -1, &ms, NULL, NULL, NULL);
-    int minimo = RIGA_CHIP + RIGA_SPAZIO + MAX(mt, ms);
+    if (ora_vis)
+        gtk_widget_measure(m->ora, GTK_ORIENTATION_HORIZONTAL, -1, &ow, NULL, NULL, NULL);
+    /* Con l'ora visibile, la colonna dei testi deve poter contenere almeno il sottotitolo e l'ora
+     * (se non ci stanno a fianco del titolo l'ora scende sulla riga del sottotitolo): senza questo
+     * l'ora finirebbe fuori dalla riga a larghezze strette. */
+    int minimo = RIGA_CHIP + RIGA_SPAZIO + MAX(mt, ora_vis ? ms + ow + RIGA_ORA_SOTTO_SPAZIO : ms);
     int naturale = RIGA_CHIP + RIGA_SPAZIO + (int)ceil(m->larg_titolo) + (ora_vis ? RIGA_SPAZIO + (int)ceil(m->larg_ora) : 0);
     if (o == GTK_ORIENTATION_HORIZONTAL) {
         *min = minimo;
@@ -952,6 +990,7 @@ typedef struct {
     GtkWidget *scatola;
     PhDskRigaLm *lm; /* della scatola: vive quanto lei */
     int tinta; /* accento corrente del chip (-1 = nessuno) */
+    int acc;   /* accento chiesto con ph_dsk_riga_imposta: si rimette se l'icona vera viene tolta */
 } RigaStato;
 
 static void riga_clic(GtkButton *b, gpointer dati)
@@ -1012,7 +1051,9 @@ void ph_dsk_riga_imposta(GtkWidget *r, const char *sigla, PhDskAccento acc, bool
         ph_dsk_sigla(titolo, s, sizeof s);
     if (st->icona == NULL) /* con un'icona al posto della sigla il testo non si tocca */
         gtk_label_set_text(GTK_LABEL(st->sigla), s);
-    tinta_classe(st->chip, &st->tinta, ph_dsk_accento_valido((int)acc, PH_DSK_ACC_N));
+    st->acc = ph_dsk_accento_valido((int)acc, PH_DSK_ACC_N);
+    if (st->icona == NULL) /* con un'icona vera il fondo tinto non ci sta: l'icona ha il suo aspetto */
+        tinta_classe(st->chip, &st->tinta, st->acc);
     if (tondo)
         gtk_widget_add_css_class(st->chip, "ph-desktop-chip-tondo");
     else
@@ -1048,6 +1089,18 @@ void ph_dsk_riga_icona(GtkWidget *r, GtkWidget *icona)
         st->icona = NULL;
     }
     gtk_widget_set_visible(st->sigla, icona == NULL);
+    if (icona == NULL) { /* torna la sigla: torna il fondo tinto */
+        gtk_widget_remove_css_class(st->chip, "ph-desktop-chip-vero");
+        tinta_classe(st->chip, &st->tinta, st->acc);
+    } else { /* icona vera: nessun fondo tinto dietro */
+        if (st->tinta >= 0) {
+            char classe[40];
+            g_snprintf(classe, sizeof classe, "ph-desktop-tinta-%s", NOMI_SONDE[st->tinta]);
+            gtk_widget_remove_css_class(st->chip, classe);
+            st->tinta = -1;
+        }
+        gtk_widget_add_css_class(st->chip, "ph-desktop-chip-vero");
+    }
     if (icona != NULL) {
         gtk_widget_set_hexpand(icona, TRUE);
         gtk_widget_set_halign(icona, GTK_ALIGN_CENTER);

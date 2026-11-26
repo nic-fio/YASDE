@@ -195,19 +195,304 @@ static void orologio_aggiorna(PhDskWidget *w, PhDskVista *v)
     }
 }
 
-static void widget_aggiorna(PhDskWidget *w)
+/* ---- Memoria, notifiche e calendario del giorno (passo 2b, agente A) ---------------------------
+ * Contenuto per misura vera: ogni funzione chiede alla logica pura (logica_vecchi.h) che cosa ci
+ * sta in larghezza x altezza e costruisce solo quello dentro w->corpo. Si rifanno a ogni aggiornamento
+ * dei dati e a ogni cambio di misura. Valori assenti dal telefono: mai inventati.
+ * Riservatezza: titoli e testi vivono solo nelle etichette a schermo. */
+static void vista_vuota(PhDskVista *v)
+{
+    memset(v, 0, sizeof *v);
+    v->percento = -1;
+}
+
+/* Svuota il corpo e lo mostra (o lo nasconde). */
+static void corpo_prepara(PhDskWidget *w, bool visibile)
+{
+    ph_dsk_wx_svuota(w->corpo);
+    gtk_widget_set_visible(w->corpo, visibile);
+}
+
+static GtkWidget *etichetta_corpo(const char *testo, const char *classe, bool ellissi)
+{
+    char *ok = g_utf8_make_valid(testo != NULL ? testo : "", -1); /* dato del telefono */
+    GtkWidget *l = gtk_label_new(ok);
+    g_free(ok);
+    gtk_widget_add_css_class(l, classe);
+    gtk_label_set_xalign(GTK_LABEL(l), 0);
+    if (ellissi) {
+        gtk_label_set_ellipsize(GTK_LABEL(l), PANGO_ELLIPSIZE_END);
+        gtk_label_set_max_width_chars(GTK_LABEL(l), 1); /* nessuna larghezza minima */
+    }
+    return l;
+}
+
+static int scarto_locale_s(void)
+{
+    GDateTime *dt = adesso_dt();
+    int s = (int)(g_date_time_get_utc_offset(dt) / G_USEC_PER_SEC);
+    g_date_time_unref(dt);
+    return s;
+}
+
+/* L'app Impostazioni, se il telefono ce l'ha tra le sue app; altrimenti NULL (nessun clic). */
+static const char *g_impostazioni_prova = NULL;
+
+/* Solo per le prove del demo: un altro pacchetto al posto di com.android.settings (il telefono finto
+ * non ha quell'app). NULL toglie la sostituzione. La stringa deve vivere piu' dei widget. */
+void ph_dsk_impostazioni_pacchetto_prova(const char *pacchetto)
+{
+    g_impostazioni_prova = pacchetto;
+}
+
+static const char *impostazioni_nota(PhDesktop *d)
+{
+    const char *pk = g_impostazioni_prova != NULL ? g_impostazioni_prova : ph_dsk_pacchetto_impostazioni();
+    return d->vivo && ph_srv_app_cerca(d->srv, pk) != NULL ? pk : NULL;
+}
+
+/* Memoria: clic sul contenuto = app Impostazioni. */
+static void memoria_clic(GtkGestureClick *g, int n, double x, double y, gpointer dati)
+{
+    (void)g;
+    (void)n;
+    (void)x;
+    (void)y;
+    PhDskWidget *w = dati;
+    const char *pk = w->scheda != NULL ? impostazioni_nota(w->d) : NULL;
+    if (pk != NULL)
+        ph_shell_apri_app(w->d->sh, pk);
+}
+
+static void memoria_aggiorna(PhDskWidget *w, PhDskVista *v)
 {
     PhDesktop *d = w->d;
-    PhDskVista v;
-    switch (w->tipo) {
-    case PH_CFG_WIDGET_OROLOGIO:
-        orologio_aggiorna(w, &v);
-        break;
-    case PH_CFG_WIDGET_CALENDARIO: {
-        uint64_t ms;
-        int scarto;
-        char ora[16], data[96];
-        adesso(&ms, &scarto, ora, sizeof ora, data, sizeof data);
+    vista_vuota(v);
+    if (!d->memoria_nota || d->memoria_totale == 0) {
+        corpo_prepara(w, false); /* i dati non ci sono: solo il titolo, nessun numero */
+        snprintf(v->titolo, sizeof v->titolo, "%s", ph_t("Memoria del telefono"));
+        return;
+    }
+    corpo_prepara(w, true);
+    gtk_widget_set_vexpand(w->corpo, TRUE);
+    gtk_widget_set_cursor_from_name(w->corpo, impostazioni_nota(d) != NULL ? "pointer" : NULL);
+    uint64_t libera = d->memoria_libera > d->memoria_totale ? d->memoria_totale : d->memoria_libera;
+    uint64_t usata = d->memoria_totale - libera;
+
+    PhDskMemFetta f[PH_DSK_MEM_N];
+    size_t nf = ph_dsk_memoria_fette(d->dettaglio_noto ? &d->dettaglio : NULL, usata, f);
+    size_t n_voci = nf; /* voci della legenda: 0 se il telefono non ha dato nessuna categoria */
+
+    /* Prima la barra: la sua legenda dice da sola quante colonne usera' (voce piu' larga vera), e da
+     * questo dipende quanta altezza serve. */
+    PhDskFetta fette[PH_DSK_MEM_N];
+    char valori[PH_DSK_MEM_N][48];
+    if (nf == 0) { /* senza categorie lette la barra mostra solo quanto e' usato, senza legenda */
+        fette[0] = (PhDskFetta){"", "", (int64_t)(usata > (uint64_t)INT64_MAX ? INT64_MAX : usata), PH_DSK_ACC_TEMA};
+        nf = 1;
+    } else {
+        for (size_t i = 0; i < nf; i++) {
+            char g[32];
+            ph_dsk_formato_gb(f[i].byte, g, sizeof g);
+            ph_lingua_componi(valori[i], sizeof valori[i], ph_t("{numero} GB"), "numero", g, (const char *)NULL);
+            const char *nome = f[i].categoria == PH_DSK_MEM_IMMAGINI ? ph_t("Immagini")
+                               : f[i].categoria == PH_DSK_MEM_VIDEO  ? ph_t("Video")
+                               : f[i].categoria == PH_DSK_MEM_AUDIO  ? ph_t("Audio")
+                               : f[i].categoria == PH_DSK_MEM_APP    ? ph_t("App")
+                                                                     : ph_t("Altro");
+            fette[i] = (PhDskFetta){nome, valori[i], (int64_t)(f[i].byte > (uint64_t)INT64_MAX ? INT64_MAX : f[i].byte),
+                                    (PhDskAccento)ph_dsk_memoria_accento(f[i].categoria)};
+        }
+    }
+    GtkWidget *fe = ph_dsk_fette_nuove();
+    g_object_ref_sink(fe); /* si attacca solo se la barra ci sta */
+    ph_dsk_fette_imposta(fe, fette, nf,
+                         (int64_t)(d->memoria_totale > (uint64_t)INT64_MAX ? INT64_MAX : d->memoria_totale));
+    int ul, ua;
+    ph_dsk_vecchi_utile(w->larghezza, w->altezza, &ul, &ua);
+    (void)ua;
+    PhDskMemoriaDisp disp = ph_dsk_memoria_disp(w->larghezza, w->altezza, n_voci, ph_dsk_fette_legenda_colonne(fe, ul));
+
+    char n1[32], n2[32], q1[48], q2[48], nota[96];
+    ph_dsk_formato_gb(libera, n1, sizeof n1);
+    ph_dsk_formato_gb(d->memoria_totale, n2, sizeof n2);
+    ph_lingua_componi(q1, sizeof q1, ph_t("{numero} GB"), "numero", n1, (const char *)NULL);
+    ph_lingua_componi(q2, sizeof q2, ph_t("{numero} GB"), "numero", n2, (const char *)NULL);
+    ph_lingua_componi(nota, sizeof nota, ph_t("libero su {quantita}"), "quantita", q2, (const char *)NULL);
+    /* Il numero e' il dato principale: grande, alto quanto la logica dice (senza vuoti verso la barra).
+     * La dicitura sta accanto se c'e' larghezza, altrimenti sotto, a capo se serve: si legge per intero. */
+    GtkWidget *num = ph_dsk_numero_nuovo();
+    gtk_widget_set_size_request(num, -1, disp.numero_alto);
+    ph_dsk_numero_imposta(num, ph_t("Memoria del telefono"), q1, disp.nota_accanto ? nota : "");
+    gtk_box_append(GTK_BOX(w->corpo), num);
+    if (!disp.nota_accanto) {
+        GtkWidget *l = etichetta_corpo(nota, "ph-desktop-w-sotto-nom", false);
+        gtk_label_set_wrap(GTK_LABEL(l), TRUE);
+        gtk_box_append(GTK_BOX(w->corpo), l);
+    }
+    if (disp.barra) {
+        ph_dsk_fette_legenda_visibile(fe, disp.legenda);
+        gtk_widget_set_margin_top(fe, 10);
+        gtk_widget_set_valign(fe, GTK_ALIGN_START);
+        gtk_box_append(GTK_BOX(w->corpo), fe);
+    }
+    g_object_unref(fe);
+}
+
+/* Notifiche: dati del clic di una riga. Vivono quanto la riga (g_object_set_data_full). */
+typedef struct {
+    PhDskWidget *w;
+    char pacchetto[]; /* app che ha mandato la notifica */
+} ClicApp;
+
+static void notifica_clic(void *dati)
+{
+    ClicApp *c = dati;
+    if (c->w->scheda != NULL && c->w->d->vivo)
+        ph_shell_apri_app(c->w->d->sh, c->pacchetto);
+}
+
+static void notifiche_aggiorna(PhDskWidget *w, PhDskVista *v)
+{
+    PhDesktop *d = w->d;
+    vista_vuota(v);
+    snprintf(v->titolo, sizeof v->titolo, "%s", ph_t("Notifiche recenti"));
+    corpo_prepara(w, true);
+    size_t n = 0;
+    const PhSrvNotifica *tutte = ph_srv_notifiche(d->srv, &n, NULL);
+    size_t max = ph_dsk_notifiche_righe_max(w->larghezza, w->altezza), k = 0;
+    int scarto = scarto_locale_s();
+    GtkWidget *elenco = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    for (size_t i = 0; i < n && k < max; i++) {
+        if (ph_shell_notifica_nascosta(d->sh, tutte[i].chiave, tutte[i].ora_ms))
+            continue; /* contano solo quelle non nascoste */
+        const char *pk = tutte[i].pacchetto != NULL ? tutte[i].pacchetto : "";
+        const char *titolo = tutte[i].titolo != NULL ? tutte[i].titolo : "";
+        const PhSrvApp *app = pk[0] != '\0' ? ph_srv_app_cerca(d->srv, pk) : NULL;
+        const char *nome_app = app != NULL && app->nome != NULL ? app->nome : "";
+        ClicApp *c = NULL;
+        if (pk[0] != '\0') { /* senza pacchetto il clic non fa nulla e la riga non e' un pulsante */
+            c = g_malloc(sizeof *c + strlen(pk) + 1);
+            c->w = w;
+            strcpy(c->pacchetto, pk);
+        }
+        GtkWidget *riga = ph_dsk_riga_nuova(c != NULL ? notifica_clic : NULL, c);
+        if (c != NULL)
+            g_object_set_data_full(G_OBJECT(riga), "ph-desktop-clic", c, g_free);
+        char sigla[16], ora[16] = "";
+        ph_dsk_sigla(nome_app[0] != '\0' ? nome_app : titolo, sigla, sizeof sigla);
+        if (tutte[i].ora_ms != 0)
+            ph_dsk_ora_evento(tutte[i].ora_ms, scarto, ora, sizeof ora);
+        ph_dsk_riga_imposta(riga, sigla, (PhDskAccento)ph_dsk_accento_pacchetto(pk), false, titolo,
+                            tutte[i].testo != NULL ? tutte[i].testo : "", ora);
+        GdkTexture *tx = pk[0] != '\0' ? ph_srv_icona(d->srv, pk) : NULL; /* icona vera; senza, la sigla */
+        if (tx != NULL) {
+            GtkWidget *im = gtk_image_new_from_paintable(GDK_PAINTABLE(tx));
+            gtk_image_set_pixel_size(GTK_IMAGE(im), 32);
+            ph_dsk_riga_icona(riga, im);
+        }
+        gtk_box_append(GTK_BOX(elenco), riga);
+        k++;
+    }
+    if (k == 0) {
+        g_object_ref_sink(elenco); /* mai attaccato: si libera subito */
+        g_object_unref(elenco);
+        gtk_box_append(GTK_BOX(w->corpo), etichetta_corpo(ph_t("Nessuna notifica"), "ph-desktop-w-sotto", true));
+        return;
+    }
+    gtk_box_append(GTK_BOX(w->corpo), elenco);
+}
+
+/* Calendario del giorno: un impegno e' una riga con la barretta colorata, il titolo (con «ora»
+ * se e' in corso) e l'orario. Con l'app del calendario nota e' un pulsante, altrimenti solo da
+ * guardare (il trascinamento del widget passa). */
+static void impegno_clic(GtkButton *b, gpointer dati)
+{
+    (void)b;
+    PhDskWidget *w = dati;
+    if (w->scheda != NULL && w->d->vivo && w->d->app_calendario != NULL)
+        ph_shell_apri_app(w->d->sh, w->d->app_calendario);
+}
+
+static GtkWidget *impegno_nuovo(PhDskWidget *w, const char *titolo, const char *orario, int acc, bool in_corso,
+                                bool cliccabile)
+{
+    GtkWidget *dentro = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 9);
+    GtkWidget *barra = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    char classe[48];
+    gtk_widget_add_css_class(barra, "ph-desktop-giorno-impegno-barra");
+    snprintf(classe, sizeof classe, "ph-desktop-tinta-%s", ph_dsk_accento_nome(acc));
+    gtk_widget_add_css_class(barra, classe);
+    gtk_box_append(GTK_BOX(dentro), barra);
+    GtkWidget *col = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_hexpand(col, TRUE);
+    GtkWidget *r1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    GtkWidget *t = etichetta_corpo(titolo, "ph-desktop-giorno-impegno-titolo", true);
+    gtk_widget_set_hexpand(t, TRUE);
+    gtk_box_append(GTK_BOX(r1), t);
+    if (in_corso) {
+        char *ora = g_utf8_strup(ph_t("Ora"), -1);
+        gtk_box_append(GTK_BOX(r1), etichetta_corpo(ora, "ph-desktop-giorno-impegno-ora", false));
+        g_free(ora);
+    }
+    gtk_box_append(GTK_BOX(col), r1);
+    if (orario[0] != '\0')
+        gtk_box_append(GTK_BOX(col), etichetta_corpo(orario, "ph-desktop-giorno-impegno-orario", true));
+    gtk_box_append(GTK_BOX(dentro), col);
+    GtkWidget *r;
+    if (cliccabile) {
+        r = gtk_button_new();
+        gtk_button_set_child(GTK_BUTTON(r), dentro);
+        g_signal_connect(r, "clicked", G_CALLBACK(impegno_clic), w);
+        char *tv = g_utf8_make_valid(titolo, -1);
+        char *et = orario[0] != '\0' ? g_strjoin(", ", tv, orario, NULL) : g_strdup(tv);
+        ph_shell_etichetta(r, et, NULL);
+        g_free(et);
+        g_free(tv);
+    } else {
+        r = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+        gtk_box_append(GTK_BOX(r), dentro);
+        gtk_widget_set_can_target(r, FALSE);
+    }
+    gtk_widget_add_css_class(r, "ph-desktop-giorno-impegno");
+    gtk_widget_set_hexpand(r, TRUE);
+    return r;
+}
+
+static void calendario_giorno_aggiorna(PhDskWidget *w, PhDskVista *v)
+{
+    PhDesktop *d = w->d;
+    vista_vuota(v);
+    uint64_t ms;
+    int scarto;
+    char ora[16], data[96];
+    adesso(&ms, &scarto, ora, sizeof ora, data, sizeof data);
+    PhDskCalDisp disp = ph_dsk_calendario_disp(w->larghezza, w->altezza);
+    corpo_prepara(w, true);
+    if (!disp.colonna_giorno)
+        g_strlcpy(v->titolo, data, sizeof v->titolo); /* la data lunga in una riga in alto */
+
+    GtkWidget *riga = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 14);
+    if (disp.colonna_giorno) {
+        GDateTime *dt = adesso_dt();
+        char num[16], mese[48];
+        snprintf(num, sizeof num, "%d", g_date_time_get_day_of_month(dt));
+        ph_dsk_maiuscola_prima(ph_dsk_nome_mese(g_date_time_get_month(dt)), mese, sizeof mese);
+        GtkWidget *col = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+        gtk_widget_set_size_request(col, 64, -1);
+        gtk_widget_set_valign(col, GTK_ALIGN_START);
+        GtkWidget *nu = ph_dsk_numero_nuovo();
+        gtk_widget_set_size_request(nu, 64, 52);
+        ph_dsk_numero_imposta(nu, ph_dsk_giorno_breve(g_date_time_get_day_of_week(dt) - 1), num, "");
+        gtk_box_append(GTK_BOX(col), nu);
+        gtk_box_append(GTK_BOX(col), etichetta_corpo(mese, "ph-desktop-w-sotto-nom", true));
+        gtk_box_append(GTK_BOX(riga), col);
+        g_date_time_unref(dt);
+    }
+    GtkWidget *impegni = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    gtk_widget_set_hexpand(impegni, TRUE);
+    gtk_widget_set_valign(impegni, GTK_ALIGN_START);
+    if (d->eventi_noti) { /* senza dati non si scrive niente: ne' «nessun impegno» ne' impegni finti */
         PhDskEvento ev[PH_SRV_CALENDARIO_MAX];
         size_t n = d->n_eventi < PH_SRV_CALENDARIO_MAX ? d->n_eventi : PH_SRV_CALENDARIO_MAX;
         for (size_t i = 0; i < n; i++) {
@@ -216,36 +501,52 @@ static void widget_aggiorna(PhDskWidget *w)
             ev[i].fine_ms = d->eventi[i].fine_ms;
             ev[i].tutto_il_giorno = d->eventi[i].tutto_il_giorno;
         }
-        ph_dsk_vista_calendario(w->dim, d->eventi_noti, ev, n, ms, scarto, data, &v);
-        break;
+        size_t idx[PH_SRV_CALENDARIO_MAX];
+        size_t max = disp.max_impegni < PH_SRV_CALENDARIO_MAX ? disp.max_impegni : PH_SRV_CALENDARIO_MAX;
+        size_t k = ph_dsk_eventi_di_oggi(ev, n, ms, scarto, max, idx);
+        if (k == 0)
+            gtk_box_append(GTK_BOX(impegni), etichetta_corpo(ph_t("Nessun impegno"), "ph-desktop-w-sotto", true));
+        for (size_t i = 0; i < k; i++) {
+            char orario[48];
+            ph_dsk_evento_orario(&ev[idx[i]], NULL, orario, sizeof orario);
+            gtk_box_append(GTK_BOX(impegni),
+                           impegno_nuovo(w, ev[idx[i]].titolo != NULL ? ev[idx[i]].titolo : "", orario,
+                                         ph_dsk_accento_impegno(i), ph_dsk_impegno_in_corso(&ev[idx[i]], ms),
+                                         d->app_calendario != NULL));
+        }
     }
+    gtk_box_append(GTK_BOX(riga), impegni);
+    gtk_box_append(GTK_BOX(w->corpo), riga);
+}
+
+static void widget_aggiorna(PhDskWidget *w)
+{
+    PhDesktop *d = w->d;
+    PhDskVista v;
+    switch (w->tipo) {
+    case PH_CFG_WIDGET_OROLOGIO:
+        orologio_aggiorna(w, &v);
+        break;
+    case PH_CFG_WIDGET_CALENDARIO:
+        calendario_giorno_aggiorna(w, &v);
+        break;
     case PH_CFG_WIDGET_STATO: {
         PhSrvTelefono t;
         PhSrvCollegamento c;
         ph_srv_telefono(d->srv, &t);
         ph_srv_collegamento(d->srv, &c);
-        ph_dsk_vista_stato(w->dim, &t, &c, &v);
+        /* Le righe di dettaglio dipendono dall'altezza vera, non dal livello (logica_vecchi.h). */
+        ph_dsk_vista_stato(PH_CFG_WIDGET_GRANDE, &t, &c, &v);
+        size_t max = ph_dsk_stato_righe(w->larghezza, w->altezza);
+        if (v.n_righe > max)
+            v.n_righe = max;
         break;
     }
-    case PH_CFG_WIDGET_NOTIFICHE: {
-        size_t n = 0;
-        const PhSrvNotifica *tutte = ph_srv_notifiche(d->srv, &n, NULL);
-        PhDskNotifica *vis = g_new0(PhDskNotifica, n + 1);
-        size_t k = 0;
-        for (size_t i = 0; i < n; i++) {
-            if (ph_shell_notifica_nascosta(d->sh, tutte[i].chiave, tutte[i].ora_ms))
-                continue; /* contano solo quelle non nascoste */
-            vis[k].titolo = tutte[i].titolo;
-            vis[k].testo = tutte[i].testo;
-            k++;
-        }
-        ph_dsk_vista_notifiche(w->dim, vis, k, &v);
-        g_free(vis);
+    case PH_CFG_WIDGET_NOTIFICHE:
+        notifiche_aggiorna(w, &v);
         break;
-    }
     case PH_CFG_WIDGET_MEMORIA:
-        ph_dsk_vista_memoria(w->dim, d->memoria_nota, d->memoria_totale, d->memoria_libera,
-                             d->dettaglio_noto ? &d->dettaglio : NULL, &v);
+        memoria_aggiorna(w, &v);
         break;
     default:
         if (ph_dsk_wx_vt(w->tipo) == NULL)
@@ -394,6 +695,10 @@ static bool ridim_calcola(PhDskWidget *w, PhDskMisura base, int destra_base, dou
     geometria_applica(w);
     barra_applica(w);
     widget_colloca(w);
+    /* agente A: questi contenuti dipendono dalla misura vera, non solo dal livello: si rifanno. */
+    if (w->tipo == PH_CFG_WIDGET_MEMORIA || w->tipo == PH_CFG_WIDGET_NOTIFICHE ||
+        w->tipo == PH_CFG_WIDGET_CALENDARIO || w->tipo == PH_CFG_WIDGET_STATO)
+        widget_aggiorna(w);
     return true;
 }
 
@@ -619,6 +924,15 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
     gtk_box_append(GTK_BOX(w->interno), w->quadrante);
     w->corpo = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_visible(w->corpo, FALSE);
+    if (w->tipo == PH_CFG_WIDGET_MEMORIA) {
+        /* agente A: un clic sul contenuto apre l'app Impostazioni (se il telefono ce l'ha). Il clic
+         * non reclama la sequenza: il trascinamento del widget funziona come sempre, e dopo un
+         * trascinamento GTK non lo conta come clic. */
+        GtkGesture *cl = gtk_gesture_click_new();
+        gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(cl), GDK_BUTTON_PRIMARY);
+        g_signal_connect(cl, "released", G_CALLBACK(memoria_clic), w);
+        gtk_widget_add_controller(w->corpo, GTK_EVENT_CONTROLLER(cl));
+    }
     gtk_box_append(GTK_BOX(w->interno), w->corpo);
     gtk_box_append(GTK_BOX(w->interno), w->testa);
     gtk_box_append(GTK_BOX(w->interno), w->sotto);
@@ -785,6 +1099,32 @@ static void calendario_fatto(PhServizi *s, PhSrvEsito esito, const char *frase,
     ph_dsk_widget_aggiorna_tutti(d);
 }
 
+/* agente A: l'app del calendario (per il clic su un impegno) la dice solo la lettura a intervallo.
+ * Si chiede una volta, sulle prossime 24 ore, e solo finche' non e' nota; degli eventi si butta
+ * tutto (riservatezza): conta solo il nome del pacchetto. */
+static void app_calendario_fatta(PhServizi *s, PhSrvEsito esito, const char *frase,
+                                 const PhSrvEventoCalendario *v, size_t n, bool troncato,
+                                 const char *app_calendario, void *utente)
+{
+    (void)s;
+    (void)frase;
+    (void)v;
+    (void)n;
+    (void)troncato;
+    PhDesktop *d = utente;
+    if (!d->vivo)
+        return;
+    g_clear_object(&d->annulla_app_cal);
+    /* Il pacchetto arriva dal telefono: si controlla (logica pura, con prova). */
+    if (esito != PH_SRV_ESITO_OK || !ph_dsk_pacchetto_valido(app_calendario))
+        return;
+    if (d->app_calendario != NULL && strcmp(d->app_calendario, app_calendario) == 0)
+        return;
+    g_free(d->app_calendario);
+    d->app_calendario = g_strdup(app_calendario);
+    ph_dsk_widget_aggiorna_tutti(d); /* gli impegni diventano cliccabili */
+}
+
 void ph_dsk_widget_calendario_chiedi(PhDesktop *d)
 {
     if (!serve_il_telefono(d, PH_CFG_WIDGET_CALENDARIO))
@@ -792,6 +1132,12 @@ void ph_dsk_widget_calendario_chiedi(PhDesktop *d)
     d->t_calendario = g_get_monotonic_time();
     rinnova(&d->annulla_calendario);
     ph_srv_tel_calendario(d->srv, PH_SRV_CALENDARIO_MAX, d->annulla_calendario, calendario_fatto, d);
+    if (d->app_calendario == NULL) {
+        uint64_t ora = (uint64_t)(g_get_real_time() / 1000);
+        rinnova(&d->annulla_app_cal);
+        ph_srv_tel_calendario_intervallo(d->srv, ora, ora + 86400000u, d->annulla_app_cal, app_calendario_fatta,
+                                         d);
+    }
 }
 
 void ph_dsk_widget_dati_azzera(PhDesktop *d)
@@ -809,6 +1155,11 @@ void ph_dsk_widget_dati_azzera(PhDesktop *d)
         g_cancellable_cancel(d->annulla_calendario);
         g_clear_object(&d->annulla_calendario);
     }
+    if (d->annulla_app_cal != NULL) { /* agente A */
+        g_cancellable_cancel(d->annulla_app_cal);
+        g_clear_object(&d->annulla_app_cal);
+    }
+    g_clear_pointer(&d->app_calendario, g_free); /* l'app del calendario e' quella di un altro telefono */
     d->memoria_nota = false;
     d->dettaglio_noto = false;
     eventi_libera(d);
@@ -1040,6 +1391,11 @@ void ph_dsk_widget_evento(PhDesktop *d, int ev)
         PhDskWidget *w = g_ptr_array_index(d->widget, i);
         if (ph_dsk_wx_vt(w->tipo) != NULL)
             ph_dsk_wx_evento(w, ev);
+        /* agente A: icone e nomi delle app arrivano dopo: le notifiche (icona vera) e la memoria
+         * (l'app Impostazioni c'e' o no) si rifanno. */
+        else if ((w->tipo == PH_CFG_WIDGET_NOTIFICHE && (ev == PH_SRV_EV_ICONA || ev == PH_SRV_EV_APP)) ||
+                 (w->tipo == PH_CFG_WIDGET_MEMORIA && ev == PH_SRV_EV_APP))
+            widget_aggiorna(w);
     }
 }
 

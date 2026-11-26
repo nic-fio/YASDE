@@ -809,15 +809,15 @@ static void prova_forme(void)
     PhDskMisura m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_PICCOLO, 300, 200);
     VERIFICA(m.larghezza == 300 && m.altezza == 200);
     m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_GRANDE, 300, 0);
-    VERIFICA(m.larghezza == 320 && m.altezza == 168);
+    VERIFICA(m.larghezza == 320 && m.altezza == 240);
     m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_GRANDE, 0, 200);
-    VERIFICA(m.larghezza == 320 && m.altezza == 168);
+    VERIFICA(m.larghezza == 320 && m.altezza == 240);
     m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_MEDIO, 48, 48); /* sotto il minimo */
     VERIFICA(m.larghezza == 200 && m.altezza == 104);
     m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_MEDIO, 2048, 2048); /* sopra il massimo */
     VERIFICA(m.larghezza == 480 && m.altezza == 640);
     m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_MEDIO, -3, 500);
-    VERIFICA(m.larghezza == 250 && m.altezza == 128);
+    VERIFICA(m.larghezza == 250 && m.altezza == 148);
     m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_BATTERIA, 0, PH_CFG_WIDGET_MEDIO, 300, 200); /* tondo: il lato corto */
     VERIFICA(m.larghezza == 200 && m.altezza == 200);
     m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_BATTERIA, 0, PH_CFG_WIDGET_MEDIO, 500, 500);

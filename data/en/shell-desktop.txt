@@ -267,3 +267,11 @@
 # Misure libere dei widget (PIANO.md 8.1).
 "Ridimensiona widget" = "Resize widget"
 "Widget del desktop: li disegna YASDE sul PC, usando i dati del telefono. Dopo averlo aggiunto lo trascini dove vuoi e ne cambi la misura dall'angolo in basso a destra; clic destro per rimuoverlo." = "Desktop widgets: YASDE draws them on the PC, using the phone's data. After adding one, drag it wherever you like and resize it from its bottom-right corner; right-click to remove it."
+
+# agente A: memoria (spazio libero) e categorie.
+"libero su {quantita}" = "free of {quantita}"
+"Altro" = "Other"
+# agente A: fine
+# agente B (passo 2b): batteria tonda e sveglia a capsula
+"Salute: {valore}" = "Health: {valore}"
+"{giorno} · {fra}" = "{giorno} · {fra}"

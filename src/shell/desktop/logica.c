@@ -254,13 +254,21 @@ static Equivalenti equivalenti(PhCfgWidgetTipo tipo, unsigned stile)
         }
     case PH_CFG_WIDGET_CALENDARIO: return (Equivalenti){{{200, 110}, {250, 150}, {320, 210}}};
     case PH_CFG_WIDGET_STATO: return (Equivalenti){{{200, 100}, {250, 124}, {320, 164}}};
-    case PH_CFG_WIDGET_NOTIFICHE: return (Equivalenti){{{200, 104}, {250, 128}, {320, 168}}};
+    /* Notifiche: il minimo tiene una riga, il Medio due e il Grande quattro (5.2.3: 1 / 2 / 4) con
+     * le righe di ph_dsk_notifiche_righe_max (titolo 22 px, riga 44 + 2). */
+    case PH_CFG_WIDGET_NOTIFICHE: return (Equivalenti){{{200, 104}, {250, 148}, {320, 240}}};
     case PH_CFG_WIDGET_MEMORIA: return (Equivalenti){{{200, 120}, {250, 144}, {320, 208}}};
-    case PH_CFG_WIDGET_METEO: return (Equivalenti){{{200, 150}, {250, 210}, {320, 300}}};
+    /* agente C: lo stile «Adesso» cresce con la misura (ph_dsk_meteo_sezioni): Piccolo e' il minimo che tiene
+     * lo stato piu' alto (avviso dei dati vecchi con il pulsante «Localita'», provato a schermo), Medio
+     * mostra la curva (230), Grande i giorni. Gli altri stili restano com'erano. */
+    case PH_CFG_WIDGET_METEO:
+        if (stile == PH_DSK_METEO_ADESSO)
+            return (Equivalenti){{{200, 200}, {250, 230}, {320, 300}}};
+        return (Equivalenti){{{200, 150}, {250, 210}, {320, 300}}};
     case PH_CFG_WIDGET_CALENDARIO_MESE: return (Equivalenti){{{200, 110}, {250, 290}, {320, 420}}};
     case PH_CFG_WIDGET_SVEGLIA: return (Equivalenti){{{200, 72}, {250, 80}, {320, 104}}};
     case PH_CFG_WIDGET_BATTERIA: return (Equivalenti){{{136, 136}, {176, 176}, {216, 216}}};
-    case PH_CFG_WIDGET_INTERRUTTORI: return (Equivalenti){{{200, 72}, {250, 96}, {320, 104}}};
+    case PH_CFG_WIDGET_INTERRUTTORI: return (Equivalenti){{{200, 72}, {250, 112}, {320, 112}}}; /* agente D: alti quanto basta per il nome su due righe */
     case PH_CFG_WIDGET_TROVA: return (Equivalenti){{{200, 96}, {250, 120}, {320, 140}}};
     case PH_CFG_WIDGET_APP_FREQUENTI: return (Equivalenti){{{200, 168}, {250, 180}, {320, 260}}};
     case PH_CFG_WIDGET_TRASFERIMENTI: return (Equivalenti){{{200, 146}, {250, 206}, {320, 296}}};

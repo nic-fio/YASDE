@@ -7,6 +7,9 @@
 
 #include "config/lingua.h"
 #include "logica.h"
+/* agente A: inizio */
+#include "logica_vecchi.h"
+/* agente A: fine */
 #include "shell/pezzi.h"
 
 typedef struct PhDesktop PhDesktop;
@@ -110,6 +113,10 @@ struct PhDesktop {
     } eventi[PH_SRV_CALENDARIO_MAX];
     size_t n_eventi;
     bool eventi_noti;
+    /* agente A: inizio */
+    char *app_calendario;           /* pacchetto dell'app Calendario del telefono (NULL = non noto) */
+    GCancellable *annulla_app_cal;  /* la richiesta che lo scopre */
+    /* agente A: fine */
 };
 
 PhDesktop *ph_dsk_ref(PhDesktop *d);
@@ -284,6 +291,15 @@ typedef struct {
 } PhDskFetta;
 GtkWidget *ph_dsk_fette_nuove(void);
 void ph_dsk_fette_imposta(GtkWidget *w, const PhDskFetta *f, size_t n, int64_t totale);
+/* agente A: inizio */
+/* Solo per le prove del demo: pacchetto di Impostazioni al posto di com.android.settings (NULL = no). */
+void ph_dsk_impostazioni_pacchetto_prova(const char *pacchetto);
+/* Mostra o nasconde la legenda (la barra resta). Chiamabile in qualunque momento. */
+void ph_dsk_fette_legenda_visibile(GtkWidget *w, bool visibile);
+/* Colonne (1 o 2) che la legenda usera' se riceve `larghezza` px: la stessa regola con cui decide da
+ * sola (voce piu' larga vera, spazio tra le colonne). Vale dopo ph_dsk_fette_imposta. */
+int ph_dsk_fette_legenda_colonne(GtkWidget *w, int larghezza);
+/* agente A: fine */
 
 /* Curva con area sfumata, i gradi sopra i punti e le ore sotto (scheda A3). Si espande nei due versi;
  * sotto circa 56 px di altezza non si disegna (ci sono solo le etichette).
@@ -372,5 +388,11 @@ void ph_dsk_dialoghi_sfondo_cambiato(PhDesktop *d);
 void ph_dsk_dialoghi_area(PhDesktop *d);
 /* Annulla la lettura del file di un'immagine scelta e non ancora arrivata. */
 void ph_dsk_dialoghi_annulla_scelta(PhDesktop *d);
+
+/* ---- agente B (passo 2b) ---- */
+/* wx_telefono.c, per la prova d'insieme: fa lo stesso del clic su una batteria o una sveglia e torna il
+ * pacchetto aperto (NULL = nulla). `forza` != NULL prende il posto del pacchetto. */
+const char *ph_dsk_wx_telefono_clic_prova(PhDskWidget *w, const char *forza);
+/* ---- fine agente B ---- */
 
 #endif

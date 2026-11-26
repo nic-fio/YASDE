@@ -59,6 +59,36 @@ size_t ph_dsk_meteo_n_ore(unsigned stile, PhCfgWidgetDim d);
 size_t ph_dsk_meteo_n_giorni(unsigned stile, PhCfgWidgetDim d);
 size_t ph_dsk_meteo_n_dettagli(PhCfgWidgetDim d);
 
+/* agente C: inizio (stile «Adesso» che cresce con la misura VERA, passo 2b) ---------------------------
+ * Soglie in px della misura del widget (scheda intera, imbottitura compresa). Piccolo: icona e
+ * temperatura; piu' largo: anche luogo, condizione e massima/minima; piu' alto: anche la curva delle
+ * prossime ore; ancora piu' alto: anche i prossimi giorni con il tratto minima-massima. Mai un
+ * elemento in meno al crescere di una misura (la prova lo controlla su tutta la griglia). */
+#define PH_DSK_METEO_ADESSO_LARG_TESTO 240 /* da qui: luogo, condizione, massima/minima */
+#define PH_DSK_METEO_ADESSO_LARG_CURVA 240 /* la curva ha bisogno di almeno questa larghezza... */
+#define PH_DSK_METEO_ADESSO_ALT_CURVA 230  /* ...e di questa altezza (testa + curva + attribuzione) */
+#define PH_DSK_METEO_ADESSO_ALT_GIORNO 28  /* altezza di un giorno */
+#define PH_DSK_METEO_ADESSO_GIORNI_MIN 2   /* con meno spazio di cosi' non si mostrano giorni */
+#define PH_DSK_METEO_ADESSO_ALT_AVVISO 48  /* da togliere all'altezza se sopra c'e' l'avviso dei dati vecchi */
+#define PH_DSK_METEO_ADESSO_ALT_CURVA_BASE 96
+#define PH_DSK_METEO_ADESSO_ALT_CURVA_EXTRA 64 /* quanto puo' crescere la curva con lo spazio che avanza */
+typedef struct {
+    bool testo;        /* luogo, condizione, massima/minima accanto alla temperatura */
+    bool curva;        /* curva delle prossime ore */
+    size_t n_ore;      /* punti della curva (0 se non c'e') */
+    size_t n_giorni;   /* giorni con il tratto minima-massima (0 se non ci sono) */
+    int altezza_curva; /* px della curva (0 se non c'e') */
+    int corpo_temp;    /* 1 medio, 2 grande: corpo del numero della temperatura */
+    int lato_icona;    /* px dell'icona della condizione */
+} PhDskMeteoSezioni;
+/* Funzione PURA: misure non positive o enormi sono ammesse (si limitano). */
+PhDskMeteoSezioni ph_dsk_meteo_sezioni(int larghezza, int altezza);
+bool ph_dsk_meteo_sezioni_uguali(const PhDskMeteoSezioni *a, const PhDskMeteoSezioni *b);
+/* «Max 18° · Min 11°» non ci sta per intero (larghezza_lunga > disponibile, in px): si usa la forma
+ * breve «18° / 11°». Misure non positive: false (forma lunga). */
+bool ph_dsk_meteo_forma_breve(int disponibile, int larghezza_lunga);
+/* agente C: fine */
+
 /* Estremi (minima e massima) dei giorni dati, per le barre; false se nessun valore noto. */
 bool ph_dsk_meteo_estremi(const PhMeteoGiorno *g, size_t n, double *minimo, double *massimo);
 /* Posizione della barra di un giorno rispetto agli estremi: da e a in 0..1 (larghezza minima

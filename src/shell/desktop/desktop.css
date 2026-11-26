@@ -384,28 +384,51 @@ button.ph-desktop-impegno:hover { background-color: var(--ph-sopra-riga); }
 .ph-desktop-agenda-giorno { font-size: 11px; color: var(--ph-testo-3); margin-top: 4px; padding: 0 4px; }
 button.ph-desktop-giorno-scelto .ph-desktop-giorno-nome { color: var(--ph-su-accento); }
 
-/* ---- Interruttori rapidi ---- */
+/* ---- Interruttori rapidi: tre tasti tondi (agente D) ----
+ * Il tasto e' trasparente: il disegno e' il tondo. Stati distinguibili anche nei soli tondi:
+ * attivo = pieno d'accento; in corso = bordo punteggiato d'accento; non disponibile = tratteggiato
+ * e spento; prima dei dati = spento. */
 button.ph-desktop-interruttore {
-  border: 1px solid var(--ph-bordo);
-  background: var(--ph-voce);
+  border: none;
+  background: none;
   box-shadow: none;
+  outline: none;
   color: var(--ph-testo);
-  padding: 8px 2px;
+  padding: 0;
   min-width: 0;
   min-height: 0;
-  border-radius: 12px;
+  border-radius: 9999px;
 }
-button.ph-desktop-interruttore:hover:not(:disabled) { background-color: var(--ph-sopra-ghost); }
-button.ph-desktop-interruttore:disabled { opacity: 0.55; }
-button.ph-desktop-interruttore-attivo {
+.ph-desktop-interruttore-tondo {
+  border: 1px solid var(--ph-bordo);
+  background: var(--ph-voce);
+  color: var(--ph-testo);
+  border-radius: 9999px;
+}
+button.ph-desktop-interruttore:hover:not(:disabled) .ph-desktop-interruttore-tondo { background-color: var(--ph-sopra-ghost); }
+button.ph-desktop-interruttore-attivo .ph-desktop-interruttore-tondo,
+button.ph-desktop-interruttore-attivo:hover:not(:disabled) .ph-desktop-interruttore-tondo {
   background: var(--ph-accento);
   border-color: var(--ph-accento);
   color: var(--ph-su-accento);
 }
-button.ph-desktop-interruttore-attivo:hover:not(:disabled) { background: var(--ph-accento); }
+button.ph-desktop-interruttore-in-corso .ph-desktop-interruttore-tondo {
+  border: 2px dotted var(--ph-accento);
+}
+button.ph-desktop-interruttore-nd .ph-desktop-interruttore-tondo {
+  border: 1px dashed var(--ph-bordo-forte);
+  opacity: 0.45;
+}
+button.ph-desktop-interruttore-attesa .ph-desktop-interruttore-tondo { opacity: 0.45; }
+button.ph-desktop-interruttore-bordo .ph-desktop-interruttore-tondo {
+  border: 2px solid var(--ph-accento);
+}
+button.ph-desktop-interruttore:focus-visible .ph-desktop-interruttore-tondo {
+  outline: 2px solid var(--ph-fuoco);
+  outline-offset: 2px;
+}
 .ph-desktop-interruttore-nome { font-size: 11px; font-weight: 600; }
 .ph-desktop-interruttore-stato { font-size: 11px; color: var(--ph-testo-2); }
-button.ph-desktop-interruttore-attivo .ph-desktop-interruttore-stato { color: var(--ph-su-accento); }
 
 /* ---- Trova il telefono ---- */
 button.ph-desktop-trova {
@@ -585,3 +608,41 @@ button.ph-desktop-riga-elenco:focus-visible {
 .ph-desktop-legenda-quadrato { min-width: 9px; min-height: 9px; border-radius: 3px; }
 .ph-desktop-legenda-nome { font-size: 12px; }
 .ph-desktop-legenda-valore { font-size: 12px; font-weight: 600; }
+
+/* agente C: inizio — meteo, stile Adesso */
+.ph-desktop-meteo-luogo { font-size: 13px; font-weight: 600; color: var(--ph-testo); }
+.ph-desktop-meteo-mm-riga { font-size: 12px; color: var(--ph-testo-2); }
+/* agente C: fine */
+/* ---- agente A: calendario del giorno (impegni con la barretta colorata) ---- */
+.ph-desktop-giorno-impegno { padding: 5px 6px; border-radius: 10px; color: var(--ph-testo); }
+button.ph-desktop-giorno-impegno {
+  background: none;
+  border: none;
+  box-shadow: none;
+  min-height: 0;
+  min-width: 0;
+}
+button.ph-desktop-giorno-impegno:hover { background-color: var(--ph-sopra-riga); }
+button.ph-desktop-giorno-impegno:focus-visible {
+  outline: 2px solid var(--ph-fuoco);
+  outline-offset: 1px;
+}
+.ph-desktop-giorno-impegno-barra { min-width: 4px; border-radius: 2px; }
+.ph-desktop-giorno-impegno-titolo { font-size: 13px; font-weight: 600; }
+.ph-desktop-giorno-impegno-orario { font-size: 12px; color: var(--ph-testo-2); }
+.ph-desktop-giorno-impegno-ora { font-size: 10px; font-weight: 700; color: var(--ph-desktop-corallo); }
+/* Riga d'elenco con l'icona vera dell'app: nessun fondo tinto dietro (ph_dsk_riga_icona). */
+.ph-desktop-chip.ph-desktop-chip-vero { background: none; }
+/* agente A: fine */
+/* ---- agente B (passo 2b): batteria tonda e sveglia a capsula ---- */
+.ph-desktop-tel-stato { font-size: 12px; color: var(--ph-testo-2); margin-top: 2px; }
+.ph-desktop-tel-gettone {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: var(--ph-sopra-riga);
+}
+.ph-desktop-tel-tondo { border-radius: 9999px; color: var(--ph-su-accento); }
+.ph-desktop-tel-sotto { font-size: 12px; color: var(--ph-testo-2); }
+.ph-desktop-tel-assente { font-size: 16px; font-weight: 600; }
+/* ---- fine agente B ---- */

@@ -250,6 +250,47 @@ size_t ph_dsk_meteo_n_dettagli(PhCfgWidgetDim d)
     return per_dim(d, 2, 3, 4);
 }
 
+PhDskMeteoSezioni ph_dsk_meteo_sezioni(int larghezza, int altezza)
+{
+    PhDskMeteoSezioni s = {0};
+    if (larghezza > 100000)
+        larghezza = 100000;
+    if (altezza > 100000)
+        altezza = 100000;
+    s.testo = larghezza >= PH_DSK_METEO_ADESSO_LARG_TESTO;
+    /* Anche piccolo il numero e l'icona sono medi: la mattonella al minimo non resta vuota. */
+    s.corpo_temp = larghezza >= 300 && altezza >= 300 ? 2 : 1;
+    s.lato_icona = s.corpo_temp == 2 ? 56 : 48;
+    if (larghezza < PH_DSK_METEO_ADESSO_LARG_CURVA || altezza < PH_DSK_METEO_ADESSO_ALT_CURVA)
+        return s;
+    s.curva = true;
+    s.n_ore = larghezza >= 400 ? 16 : (larghezza >= 300 ? 12 : 8);
+    int resto = altezza - PH_DSK_METEO_ADESSO_ALT_CURVA;
+    size_t g = (size_t)(resto / PH_DSK_METEO_ADESSO_ALT_GIORNO);
+    if (g > PH_METEO_GIORNI_MAX)
+        g = PH_METEO_GIORNI_MAX;
+    s.n_giorni = g >= PH_DSK_METEO_ADESSO_GIORNI_MIN ? g : 0;
+    resto -= (int)s.n_giorni * PH_DSK_METEO_ADESSO_ALT_GIORNO;
+    if (resto > PH_DSK_METEO_ADESSO_ALT_CURVA_EXTRA)
+        resto = PH_DSK_METEO_ADESSO_ALT_CURVA_EXTRA;
+    s.altezza_curva = PH_DSK_METEO_ADESSO_ALT_CURVA_BASE + resto;
+    return s;
+}
+
+bool ph_dsk_meteo_forma_breve(int disponibile, int larghezza_lunga)
+{
+    /* Misure non utilizzabili (ancora non note): si resta sulla forma lunga, che va a capo da sola. */
+    if (disponibile <= 0 || larghezza_lunga <= 0)
+        return false;
+    return larghezza_lunga > disponibile;
+}
+
+bool ph_dsk_meteo_sezioni_uguali(const PhDskMeteoSezioni *a, const PhDskMeteoSezioni *b)
+{
+    return a->testo == b->testo && a->curva == b->curva && a->n_ore == b->n_ore && a->n_giorni == b->n_giorni &&
+           a->altezza_curva == b->altezza_curva && a->corpo_temp == b->corpo_temp && a->lato_icona == b->lato_icona;
+}
+
 bool ph_dsk_meteo_estremi(const PhMeteoGiorno *g, size_t n, double *minimo, double *massimo)
 {
     bool c_e = false;

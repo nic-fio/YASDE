@@ -6,9 +6,17 @@ risorse_desktop_lib = static_library('risorse_desktop', risorse_desktop,
   c_args: shell_args_risorse, dependencies: gtk4_dep)
 
 pixbuf_dep = dependency('gdk-pixbuf-2.0')
+# agente A: inizio
+# Logica pura dei widget Memoria, Notifiche, Calendario del giorno e Stato (logica_vecchi.h):
+# libreria a parte (collegata a shell_desktop_lib con link_with, sotto), cosi' l'elenco dei sorgenti
+# sotto resta com'e'. Le sue prove: prova_vecchi.c (test in fondo al file).
+logica_vecchi_lib = static_library('logica_vecchi', ['logica_vecchi.c'],
+  include_directories: inc, dependencies: [shell_comune_dep, pixbuf_dep])
+# agente A: fine
 shell_desktop_lib = static_library('shell_desktop',
-  ['desktop.c', 'logica.c', 'logica_wx.c', 'logica_meteo.c', 'logica_comp.c', 'componenti.c', 'immagine.c', 'sfondo.c', 'icone.c', 'widget.c', 'orologio.c', 'wx.c', 'wx_calendario.c', 'wx_telefono.c', 'wx_controlli.c', 'wx_elenchi.c', 'wx_meteo.c', 'meteo_disegno.c', 'meteo_luogo.c', 'dialoghi.c'],
+  ['desktop.c', 'logica.c', 'logica_wx.c', 'logica_meteo.c', 'logica_comp.c', 'componenti.c', 'immagine.c', 'sfondo.c', 'icone.c', 'widget.c', 'orologio.c', 'wx.c', 'wx_calendario.c', 'wx_telefono.c', 'logica_telefono.c', 'wx_controlli.c', 'wx_elenchi.c', 'wx_meteo.c', 'meteo_disegno.c', 'meteo_luogo.c', 'dialoghi.c', 'logica_controlli.c'],
   objects: risorse_desktop_lib.extract_all_objects(recursive: false),
+  link_with: logica_vecchi_lib, # agente A
   include_directories: inc, dependencies: [shell_comune_dep, pixbuf_dep])
 shell_desktop_dep = declare_dependency(link_with: shell_desktop_lib, include_directories: inc,
   dependencies: [shell_comune_dep, pixbuf_dep])
@@ -19,7 +27,7 @@ test('shell-desktop-logica', executable('prova_desktop', 'prova_desktop.c', depe
 
 # Demo sopra il backend finto (strumenti/demo-sul-tablet.sh desktop); con --prova
 # e' anche la prova con schermo (saltata se nel container non c'e' broadway).
-demo_desktop = executable('demo-desktop', ['demo.c', 'demo_hook.c'], dependencies: [shell_desktop_dep, shell_finto_dep])
+demo_desktop = executable('demo-desktop', ['demo.c', 'demo_hook.c', 'demo_controlli.c', 'demo_meteo.c'], dependencies: [shell_desktop_dep, shell_finto_dep])
 test('shell-desktop-schermo', demo_desktop, args: ['--prova', '6000', '--mostra',
   'wx:meteo:0@500,snap-profilo@1300,finto:meteo-nuovi@1500,finto:meteo-nuovi@1900,verifica-profilo@1600'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
@@ -50,3 +58,34 @@ test('shell-desktop-componenti', demo_desktop, args: ['--prova', '6000', '--most
 test('shell-desktop-predefiniti', demo_desktop, args: ['--prova', '6000', '--mostra',
   'predefiniti-attendi@10,predefiniti-verifica@1200'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
+
+# agente C: inizio — prova dello stile Adesso del meteo (soglie sulla misura vera)
+test('shell-desktop-meteo-wx', executable('prova_meteo_wx', 'prova_meteo_wx.c', dependencies: shell_desktop_dep),
+  env: shell_ambiente_logica, suite: 'shell', timeout: 60)
+# agente C: fine
+
+# agente D: Interruttori rapidi (capsula con tre tasti tondi). Logica pura, senza schermo.
+test('shell-desktop-controlli-logica', executable('prova_controlli', 'prova_controlli.c', dependencies: shell_desktop_dep),
+  env: shell_ambiente_logica, suite: 'shell', timeout: 60)
+# agente D: disposizione vera dei tasti a schermo, anche con la misura cambiata a caldo (come la maniglia).
+test('shell-desktop-controlli-schermo', demo_desktop, args: ['--prova', '14000', '--mostra',
+  'controlli-attendi@10,controlli-misure@300,controlli-verifica@900'],
+  env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
+# fine agente D
+# agente A: inizio
+# Memoria, Notifiche, Calendario del giorno e Stato: che cosa si mostra per ogni misura (logica pura,
+# senza schermo), e a schermo righe, clic e i ritocchi di componenti.c (minimo della riga, layout manager).
+test('shell-desktop-vecchi-logica', executable('prova_vecchi', 'prova_vecchi.c', dependencies: shell_desktop_dep),
+  env: shell_ambiente_logica, suite: 'shell', timeout: 60)
+test('shell-desktop-vecchi', demo_desktop, args: ['--prova', '16000', '--mostra', 'vecchi@300'],
+  env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
+# agente A: fine
+# --- agente B (passo 2b): logica di batteria in dettaglio e prossima sveglia ---
+test('shell-desktop-telefono', executable('prova_telefono', 'prova_telefono.c', dependencies: shell_desktop_dep),
+  env: shell_ambiente_logica, suite: 'shell', timeout: 60)
+# --- fine agente B ---
+# agente C: inizio — prova a schermo del Meteo (stile Adesso): attribuzione dentro e in fondo, soglie a caldo, gestori
+test('shell-desktop-meteo-schermo', demo_desktop, args: ['--prova', '45000', '--mostra',
+  'meteoa-attendi@10,meteoa-misure@300,meteoa-verifica@900'],
+  env: shell_ambiente_schermo, suite: 'shell', timeout: 90)
+# agente C: fine
