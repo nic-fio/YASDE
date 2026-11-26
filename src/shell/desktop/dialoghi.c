@@ -1029,8 +1029,8 @@ static void costruisci_widget(PhDskDialoghi *dl)
     gtk_box_append(GTK_BOX(dl->widget_dlg), intestazione(ph_t("Aggiungi widget"), dl));
     GtkWidget *info = testo_etichetta(
         ph_t("Widget del desktop: li disegna YASDE sul PC, usando i dati del telefono. Dopo "
-             "averlo aggiunto lo trascini dove vuoi; clic destro per cambiare dimensione o "
-             "rimuoverlo."),
+             "averlo aggiunto lo trascini dove vuoi e ne cambi la misura dall'angolo in basso "
+             "a destra; clic destro per rimuoverlo."),
         "ph-desktop-nota");
     gtk_label_set_wrap(GTK_LABEL(info), TRUE);
     gtk_label_set_max_width_chars(GTK_LABEL(info), 70);

@@ -232,7 +232,6 @@ typedef struct {
     PhDesktop *d;
     char app[PH_CFG_LUN_APP];
     unsigned id;
-    PhCfgWidgetDim dim;
     unsigned stile, opzione;
 } Azione;
 
@@ -266,14 +265,6 @@ static void azione_dialogo_widget(GtkButton *b, gpointer dati)
     Azione *a = dati;
     ph_shell_popup_chiudi(a->d->sh);
     ph_dsk_dialogo_widget_apri(a->d);
-}
-
-static void azione_dimensione(GtkButton *b, gpointer dati)
-{
-    (void)b;
-    Azione *a = dati;
-    ph_shell_popup_chiudi(a->d->sh);
-    ph_dsk_widget_dimensione(a->d, a->id, a->dim);
 }
 
 static void azione_stile(GtkButton *b, gpointer dati)
@@ -321,7 +312,7 @@ static void azione_libera(gpointer dati, GClosure *c)
 }
 
 static GtkWidget *menu_voce(PhDesktop *d, const char *testo, int premuto, GCallback cb,
-                            const char *app, unsigned id, PhCfgWidgetDim dim)
+                            const char *app, unsigned id)
 {
     GtkWidget *b = gtk_button_new();
     gtk_widget_add_css_class(b, "ph-riga");
@@ -334,7 +325,6 @@ static GtkWidget *menu_voce(PhDesktop *d, const char *testo, int premuto, GCallb
     Azione *a = g_new0(Azione, 1);
     a->d = d;
     a->id = id;
-    a->dim = dim;
     if (app != NULL)
         g_strlcpy(a->app, app, sizeof a->app);
     g_object_set_data(G_OBJECT(b), "ph-desktop-azione", a); /* vive quanto il pulsante (libera il segnale) */
@@ -388,20 +378,20 @@ static void menu_mostra(PhDesktop *d, double x, double y, int lm, int am)
 void ph_dsk_menu_desktop(PhDesktop *d, double x, double y)
 {
     menu_svuota(d);
-    menu_voce(d, ph_t("Cambia sfondo…"), -1, G_CALLBACK(azione_dialogo_sfondo), NULL, 0, 0);
-    menu_voce(d, ph_t("Aggiungi widget…"), -1, G_CALLBACK(azione_dialogo_widget), NULL, 0, 0);
+    menu_voce(d, ph_t("Cambia sfondo…"), -1, G_CALLBACK(azione_dialogo_sfondo), NULL, 0);
+    menu_voce(d, ph_t("Aggiungi widget…"), -1, G_CALLBACK(azione_dialogo_widget), NULL, 0);
     menu_mostra(d, x, y, PH_DSK_MENU_DESKTOP_L, PH_DSK_MENU_DESKTOP_A);
 }
 
 void ph_dsk_menu_icona(PhDesktop *d, const char *app, double x, double y)
 {
     menu_svuota(d);
-    menu_voce(d, ph_t("Apri"), -1, G_CALLBACK(azione_apri), app, 0, 0);
-    menu_voce(d, ph_t("Rimuovi dal desktop"), -1, G_CALLBACK(azione_rimuovi_icona), app, 0, 0);
+    menu_voce(d, ph_t("Apri"), -1, G_CALLBACK(azione_apri), app, 0);
+    menu_voce(d, ph_t("Rimuovi dal desktop"), -1, G_CALLBACK(azione_rimuovi_icona), app, 0);
     menu_mostra(d, x, y, PH_DSK_MENU_ICONA_L, PH_DSK_MENU_ICONA_A);
 }
 
-/* «Nome (attuale)» come per la dimensione. */
+/* «Nome (attuale)» per lo stile scelto. */
 static const char *etichetta_attuale(const char *nome, bool attuale, char *buf, size_t cap)
 {
     if (!attuale)
@@ -412,37 +402,20 @@ static const char *etichetta_attuale(const char *nome, bool attuale, char *buf, 
 
 void ph_dsk_menu_widget(PhDesktop *d, unsigned id, double x, double y)
 {
-    PhCfgWidgetDim attuale;
-    if (!ph_dsk_widget_dimensione_di(d, id, &attuale))
-        return;
-    menu_svuota(d);
-    menu_titolo(d, ph_t("Dimensione"));
-    static const struct {
-        PhCfgWidgetDim dim;
-        const char *nome;
-    } dims[] = {{PH_CFG_WIDGET_PICCOLO, PH_T_("Piccolo")},
-                {PH_CFG_WIDGET_MEDIO, PH_T_("Medio")},
-                {PH_CFG_WIDGET_GRANDE, PH_T_("Grande")}};
-    for (size_t i = 0; i < sizeof dims / sizeof dims[0]; i++) {
-        bool sel = dims[i].dim == attuale;
-        char testo[96];
-        if (sel)
-            ph_lingua_componi(testo, sizeof testo, ph_t("{dimensione} (attuale)"), "dimensione",
-                              ph_tv(dims[i].nome), (const char *)NULL);
-        else
-            g_strlcpy(testo, ph_tv(dims[i].nome), sizeof testo);
-        menu_voce(d, testo, sel ? 1 : 0, G_CALLBACK(azione_dimensione), NULL, id, dims[i].dim);
-    }
-    int altezza = PH_DSK_MENU_WIDGET_A;
     unsigned stile, citta;
     PhCfgWidgetTipo tipo;
+    /* Un id che non c'e' (widget rimosso nel frattempo): nessun menu. */
+    if (!ph_dsk_widget_stile_di(d, id, &tipo, &stile, &citta))
+        return;
+    menu_svuota(d);
+    int altezza = PH_DSK_MENU_WIDGET_A;
     char testo_att[160];
-    if (ph_dsk_widget_stile_di(d, id, &tipo, &stile, &citta) && ph_dsk_stili_n(tipo) > 1) {
+    if (ph_dsk_stili_n(tipo) > 1) {
         /* Stili del widget (orologio, calendario del mese) e, per il doppio fuso, la citta'. */
         menu_titolo(d, ph_t("Stile"));
         for (unsigned i = 0; i < ph_dsk_stili_n(tipo); i++) {
             GtkWidget *b = menu_voce(d, etichetta_attuale(ph_dsk_stile_nome_di(tipo, i), i == stile, testo_att, sizeof testo_att),
-                                     i == stile ? 1 : 0, G_CALLBACK(azione_stile), NULL, id, 0);
+                                     i == stile ? 1 : 0, G_CALLBACK(azione_stile), NULL, id);
             Azione *a = g_object_get_data(G_OBJECT(b), "ph-desktop-azione");
             if (a != NULL)
                 a->stile = i;
@@ -452,7 +425,7 @@ void ph_dsk_menu_widget(PhDesktop *d, unsigned id, double x, double y)
             menu_titolo(d, ph_t("Città"));
             for (unsigned i = 0; i < ph_dsk_citta_n(); i++) {
                 GtkWidget *b = menu_voce(d, etichetta_attuale(ph_dsk_citta_nome(i), i == citta, testo_att, sizeof testo_att),
-                                         i == citta ? 1 : 0, G_CALLBACK(azione_citta), NULL, id, 0);
+                                         i == citta ? 1 : 0, G_CALLBACK(azione_citta), NULL, id);
                 Azione *a = g_object_get_data(G_OBJECT(b), "ph-desktop-azione");
                 if (a != NULL)
                     a->opzione = i;
@@ -461,7 +434,7 @@ void ph_dsk_menu_widget(PhDesktop *d, unsigned id, double x, double y)
         }
     }
     if (tipo == PH_CFG_WIDGET_METEO) {
-        menu_voce(d, ph_t("Località…"), -1, G_CALLBACK(azione_luogo), NULL, id, 0);
+        menu_voce(d, ph_t("Località…"), -1, G_CALLBACK(azione_luogo), NULL, id);
         altezza += 34;
     }
     /* Un separatore, poi «Rimuovi widget» in fondo (come nel mockup). */
@@ -469,7 +442,7 @@ void ph_dsk_menu_widget(PhDesktop *d, unsigned id, double x, double y)
     gtk_widget_add_css_class(sep, "ph-desktop-menu-sep");
     gtk_box_append(GTK_BOX(d->menu_voci), sep);
     altezza += 9;
-    menu_voce(d, ph_t("Rimuovi widget"), -1, G_CALLBACK(azione_rimuovi_widget), NULL, id, 0);
+    menu_voce(d, ph_t("Rimuovi widget"), -1, G_CALLBACK(azione_rimuovi_widget), NULL, id);
     menu_mostra(d, x, y, PH_DSK_MENU_WIDGET_L, altezza);
 }
 

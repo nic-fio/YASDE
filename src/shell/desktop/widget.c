@@ -68,6 +68,22 @@ void ph_dsk_widget_libera_elemento(gpointer p)
 }
 
 /* ---- Contenuto ------------------------------------------------------------------- */
+/* Riempimento della barra: proporzionale alla larghezza di adesso (dentro l'imbottitura della
+ * forma). Si rifa' a ogni cambio di misura, non solo quando arrivano dati. */
+static void barra_applica(PhDskWidget *w)
+{
+    gtk_widget_set_visible(w->barra, w->percento >= 0);
+    if (w->percento < 0)
+        return;
+    int pad_o, pad_v;
+    ph_dsk_imbottitura(w->forma, &pad_o, &pad_v);
+    int utile = w->larghezza - 2 * pad_o;
+    if (utile < 0)
+        utile = 0;
+    gtk_widget_set_size_request(w->pieno, utile * w->percento / 100, 6);
+    gtk_widget_set_visible(w->pieno, w->percento > 0);
+}
+
 static void vista_applica(PhDskWidget *w, const PhDskVista *v)
 {
     gtk_widget_set_visible(w->titolo, v->titolo[0] != '\0');
@@ -84,13 +100,8 @@ static void vista_applica(PhDskWidget *w, const PhDskVista *v)
         gtk_widget_remove_css_class(w->testa, "ph-desktop-w-grande");
     gtk_widget_set_visible(w->sotto, v->sotto[0] != '\0');
     gtk_label_set_text(GTK_LABEL(w->sotto), v->sotto);
-    gtk_widget_set_visible(w->barra, v->percento >= 0);
-    if (v->percento >= 0) {
-        /* La scheda ha larghezza fissa: dentro i bordi e l'imbottitura (16 + 1). */
-        int utile = ph_dsk_larghezza_widget(w->dim) - 34;
-        gtk_widget_set_size_request(w->pieno, utile * v->percento / 100, 6);
-        gtk_widget_set_visible(w->pieno, v->percento > 0);
-    }
+    w->percento = v->percento;
+    barra_applica(w);
     for (size_t i = 0; i < PH_DSK_RIGHE_MAX; i++) {
         bool c_e = i < v->n_righe;
         gtk_widget_set_visible(w->riga[i], c_e);
@@ -261,8 +272,27 @@ void ph_dsk_widget_aggiorna_tutti(PhDesktop *d)
 static void widget_colloca(PhDskWidget *w)
 {
     PhDesktop *d = w->d;
-    int x = d->area_l - w->destra - ph_dsk_larghezza_widget(w->dim);
-    ph_shell_libero_sposta(d->libero, w->scheda, x, w->alto, ph_dsk_larghezza_widget(w->dim), -1);
+    int x = d->area_l - w->destra - w->larghezza;
+    ph_shell_libero_sposta(d->libero, w->scheda, x, w->alto, w->larghezza, w->altezza);
+}
+
+/* Misura, forma e maniglia dopo ogni cambio di misura. Il vetro prende il raggio della
+ * forma: per tondo e capsula segue la misura, quindi si registra di nuovo (la sfocatura
+ * si ritaglia con il raggio dato alla registrazione). Mattonella: il raggio non cambia. */
+static void geometria_applica(PhDskWidget *w)
+{
+    PhDesktop *d = w->d;
+    gtk_widget_set_size_request(w->scheda, w->larghezza, w->altezza);
+    int raggio = ph_dsk_raggio(w->forma, w->larghezza, w->altezza);
+    if (raggio != w->raggio) {
+        ph_shell_vetro_togli(d->sh, w->scheda);
+        ph_shell_vetro_registra(d->sh, w->scheda, raggio, PH_VETRO_SCURO);
+        w->raggio = raggio;
+    }
+    int pad_o, pad_v;
+    ph_dsk_imbottitura(w->forma, &pad_o, &pad_v);
+    gtk_widget_set_margin_end(w->maniglia, ph_dsk_maniglia_margine(raggio, pad_o));
+    gtk_widget_set_margin_bottom(w->maniglia, ph_dsk_maniglia_margine(raggio, pad_v));
 }
 
 void ph_dsk_widget_riposiziona(PhDesktop *d)
@@ -328,6 +358,122 @@ static void trascina_fine(GtkGestureDrag *g, double ox, double oy, gpointer dati
     ph_dsk_salva(d);
 }
 
+/* ---- Ridimensionamento (maniglia in basso a destra) ------------------------------------ */
+/* Applica a schermo una misura calcolata dalla logica; false se non cambia nulla. */
+static bool ridim_calcola(PhDskWidget *w, PhDskMisura base, int destra_base, double dx, double dy)
+{
+    PhDesktop *d = w->d;
+    PhDskMisura n;
+    int destra;
+    ph_dsk_ridimensiona(w->tipo, w->stile, base, destra_base, w->alto, dx, dy, d->area_a - PH_DSK_BARRA,
+                        &n, &destra);
+    if (n.larghezza == w->larghezza && n.altezza == w->altezza && destra == w->destra)
+        return false;
+    w->larghezza = n.larghezza;
+    w->altezza = n.altezza;
+    w->destra = destra;
+    geometria_applica(w);
+    barra_applica(w);
+    widget_colloca(w);
+    return true;
+}
+
+/* Scrive misura, posto e livello nel profilo. Se il livello di contenuto cambia, i widget si
+ * ricostruiscono (il contenuto dipende dal livello): `w` non va piu' toccato. true = ricostruiti. */
+static bool ridim_salva(PhDskWidget *w)
+{
+    PhDesktop *d = w->d;
+    PhCfgTelefono *p = ph_dsk_profilo(d);
+    if (p == NULL || w->indice >= p->n_widget || p->widget[w->indice].tipo != w->tipo)
+        return false;
+    PhCfgWidget *c = &p->widget[w->indice];
+    PhCfgWidgetDim livello = ph_dsk_livello(w->tipo, w->stile, (PhDskMisura){w->larghezza, w->altezza});
+    c->larghezza = w->larghezza;
+    c->altezza = w->altezza;
+    c->destra = w->destra;
+    c->dimensione = livello; /* il campo resta scritto: lo leggono anche le versioni senza misure libere */
+    ph_dsk_salva(d);
+    if (livello == w->dim)
+        return false;
+    ph_dsk_widget_ricostruisci(d);
+    return true;
+}
+
+static void ridim_inizio(GtkGestureDrag *g, double x, double y, gpointer dati)
+{
+    PhDskWidget *w = dati;
+    /* La maniglia e' sua: la scheda non deve cominciare a trascinarsi. */
+    gtk_gesture_set_state(GTK_GESTURE(g), GTK_EVENT_SEQUENCE_CLAIMED);
+    ph_dsk_in_radice(w->d, w->maniglia, x, y, &w->inizio_x, &w->inizio_y);
+    w->misura0 = (PhDskMisura){w->larghezza, w->altezza};
+    w->destra0 = w->destra;
+}
+
+static void ridim_aggiorna(GtkGestureDrag *g, double ox, double oy, gpointer dati)
+{
+    PhDskWidget *w = dati;
+    /* La maniglia si muove con l'angolo: il punto si riporta nelle coordinate della radice. */
+    double sx, sy, rx, ry;
+    gtk_gesture_drag_get_start_point(g, &sx, &sy);
+    ph_dsk_in_radice(w->d, w->maniglia, sx + ox, sy + oy, &rx, &ry);
+    ridim_calcola(w, w->misura0, w->destra0, rx - w->inizio_x, ry - w->inizio_y);
+}
+
+static void ridim_fine(GtkGestureDrag *g, double ox, double oy, gpointer dati)
+{
+    (void)g;
+    (void)ox;
+    (void)oy;
+    PhDskWidget *w = dati;
+    if (w->larghezza == w->misura0.larghezza && w->altezza == w->misura0.altezza)
+        return;
+    ridim_salva(w);
+}
+
+/* Frecce sulla maniglia con il fuoco: un passo (PH_DSK_PASSO) alla volta. Destra e giu'
+ * allargano, sinistra e su restringono. */
+static gboolean ridim_tasto(GtkEventControllerKey *c, guint tasto, guint codice, GdkModifierType stato,
+                            gpointer dati)
+{
+    (void)c;
+    (void)codice;
+    (void)stato;
+    PhDskWidget *w = dati;
+    double dx = 0, dy = 0;
+    switch (tasto) {
+    case GDK_KEY_Right: case GDK_KEY_KP_Right: dx = PH_DSK_PASSO; break;
+    case GDK_KEY_Left: case GDK_KEY_KP_Left: dx = -PH_DSK_PASSO; break;
+    case GDK_KEY_Down: case GDK_KEY_KP_Down: dy = PH_DSK_PASSO; break;
+    case GDK_KEY_Up: case GDK_KEY_KP_Up: dy = -PH_DSK_PASSO; break;
+    default: return FALSE;
+    }
+    if (w->forma == PH_DSK_FORMA_TONDO) /* il tondo cresce sui due assi insieme */
+        dx = dy = dx != 0 ? dx : dy;
+    if (!ridim_calcola(w, (PhDskMisura){w->larghezza, w->altezza}, w->destra, dx, dy))
+        return TRUE; /* al limite: il tasto e' preso comunque */
+    PhDesktop *d = w->d;
+    size_t indice = w->indice;
+    if (ridim_salva(w)) {
+        /* Ricostruita: la maniglia nuova riprende il fuoco, per continuare da tastiera. */
+        for (size_t i = 0; i < d->widget->len; i++) {
+            PhDskWidget *n = g_ptr_array_index(d->widget, i);
+            if (n->indice == indice && n->maniglia != NULL)
+                gtk_widget_grab_focus(n->maniglia);
+        }
+    }
+    return TRUE;
+}
+
+/* La rotella sopra il widget non scorre il contenuto (che e' solo ritagliato). */
+static gboolean ridim_rotella(GtkEventControllerScroll *c, double dx, double dy, gpointer dati)
+{
+    (void)c;
+    (void)dx;
+    (void)dy;
+    (void)dati;
+    return TRUE;
+}
+
 /* ---- Menu ----------------------------------------------------------------------------- */
 static void menu_pulsante(GtkGestureClick *g, int n, double x, double y, gpointer dati)
 {
@@ -367,23 +513,73 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
     w->id = ++d->prossimo_id;
     w->indice = indice;
     w->tipo = cfg->tipo;
-    w->dim = cfg->dimensione;
     w->stile = ph_dsk_stile_valido_di(cfg->tipo, (unsigned)cfg->stile);
     w->opzione = ph_dsk_citta_valida((unsigned)cfg->opzione);
     w->destra = cfg->destra;
     w->alto = cfg->alto;
+    /* Misura dal profilo (0/0 = quella equivalente al livello salvato); il livello di contenuto
+     * si ricava sempre dalla misura. */
+    PhDskMisura mis = ph_dsk_misura_da_profilo(cfg->tipo, w->stile, cfg->dimensione, cfg->larghezza,
+                                               cfg->altezza);
+    w->larghezza = mis.larghezza;
+    w->altezza = mis.altezza;
+    w->dim = ph_dsk_livello(cfg->tipo, w->stile, mis);
+    w->forma = ph_dsk_forma(cfg->tipo, w->stile);
+    w->percento = -1; /* la barra compare con la prima vista */
 
     w->scheda = g_object_new(GTK_TYPE_BOX, "orientation", GTK_ORIENTATION_VERTICAL,
                              "accessible-role", GTK_ACCESSIBLE_ROLE_GROUP, NULL);
     g_object_set_data_full(G_OBJECT(w->scheda), "ph-desktop-widget", w, g_free);
     g_object_set_data(G_OBJECT(w->scheda), "ph-desktop-id", GUINT_TO_POINTER(w->id));
     gtk_widget_add_css_class(w->scheda, "ph-desktop-widget");
-    /* Vetro chiaro, raggio 14 come il CSS; si toglie da solo alla distruzione. */
-    ph_shell_vetro_registra(d->sh, w->scheda, 14, PH_VETRO_CHIARO);
-    gtk_widget_set_size_request(w->scheda, ph_dsk_larghezza_widget(w->dim), -1);
+    gtk_widget_add_css_class(w->scheda, w->forma == PH_DSK_FORMA_TONDO ? "ph-desktop-forma-tondo"
+                                         : (w->forma == PH_DSK_FORMA_CAPSULA ? "ph-desktop-forma-capsula"
+                                                                             : "ph-desktop-forma-mattonella"));
+    /* Vetro scuro (come la barra). Il raggio dipende dalla forma e dalla misura. */
+    w->raggio = ph_dsk_raggio(w->forma, w->larghezza, w->altezza);
+    ph_shell_vetro_registra(d->sh, w->scheda, w->raggio, PH_VETRO_SCURO);
     gtk_widget_set_cursor_from_name(w->scheda, "move");
     gtk_widget_set_focusable(w->scheda, TRUE); /* per il tasto Menu da tastiera */
     ph_shell_etichetta(w->scheda, ph_dsk_widget_nome(w->tipo), NULL);
+
+    /* Il contenuto sta in una finestra che lo ritaglia e non detta nessun minimo: la misura
+     * della scheda e' sempre quella scelta (anche del tondo), il contenuto che non ci sta si
+     * taglia. */
+    w->interno = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    GtkWidget *finestra = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(finestra), GTK_POLICY_EXTERNAL, GTK_POLICY_EXTERNAL);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(finestra), w->interno);
+    gtk_widget_set_hexpand(finestra, TRUE);
+    gtk_widget_set_vexpand(finestra, TRUE);
+    GtkEventController *rot = gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES);
+    gtk_event_controller_set_propagation_phase(rot, GTK_PHASE_CAPTURE);
+    g_signal_connect(rot, "scroll", G_CALLBACK(ridim_rotella), w);
+    gtk_widget_add_controller(finestra, rot);
+
+    /* Maniglia: visibile al passaggio del mouse e con il fuoco da tastiera (CSS). */
+    w->maniglia = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_add_css_class(w->maniglia, "ph-desktop-maniglia");
+    gtk_widget_set_halign(w->maniglia, GTK_ALIGN_END);
+    gtk_widget_set_valign(w->maniglia, GTK_ALIGN_END);
+    gtk_widget_set_focusable(w->maniglia, TRUE);
+    gtk_widget_set_cursor_from_name(w->maniglia, "se-resize");
+    ph_shell_etichetta(w->maniglia, ph_t("Ridimensiona widget"), NULL);
+    GtkGesture *rd = gtk_gesture_drag_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(rd), GDK_BUTTON_PRIMARY);
+    g_signal_connect(rd, "drag-begin", G_CALLBACK(ridim_inizio), w);
+    g_signal_connect(rd, "drag-update", G_CALLBACK(ridim_aggiorna), w);
+    g_signal_connect(rd, "drag-end", G_CALLBACK(ridim_fine), w);
+    gtk_widget_add_controller(w->maniglia, GTK_EVENT_CONTROLLER(rd));
+    GtkEventController *tasti = gtk_event_controller_key_new();
+    g_signal_connect(tasti, "key-pressed", G_CALLBACK(ridim_tasto), w);
+    gtk_widget_add_controller(w->maniglia, tasti);
+    GtkWidget *sovra = gtk_overlay_new();
+    gtk_widget_set_hexpand(sovra, TRUE);
+    gtk_widget_set_vexpand(sovra, TRUE);
+    gtk_overlay_set_child(GTK_OVERLAY(sovra), finestra);
+    gtk_overlay_add_overlay(GTK_OVERLAY(sovra), w->maniglia);
+    gtk_box_append(GTK_BOX(w->scheda), sovra);
+    geometria_applica(w);
 
     w->titolo = etichetta_nuova("ph-desktop-w-titolo", true);
     w->testa = etichetta_nuova("ph-desktop-w-testa", true);
@@ -397,14 +593,15 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
     gtk_box_append(GTK_BOX(w->barra), w->pieno);
     w->quadrante = ph_dsk_orologio_nuovo();
     gtk_widget_set_visible(w->quadrante, FALSE);
-    gtk_box_append(GTK_BOX(w->scheda), w->titolo);
-    gtk_box_append(GTK_BOX(w->scheda), w->quadrante);
+    gtk_widget_set_vexpand(w->quadrante, TRUE); /* il quadrante si centra nello spazio che resta */
+    gtk_box_append(GTK_BOX(w->interno), w->titolo);
+    gtk_box_append(GTK_BOX(w->interno), w->quadrante);
     w->corpo = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_visible(w->corpo, FALSE);
-    gtk_box_append(GTK_BOX(w->scheda), w->corpo);
-    gtk_box_append(GTK_BOX(w->scheda), w->testa);
-    gtk_box_append(GTK_BOX(w->scheda), w->sotto);
-    gtk_box_append(GTK_BOX(w->scheda), w->barra);
+    gtk_box_append(GTK_BOX(w->interno), w->corpo);
+    gtk_box_append(GTK_BOX(w->interno), w->testa);
+    gtk_box_append(GTK_BOX(w->interno), w->sotto);
+    gtk_box_append(GTK_BOX(w->interno), w->barra);
     for (size_t i = 0; i < PH_DSK_RIGHE_MAX; i++) {
         w->riga[i] = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
         gtk_widget_add_css_class(w->riga[i], "ph-desktop-w-riga");
@@ -413,7 +610,7 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
         w->riga_dx[i] = etichetta_nuova("ph-desktop-w-riga-dx", false);
         gtk_box_append(GTK_BOX(w->riga[i]), w->riga_sx[i]);
         gtk_box_append(GTK_BOX(w->riga[i]), w->riga_dx[i]);
-        gtk_box_append(GTK_BOX(w->scheda), w->riga[i]);
+        gtk_box_append(GTK_BOX(w->interno), w->riga[i]);
     }
 
     GtkGesture *dr = gtk_gesture_drag_new();
@@ -428,7 +625,7 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
     gtk_widget_add_controller(w->scheda, GTK_EVENT_CONTROLLER(dx));
     ph_dsk_tasto_menu_aggancia(w->scheda, G_CALLBACK(menu_tasto), w);
 
-    ph_shell_libero_metti(d->libero, w->scheda, 0, 0, ph_dsk_larghezza_widget(w->dim), -1);
+    ph_shell_libero_metti(d->libero, w->scheda, 0, 0, w->larghezza, w->altezza);
     widget_colloca(w);
     if (ph_dsk_wx_vt(w->tipo) != NULL) {
         ph_dsk_wx_inizia(w);
@@ -728,15 +925,6 @@ static PhDskWidget *cerca(PhDesktop *d, unsigned id)
     return NULL;
 }
 
-bool ph_dsk_widget_dimensione_di(PhDesktop *d, unsigned id, PhCfgWidgetDim *dim)
-{
-    PhDskWidget *w = cerca(d, id);
-    if (w == NULL)
-        return false;
-    *dim = w->dim;
-    return true;
-}
-
 void ph_dsk_widget_aggiungi(PhDesktop *d, PhCfgWidgetTipo tipo)
 {
     PhCfgTelefono *p = ph_dsk_profilo(d);
@@ -748,32 +936,27 @@ void ph_dsk_widget_aggiungi(PhDesktop *d, PhCfgWidgetTipo tipo)
     for (size_t i = 0; i < p->n_widget; i++) {
         if (ph_dsk_widget_nome(p->widget[i].tipo) == NULL)
             continue; /* i tipi fuori catalogo non si vedono: non occupano posto */
-        pos[np].destra = p->widget[i].destra;
-        pos[np].alto = p->widget[i].alto;
-        pos[np].dimensione = p->widget[i].dimensione;
+        const PhCfgWidget *e = &p->widget[i];
+        PhDskMisura m = ph_dsk_misura_da_profilo(e->tipo, ph_dsk_stile_valido_di(e->tipo, (unsigned)e->stile),
+                                                 e->dimensione, e->larghezza, e->altezza);
+        pos[np].destra = e->destra;
+        pos[np].alto = e->alto;
+        pos[np].larghezza = m.larghezza;
+        pos[np].altezza = m.altezza;
         np++;
     }
     int destra, alto;
-    ph_dsk_posto_widget_nuovo(d->area_a - PH_DSK_BARRA, pos, np, &destra, &alto);
+    ph_dsk_posto_widget_nuovo(d->area_l, d->area_a - PH_DSK_BARRA, pos, np,
+                              ph_dsk_misura_equivalente(tipo, 0, PH_CFG_WIDGET_MEDIO), &destra, &alto);
     PhCfgWidget *n = &p->widget[p->n_widget++];
+    *n = (PhCfgWidget){0}; /* dopo una rimozione la voce in coda puo' avere i valori di un'altra */
     n->tipo = tipo;
     n->destra = destra;
     n->alto = alto;
-    n->dimensione = PH_CFG_WIDGET_MEDIO;
+    n->dimensione = PH_CFG_WIDGET_MEDIO; /* larghezza e altezza 0: la misura equivalente al Medio */
     ph_dsk_salva(d);
     ph_dsk_widget_ricostruisci(d);
     ph_dsk_avviso(d, ph_t("Widget aggiunto"), nome);
-}
-
-void ph_dsk_widget_dimensione(PhDesktop *d, unsigned id, PhCfgWidgetDim dim)
-{
-    PhDskWidget *w = cerca(d, id);
-    PhCfgTelefono *p = ph_dsk_profilo(d);
-    if (w == NULL || p == NULL || w->indice >= p->n_widget || p->widget[w->indice].tipo != w->tipo)
-        return;
-    p->widget[w->indice].dimensione = dim;
-    ph_dsk_salva(d);
-    ph_dsk_widget_ricostruisci(d);
 }
 
 void ph_dsk_widget_rimuovi(PhDesktop *d, unsigned id)
@@ -806,7 +989,18 @@ void ph_dsk_widget_stile_imposta(PhDesktop *d, unsigned id, unsigned stile, unsi
     PhCfgTelefono *p = ph_dsk_profilo(d);
     if (w == NULL || p == NULL || w->indice >= p->n_widget || p->widget[w->indice].tipo != w->tipo)
         return;
-    p->widget[w->indice].stile = (int)ph_dsk_stile_valido_di(w->tipo, stile);
+    PhCfgWidget *c = &p->widget[w->indice];
+    unsigned nuovo = ph_dsk_stile_valido_di(w->tipo, stile);
+    if (nuovo != w->stile) {
+        /* La misura si perde solo se cambia la forma (ogni forma ha i suoi limiti): allora si riparte
+         * dall'equivalente al livello di contenuto di adesso. Altrimenti si tiene, entro i limiti
+         * del nuovo stile. */
+        PhDskMisura m = ph_dsk_misura_cambio_stile(w->tipo, w->stile, nuovo, (PhDskMisura){w->larghezza, w->altezza});
+        c->larghezza = m.larghezza;
+        c->altezza = m.altezza;
+        c->dimensione = m.larghezza > 0 ? ph_dsk_livello(w->tipo, nuovo, m) : w->dim;
+    }
+    c->stile = (int)nuovo;
     p->widget[w->indice].opzione = (int)(w->tipo == PH_CFG_WIDGET_OROLOGIO ? ph_dsk_citta_valida(opzione) : 0);
     ph_dsk_salva(d);
     ph_dsk_widget_ricostruisci(d);

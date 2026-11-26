@@ -263,3 +263,7 @@
 "{numero} %" = "{numero} %"
 "{numero} km/h" = "{numero} km/h"
 "{numero} mm" = "{numero} mm"
+
+# Misure libere dei widget (PIANO.md 8.1).
+"Ridimensiona widget" = "Resize widget"
+"Widget del desktop: li disegna YASDE sul PC, usando i dati del telefono. Dopo averlo aggiunto lo trascini dove vuoi e ne cambi la misura dall'angolo in basso a destra; clic destro per rimuoverlo." = "Desktop widgets: YASDE draws them on the PC, using the phone's data. After adding one, drag it wherever you like and resize it from its bottom-right corner; right-click to remove it."

@@ -61,23 +61,83 @@ void ph_dsk_disponi(PhDskGriglia g, const PhDskCella *volute, size_t n, PhDskCel
 #define PH_DSK_PASSO 8 /* aggancio del trascinamento */
 
 int ph_dsk_larghezza_widget(PhCfgWidgetDim d);  /* 200 / 250 / 320 */
-int ph_dsk_altezza_stimata(PhCfgWidgetDim d);   /* 90 / 140 / 200: per il posto del widget nuovo */
 
 typedef struct {
-    int destra, alto;
-    PhCfgWidgetDim dimensione;
+    int larghezza, altezza;
+} PhDskMisura;
+
+typedef struct {
+    int destra, alto;         /* posto dal bordo destro e dall'alto */
+    int larghezza, altezza;   /* misura reale (ph_dsk_misura_da_profilo) */
 } PhDskWidgetPos;
 
-/* addWidget: il primo posto libero per un widget nuovo (medio): colonne di 266 px
- * dal bordo destro partendo da 16, impilati con altezza stimata + 12, dentro
- * l'area utile (altezza_utile = radice - 48); se non c'e' posto a cascata. */
-void ph_dsk_posto_widget_nuovo(int altezza_utile, const PhDskWidgetPos *esistenti, size_t n,
-                               int *destra, int *alto);
+/* Il primo posto libero per un widget nuovo di misura `nuovo`: si provano i posti su una
+ * griglia a passi di PH_DSK_PASSO, per colonne dal bordo destro (partendo da 16) e dall'alto
+ * (partendo da 16); vale il primo in cui il rettangolo sta dentro l'area (larghezza_area x
+ * altezza_utile, con 8 px di respiro) e dista almeno 12 px da ogni widget esistente. Se non
+ * c'e' posto, a cascata (come prima). altezza_utile = radice - 48. */
+void ph_dsk_posto_widget_nuovo(int larghezza_area, int altezza_utile, const PhDskWidgetPos *esistenti,
+                               size_t n, PhDskMisura nuovo, int *destra, int *alto);
 
 /* Aggancio a passi di 8 px (onDeskMove): destra = round((iniziale - dx) / 8) * 8,
  * alto = round((iniziale + dy) / 8) * 8, mai negativi. */
 int ph_dsk_aggancia_destra(int destra_iniziale, double dx);
 int ph_dsk_aggancia_alto(int alto_iniziale, double dy);
+
+/* ---- Forma e misura libera (PIANO.md 8.1) ----------------------------------------
+ * Ogni tipo (e, per l'orologio, ogni stile) ha una forma: mattonella (angoli molto
+ * morbidi), tondo (lato uguale) o capsula (raggio = meta' dell'altezza). La misura e'
+ * libera tra un minimo e un massimo del tipo, a scatti di PH_DSK_PASSO; il livello
+ * di contenuto (piccolo / medio / grande) si ricava dalla misura, cosi' i disegni
+ * esistenti restano validi finche' non vengono rifatti. */
+typedef enum { PH_DSK_FORMA_MATTONELLA = 0, PH_DSK_FORMA_TONDO, PH_DSK_FORMA_CAPSULA } PhDskForma;
+#define PH_DSK_RAGGIO_MATTONELLA 28
+
+typedef struct {
+    PhDskMisura min, max;
+} PhDskLimiti;
+
+/* Forma dal tipo e dallo stile (lo stile fuori elenco vale 0). Tondo: orologio analogico
+ * (classico, essenziale) e batteria. Capsula: sveglia e interruttori. Mattonella: il resto. */
+PhDskForma ph_dsk_forma(PhCfgWidgetTipo tipo, unsigned stile);
+/* Raggio degli angoli per una misura: mattonella 28 (mai oltre la meta' del lato corto),
+ * tondo = lato / 2, capsula = altezza / 2. */
+int ph_dsk_raggio(PhDskForma forma, int larghezza, int altezza);
+/* Imbottitura (px) dentro la scheda, per lato orizzontale e verticale: piu' larga dove
+ * l'angolo e' molto curvo, perche' il testo non finisca sotto la curva. */
+void ph_dsk_imbottitura(PhDskForma forma, int *orizzontale, int *verticale);
+
+/* Misura equivalente a un livello: quella che tiene il contenuto di oggi. */
+PhDskMisura ph_dsk_misura_equivalente(PhCfgWidgetTipo tipo, unsigned stile, PhCfgWidgetDim dim);
+/* Minimo (la misura equivalente al Piccolo) e massimo del tipo. Il tondo ha limiti quadrati. */
+PhDskLimiti ph_dsk_misura_limiti(PhCfgWidgetTipo tipo, unsigned stile);
+/* Porta una misura dentro i limiti; il tondo diventa quadrato (vale il lato corto). */
+PhDskMisura ph_dsk_misura_vincola(PhCfgWidgetTipo tipo, unsigned stile, PhDskMisura m);
+/* Dal profilo: larghezza e altezza salvate (entrambe diverse da 0) vincolate ai limiti;
+ * altrimenti (0/0, profili scritti prima delle misure libere) la misura equivalente a `dim`. */
+PhDskMisura ph_dsk_misura_da_profilo(PhCfgWidgetTipo tipo, unsigned stile, PhCfgWidgetDim dim,
+                                     int larghezza, int altezza);
+/* Cambio di stile: se la forma resta la stessa la misura si tiene (vincolata ai limiti del nuovo
+ * stile); se la forma cambia (per esempio digitale -> analogico) la misura si perde e torna {0, 0}
+ * = "equivalente al livello", che il chiamante ricava. */
+PhDskMisura ph_dsk_misura_cambio_stile(PhCfgWidgetTipo tipo, unsigned stile_vecchio,
+                                       unsigned stile_nuovo, PhDskMisura attuale);
+/* Il livello di contenuto di una misura: il piu' alto le cui misure equivalenti stanno
+ * dentro `m` (almeno Piccolo). Per le misure equivalenti restituisce il loro livello. */
+PhCfgWidgetDim ph_dsk_livello(PhCfgWidgetTipo tipo, unsigned stile, PhDskMisura m);
+
+/* Maniglia nell'angolo in basso a destra: scatti di PH_DSK_PASSO a partire dalla misura
+ * `iniziale`, con l'angolo in alto a sinistra fermo (se il widget si allarga `destra` cala).
+ * dx, dy: spostamento del puntatore (o +-PH_DSK_PASSO da tastiera). Risultato dentro i limiti
+ * del tipo, mai oltre il bordo destro (destra >= 0) ne' sotto l'area utile (`altezza_utile`
+ * = altezza radice - barra); se il widget e' gia' piu' grande di quanto l'area permette non
+ * si restringe da solo. Il tondo resta quadrato. true se qualcosa e' cambiato. */
+bool ph_dsk_ridimensiona(PhCfgWidgetTipo tipo, unsigned stile, PhDskMisura iniziale, int destra0,
+                         int alto0, double dx, double dy, int altezza_utile, PhDskMisura *nuova,
+                         int *destra);
+/* Margine (px, dal bordo del contenuto) per la maniglia, perche' stia dentro la curva
+ * dell'angolo: 0 per angoli poco curvi. */
+int ph_dsk_maniglia_margine(int raggio, int imbottitura);
 
 /* ---- Menu ----------------------------------------------------------------- */
 /* Posizione ristretta di un menu aperto nel punto (x, y) di un'area larg x alt:
@@ -87,7 +147,7 @@ int ph_dsk_aggancia_alto(int alto_iniziale, double dy);
 #define PH_DSK_MENU_ICONA_L 210
 #define PH_DSK_MENU_ICONA_A 150
 #define PH_DSK_MENU_WIDGET_L 210
-#define PH_DSK_MENU_WIDGET_A 220
+#define PH_DSK_MENU_WIDGET_A 80 /* solo «Rimuovi widget»: stile e citta' si sommano in desktop.c */
 void ph_dsk_menu_posizione(double x, double y, int larg, int alt, int largh_menu, int alt_menu,
                            int *ox, int *oy);
 

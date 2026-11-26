@@ -75,9 +75,8 @@ static void disegna_data(cairo_t *cr, const Tema *t, const char *data, double cx
 }
 
 /* Analogico classico: quadrante con tacche, numeri e tre lancette. */
-static void disegna_classico(cairo_t *cr, const Tema *t, const PhDskOrologioDati *d, double larg)
+static void disegna_classico(cairo_t *cr, const Tema *t, const PhDskOrologioDati *d, double larg, double D)
 {
-    double D = ph_dsk_quadrante_diametro(PH_DSK_OROLOGIO_CLASSICO, (PhCfgWidgetDim)d->dim);
     double R = D / 2.0 - 1.0, cx = larg / 2.0, cy = D / 2.0;
     /* Fondo del quadrante e anello. */
     cairo_arc(cr, cx, cy, R, 0, 2 * G_PI);
@@ -126,9 +125,8 @@ static void disegna_classico(cairo_t *cr, const Tema *t, const PhDskOrologioDati
 }
 
 /* Analogico essenziale: solo lancette e quattro tacche, data piccola sotto. */
-static void disegna_essenziale(cairo_t *cr, const Tema *t, const PhDskOrologioDati *d, double larg)
+static void disegna_essenziale(cairo_t *cr, const Tema *t, const PhDskOrologioDati *d, double larg, double D)
 {
-    double D = ph_dsk_quadrante_diametro(PH_DSK_OROLOGIO_ESSENZIALE, (PhCfgWidgetDim)d->dim);
     double R = D / 2.0, cx = larg / 2.0, cy = D / 2.0;
     for (int i = 0; i < 4; i++) {
         double a = i * 90.0 * G_PI / 180.0;
@@ -220,9 +218,24 @@ static void orologio_snapshot(GtkWidget *widget, GtkSnapshot *snap)
     graphene_rect_t area = GRAPHENE_RECT_INIT(0, 0, (float)W, (float)H);
     cairo_t *cr = gtk_snapshot_append_cairo(snap, &area);
     cairo_set_antialias(cr, CAIRO_ANTIALIAS_BEST);
+    /* Con le misure libere lo spazio puo' essere piu' grande di quello del livello: il quadrante
+     * analogico prende tutto il lato che c'e' (il widget e' un tondo) e tutto il disegno sta al
+     * centro in verticale. */
+    PhCfgWidgetDim dim = (PhCfgWidgetDim)o->dati.dim;
+    double contenuto = ph_dsk_orologio_altezza(o->dati.stile, dim);
+    double D = 0;
+    if (o->dati.stile == PH_DSK_OROLOGIO_CLASSICO || o->dati.stile == PH_DSK_OROLOGIO_ESSENZIALE) {
+        double extra = o->dati.stile == PH_DSK_OROLOGIO_ESSENZIALE ? 24.0 : 0.0; /* la data sotto */
+        D = fmin(W, H - extra);
+        if (D < ph_dsk_quadrante_diametro(o->dati.stile, dim))
+            D = ph_dsk_quadrante_diametro(o->dati.stile, dim); /* mai sotto il livello: ritaglia il bordo */
+        contenuto = D + extra;
+    }
+    if (H > contenuto)
+        cairo_translate(cr, 0, (H - contenuto) / 2.0);
     switch (o->dati.stile) {
-    case PH_DSK_OROLOGIO_CLASSICO: disegna_classico(cr, &t, &o->dati, W); break;
-    case PH_DSK_OROLOGIO_ESSENZIALE: disegna_essenziale(cr, &t, &o->dati, W); break;
+    case PH_DSK_OROLOGIO_CLASSICO: disegna_classico(cr, &t, &o->dati, W, D); break;
+    case PH_DSK_OROLOGIO_ESSENZIALE: disegna_essenziale(cr, &t, &o->dati, W, D); break;
     case PH_DSK_OROLOGIO_PALETTE: disegna_palette(cr, &t, &o->dati, W); break;
     default: break;
     }

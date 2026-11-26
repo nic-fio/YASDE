@@ -459,19 +459,23 @@ void ph_demo_mostra(PhShell *sh, const char *cosa)
         /* Se all'uscita verifica-vetro non e' stata eseguita, il processo esce con errore. */
         atexit(vetro_esci);
     } else if (strcmp(cosa, "verifica-vetro") == 0) {
-        /* Prova del vetro (fase 5): ogni superficie del pezzo, una volta costruita, ha la classe
-         * ph-vetro-chiaro (la mette ph_shell_vetro_registra): widget, menu, tre dialoghi. Si apre
-         * ogni cosa e si controlla quella visibile; se una manca, il processo cade. */
-        static const char *const classi[] = {"ph-desktop-widget", "ph-menu"};
+        /* Prova del vetro (fase 5, widget scuri dal passo 8.1): ogni superficie del pezzo, una volta
+         * costruita, ha la classe del suo vetro (la mette ph_shell_vetro_registra): i widget sono
+         * vetro SCURO (come la barra), menu e tre dialoghi vetro chiaro. Si apre ogni cosa e si
+         * controlla quella visibile; se una manca o ha l'altro vetro, il processo cade. */
+        static const struct {
+            const char *classe, *vetro, *altro;
+        } classi[] = {{"ph-desktop-widget", "ph-vetro-scuro", "ph-vetro-chiaro"},
+                      {"ph-menu", "ph-vetro-chiaro", "ph-vetro-scuro"}};
         int visti = 0;
         for (size_t k = 0; k < G_N_ELEMENTS(classi); k++)
             for (int i = 0;; i++) {
-                GtkWidget *w = trova(radice, classi[k], i);
+                GtkWidget *w = trova(radice, classi[k].classe, i);
                 if (w == NULL)
                     break;
                 visti++;
-                if (!gtk_widget_has_css_class(w, "ph-vetro-chiaro"))
-                    g_error("verifica-vetro: %s senza ph-vetro-chiaro", classi[k]);
+                if (!gtk_widget_has_css_class(w, classi[k].vetro) || gtk_widget_has_css_class(w, classi[k].altro))
+                    g_error("verifica-vetro: %s non e' %s", classi[k].classe, classi[k].vetro);
             }
         if (visti < 3)
             g_error("verifica-vetro: attesi almeno 3 widget/menu, visti %d", visti);
@@ -483,8 +487,8 @@ void ph_demo_mostra(PhShell *sh, const char *cosa)
                 GtkWidget *w = trova(radice, "ph-dialogo", i);
                 if (w == NULL)
                     break;
-                if (!gtk_widget_has_css_class(w, "ph-vetro-chiaro"))
-                    g_error("verifica-vetro: dialogo %zu senza ph-vetro-chiaro", k);
+                if (!gtk_widget_has_css_class(w, "ph-vetro-chiaro") || gtk_widget_has_css_class(w, "ph-vetro-scuro"))
+                    g_error("verifica-vetro: dialogo %zu non e' vetro chiaro", k);
                 dialoghi++;
             }
             if (dialoghi == 0)
@@ -492,7 +496,7 @@ void ph_demo_mostra(PhShell *sh, const char *cosa)
             ph_shell_popup_chiudi(sh);
         }
         verifica_vetro_fatta = true;
-        g_message("verifica-vetro: widget, menu e dialoghi sono vetro chiaro");
+        g_message("verifica-vetro: widget vetro scuro, menu e dialoghi vetro chiaro");
     } else if (strcmp(cosa, "stress") == 0) {
         stress_avvia(sh);
     } else if (strcmp(cosa, "luogo") == 0) {
@@ -782,6 +786,102 @@ static bool st_collegato(Stress *s)
     return true;
 }
 
+static int st_barre_viste; /* quante barre sono state controllate */
+
+/* La maniglia di ridimensionamento da tastiera: preme una freccia sul controller dei tasti della
+ * maniglia (come farebbe l'utente col fuoco su di lei) e controlla che nel profilo finiscano
+ * misura, posto e livello che la logica pura calcola per quello scatto. Se togli il salvataggio
+ * o il collegamento della maniglia la prova cade. */
+static void st_prova_maniglia(Stress *s, size_t quale, guint tasto)
+{
+    PhDskWidget *w = st_widget(s, quale);
+    PhCfgTelefono *p = st_profilo(s);
+    if (w == NULL || p == NULL || w->indice >= p->n_widget)
+        return;
+    size_t ip = w->indice;
+    PhDskMisura prima = {w->larghezza, w->altezza};
+    double dx = tasto == GDK_KEY_Right ? PH_DSK_PASSO : (tasto == GDK_KEY_Left ? -PH_DSK_PASSO : 0);
+    double dy = tasto == GDK_KEY_Down ? PH_DSK_PASSO : (tasto == GDK_KEY_Up ? -PH_DSK_PASSO : 0);
+    if (w->forma == PH_DSK_FORMA_TONDO)
+        dx = dy = dx != 0 ? dx : dy;
+    PhDskMisura atteso;
+    int destra_atteso;
+    ph_dsk_ridimensiona(w->tipo, w->stile, prima, w->destra, w->alto, dx, dy,
+                        s->d->area_a - PH_DSK_BARRA, &atteso, &destra_atteso);
+    PhCfgWidgetDim livello_atteso = ph_dsk_livello(w->tipo, w->stile, atteso);
+    PhCfgWidgetTipo tipo = w->tipo;
+    GListModel *controller = gtk_widget_observe_controllers(w->maniglia);
+    gboolean preso = FALSE;
+    for (guint i = 0; i < g_list_model_get_n_items(controller); i++) {
+        GObject *c = g_list_model_get_item(controller, i);
+        if (GTK_IS_EVENT_CONTROLLER_KEY(c))
+            g_signal_emit_by_name(c, "key-pressed", tasto, 0u, 0, &preso);
+        g_object_unref(c);
+    }
+    g_object_unref(controller); /* w puo' essere stato ricostruito: da qui non si tocca piu' */
+    if (!preso)
+        g_error("prova d'insieme: la maniglia non ha preso il tasto");
+    PhCfgWidget *c = &p->widget[ip];
+    if (c->tipo != tipo || c->larghezza != atteso.larghezza || c->altezza != atteso.altezza ||
+        c->destra != destra_atteso || c->dimensione != livello_atteso)
+        g_error("prova d'insieme: la maniglia non ha salvato la misura attesa (tipo %d)", (int)tipo);
+    /* A schermo: il widget (anche ricostruito) ha la misura salvata. */
+    for (size_t i = 0; i < s->d->widget->len; i++) {
+        PhDskWidget *n = g_ptr_array_index(s->d->widget, i);
+        if (n->indice == ip && (n->larghezza != atteso.larghezza || n->altezza != atteso.altezza))
+            g_error("prova d'insieme: la misura a schermo non e' quella salvata (tipo %d)", (int)tipo);
+        /* La barra di avanzamento e' proporzionale alla misura di adesso (anche senza dati nuovi). */
+        if (n->indice == ip && n->percento > 0) {
+            int po, pv, lb, ab;
+            ph_dsk_imbottitura(n->forma, &po, &pv);
+            gtk_widget_get_size_request(n->pieno, &lb, &ab);
+            if (lb != (n->larghezza - 2 * po) * n->percento / 100)
+                g_error("prova d'insieme: la barra non segue la misura (tipo %d)", (int)tipo);
+            st_barre_viste++;
+        }
+    }
+}
+
+/* Un widget che non c'e': nessun menu e nessun popup aperto. */
+static void st_prova_menu_inesistente(Stress *s)
+{
+    ph_shell_popup_chiudi(s->d->sh);
+    ph_dsk_menu_widget(s->d, 0xFFFFFFu, 100, 100);
+    if (ph_shell_popup_aperto(s->d->sh) != PH_POPUP_NESSUNO)
+        g_error("prova d'insieme: menu aperto per un widget che non esiste");
+}
+
+/* Ridimensiona l'ultimo widget, lo rimuove, ne aggiunge uno: la voce nuova in coda al profilo ha
+ * misura, stile e opzione a zero (la voce rimossa lasciava i suoi valori). */
+static void st_prova_voce_nuova(Stress *s)
+{
+    PhCfgTelefono *p = st_profilo(s);
+    size_t ultimo = s->d->widget->len;
+    g_message("prova d'insieme: barre controllate finora: %d", st_barre_viste);
+    if (p == NULL || ultimo == 0)
+        return;
+    PhDskWidget *w = st_widget(s, ultimo - 1);
+    if (w->indice != p->n_widget - 1 || ph_dsk_widget_nome(w->tipo) == NULL)
+        return;
+    PhCfgWidgetTipo tipo = w->tipo;
+    unsigned id = w->id;
+    st_prova_maniglia(s, ultimo - 1, GDK_KEY_Right); /* una misura salvata */
+    PhCfgWidget *c = &p->widget[p->n_widget - 1];
+    c->stile = 1;
+    c->opzione = 3;
+    c->larghezza = c->larghezza > 0 ? c->larghezza : 300;
+    c->altezza = c->altezza > 0 ? c->altezza : 200;
+    ph_dsk_widget_rimuovi(s->d, id);
+    size_t n = p->n_widget;
+    ph_dsk_widget_aggiungi(s->d, tipo);
+    if (p->n_widget != n + 1)
+        g_error("prova d'insieme: widget non aggiunto");
+    const PhCfgWidget *nuova = &p->widget[n];
+    if (nuova->tipo != tipo || nuova->larghezza != 0 || nuova->altezza != 0 || nuova->stile != 0 ||
+        nuova->opzione != 0 || nuova->dimensione != PH_CFG_WIDGET_MEDIO)
+        g_error("prova d'insieme: la voce nuova conserva valori di un'altra (tipo %d)", (int)tipo);
+}
+
 /* Ogni tipo: costruzione in tutti gli stili e misure, eventi, cambi a caldo, rimozioni. */
 static bool st_tipi(Stress *s)
 {
@@ -811,12 +911,42 @@ static bool st_tipi(Stress *s)
             s->j = 0;
             break;
         }
-        unsigned id = w->id;
+        if (s->j == 0) {
+            st_prova_menu_inesistente(s);
+            st_prova_voce_nuova(s);
+            w = st_widget(s, s->j);
+            if (w == NULL)
+                break;
+        }
+        /* Misura a caldo: la misura equivalente al livello successivo, scritta nel profilo
+         * (come fa la maniglia), poi si ricostruisce. */
         PhCfgWidgetDim dim = (PhCfgWidgetDim)((w->dim + 1) % 3);
-        ph_dsk_widget_dimensione(s->d, id, dim);
+        PhCfgTelefono *pw = st_profilo(s);
+        if (w->indice < pw->n_widget) {
+            PhDskMisura m = ph_dsk_misura_equivalente(w->tipo, w->stile, dim);
+            pw->widget[w->indice].larghezza = m.larghezza;
+            pw->widget[w->indice].altezza = m.altezza;
+            pw->widget[w->indice].dimensione = dim;
+            ph_dsk_widget_ricostruisci(s->d);
+        }
+        st_prova_maniglia(s, s->j, GDK_KEY_Right);
+        st_prova_maniglia(s, s->j, GDK_KEY_Left);
+        st_prova_maniglia(s, s->j, GDK_KEY_Down);
         w = st_widget(s, s->j);
-        if (w != NULL)
-            ph_dsk_widget_stile_imposta(s->d, w->id, (w->stile + 1) % ph_dsk_stili_n(w->tipo), w->opzione);
+        if (w != NULL) {
+            unsigned nuovo_stile = (w->stile + 1) % ph_dsk_stili_n(w->tipo);
+            size_t ip = w->indice;
+            PhDskMisura atteso = ph_dsk_misura_cambio_stile(w->tipo, w->stile, nuovo_stile,
+                                                            (PhDskMisura){w->larghezza, w->altezza});
+            bool cambia = nuovo_stile != w->stile;
+            PhCfgWidgetTipo tipo = w->tipo;
+            ph_dsk_widget_stile_imposta(s->d, w->id, nuovo_stile, w->opzione);
+            /* Forma uguale: la misura si tiene (entro i limiti); forma diversa: si perde (0/0). */
+            PhCfgTelefono *pc = st_profilo(s);
+            if (cambia && pc != NULL && ip < pc->n_widget &&
+                (pc->widget[ip].larghezza != atteso.larghezza || pc->widget[ip].altezza != atteso.altezza))
+                g_error("prova d'insieme: misura dopo il cambio di stile sbagliata (tipo %d)", (int)tipo);
+        }
         if (s->j % 4 == 3)
             s->k = 5; /* ogni tanto aspetta un fotogramma: si disegna dopo il cambio */
         else

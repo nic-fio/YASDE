@@ -115,18 +115,33 @@ static void prova_disponi(void)
 static void prova_widget_posto(void)
 {
     int d, a;
-    ph_dsk_posto_widget_nuovo(752, NULL, 0, &d, &a);
+    const PhDskMisura medio = {250, 100};
+    ph_dsk_posto_widget_nuovo(1280, 752, NULL, 0, medio, &d, &a);
     VERIFICA(d == 16 && a == 16);
-    PhDskWidgetPos uno[] = {{16, 16, PH_CFG_WIDGET_MEDIO}};
-    ph_dsk_posto_widget_nuovo(752, uno, 1, &d, &a);
-    VERIFICA(d == 16 && a == 16 + 140 + 12);
-    /* Colonna piena (3 medi: 16+152*3 = 472, +140 > 752-8? no) poi quarta: ancora in colonna. */
-    PhDskWidgetPos molti[] = {{16, 16, PH_CFG_WIDGET_GRANDE}, {16, 228, PH_CFG_WIDGET_GRANDE},
-                              {16, 440, PH_CFG_WIDGET_GRANDE}};
-    ph_dsk_posto_widget_nuovo(752, molti, 3, &d, &a);
-    VERIFICA(d == 16 + 266 && a == 16); /* la prima colonna e' piena: la seconda */
-    /* Area minuscola: a cascata. */
-    ph_dsk_posto_widget_nuovo(100, uno, 1, &d, &a);
+    /* Sotto a un widget esistente, con 12 px di margine, su un passo di 8 dall'alto. */
+    PhDskWidgetPos uno[] = {{16, 16, 250, 100}};
+    ph_dsk_posto_widget_nuovo(1280, 752, uno, 1, medio, &d, &a);
+    VERIFICA(d == 16 && a == 128);
+    /* Un widget alto (meteo Grande 320 x 300): il nuovo non gli si sovrappone. */
+    PhDskWidgetPos meteo[] = {{16, 16, 320, 300}};
+    ph_dsk_posto_widget_nuovo(1280, 752, meteo, 1, (PhDskMisura){250, 210}, &d, &a);
+    VERIFICA(d == 16 && a == 328);
+    /* Un widget largo 480 x 300 nella prima colonna, due volte: colonna piena (a 700 px utili),
+     * il nuovo va a destra di tutti e due, a 12 px e sul passo di 8. */
+    PhDskWidgetPos larghi[] = {{16, 16, 480, 300}, {16, 328, 480, 300}};
+    ph_dsk_posto_widget_nuovo(1280, 700, larghi, 2, medio, &d, &a);
+    VERIFICA(d == 512 && a == 16);
+    /* Due impilati: il terzo va sotto, con 12 px di margine. */
+    PhDskWidgetPos due[] = {{16, 16, 250, 100}, {16, 128, 250, 100}};
+    ph_dsk_posto_widget_nuovo(1280, 752, due, 2, medio, &d, &a);
+    VERIFICA(d == 16 && a == 240);
+    /* Area stretta: non ci sta a destra, ma la prima colonna ha ancora posto sotto. */
+    ph_dsk_posto_widget_nuovo(300, 752, uno, 1, medio, &d, &a);
+    VERIFICA(d == 16 && a == 128);
+    /* Nessun posto (area minuscola o troppo larga): a cascata. */
+    ph_dsk_posto_widget_nuovo(1280, 100, uno, 1, medio, &d, &a);
+    VERIFICA(d == 16 + 24 && a == 16 + 24);
+    ph_dsk_posto_widget_nuovo(200, 752, uno, 1, medio, &d, &a);
     VERIFICA(d == 16 + 24 && a == 16 + 24);
     VERIFICA(ph_dsk_larghezza_widget(PH_CFG_WIDGET_PICCOLO) == 200);
     VERIFICA(ph_dsk_larghezza_widget(PH_CFG_WIDGET_MEDIO) == 250);
@@ -156,7 +171,7 @@ static void prova_menu(void)
     ph_dsk_menu_posizione(1270, 790, 1280, 800, PH_DSK_MENU_ICONA_L, PH_DSK_MENU_ICONA_A, &x, &y);
     VERIFICA(x == 1070 && y == 650);
     ph_dsk_menu_posizione(1270, 790, 1280, 800, PH_DSK_MENU_WIDGET_L, PH_DSK_MENU_WIDGET_A, &x, &y);
-    VERIFICA(x == 1070 && y == 580);
+    VERIFICA(x == 1070 && y == 720);
     ph_dsk_menu_posizione(-5, -5, 100, 100, 200, 200, &x, &y); /* piu' grande dell'area */
     VERIFICA(x == 0 && y == 0);
 }
@@ -707,6 +722,223 @@ static void prova_catalogo(void)
     VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_NOTE) == NULL);
     VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_METEO) != NULL); /* il meteo e' nel catalogo (§18) */
     VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_RIPRODUZIONE) == NULL);
+}
+
+/* ---- Forma e misura libera (PIANO.md 8.1) ---- */
+static void prova_forme(void)
+{
+    /* Forma per tipo e stile. */
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_CLASSICO) == PH_DSK_FORMA_TONDO);
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_ESSENZIALE) == PH_DSK_FORMA_TONDO);
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_DIGITALE) == PH_DSK_FORMA_MATTONELLA);
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_PALETTE) == PH_DSK_FORMA_MATTONELLA);
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_TESTUALE) == PH_DSK_FORMA_MATTONELLA);
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_DOPPIO_FUSO) == PH_DSK_FORMA_MATTONELLA);
+    /* Stile fuori elenco (profilo rovinato): vale il digitale, quindi la mattonella. */
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_OROLOGIO, 99) == PH_DSK_FORMA_MATTONELLA);
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_BATTERIA, 0) == PH_DSK_FORMA_TONDO);
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_SVEGLIA, 0) == PH_DSK_FORMA_CAPSULA);
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_INTERRUTTORI, 0) == PH_DSK_FORMA_CAPSULA);
+    static const PhCfgWidgetTipo tutti[] = {
+        PH_CFG_WIDGET_OROLOGIO, PH_CFG_WIDGET_STATO, PH_CFG_WIDGET_NOTIFICHE, PH_CFG_WIDGET_MEMORIA,
+        PH_CFG_WIDGET_CALENDARIO, PH_CFG_WIDGET_NOTE, PH_CFG_WIDGET_METEO, PH_CFG_WIDGET_RIPRODUZIONE,
+        PH_CFG_WIDGET_CALENDARIO_MESE, PH_CFG_WIDGET_SVEGLIA, PH_CFG_WIDGET_BATTERIA,
+        PH_CFG_WIDGET_INTERRUTTORI, PH_CFG_WIDGET_TROVA, PH_CFG_WIDGET_APP_FREQUENTI,
+        PH_CFG_WIDGET_TRASFERIMENTI};
+    for (size_t i = 0; i < sizeof tutti / sizeof tutti[0]; i++) {
+        PhCfgWidgetTipo t = tutti[i];
+        bool rotondo = t == PH_CFG_WIDGET_BATTERIA || t == PH_CFG_WIDGET_SVEGLIA ||
+                       t == PH_CFG_WIDGET_INTERRUTTORI;
+        VERIFICA(rotondo || t == PH_CFG_WIDGET_OROLOGIO || ph_dsk_forma(t, 0) == PH_DSK_FORMA_MATTONELLA);
+    }
+
+    /* Raggio: mattonella 28 (ma mai oltre meta' del lato corto), tondo lato/2, capsula altezza/2. */
+    VERIFICA(ph_dsk_raggio(PH_DSK_FORMA_MATTONELLA, 250, 100) == 28);
+    VERIFICA(ph_dsk_raggio(PH_DSK_FORMA_MATTONELLA, 40, 400) == 20);
+    VERIFICA(ph_dsk_raggio(PH_DSK_FORMA_TONDO, 184, 184) == 92);
+    VERIFICA(ph_dsk_raggio(PH_DSK_FORMA_TONDO, 185, 185) == 92);
+    VERIFICA(ph_dsk_raggio(PH_DSK_FORMA_CAPSULA, 250, 80) == 40);
+    VERIFICA(ph_dsk_raggio(PH_DSK_FORMA_CAPSULA, 250, 72) == 36);
+    VERIFICA(ph_dsk_raggio(PH_DSK_FORMA_TONDO, -5, -5) == 0 && ph_dsk_raggio(PH_DSK_FORMA_CAPSULA, 10, -5) == 0);
+
+    int po, pv;
+    ph_dsk_imbottitura(PH_DSK_FORMA_MATTONELLA, &po, &pv);
+    VERIFICA(po == 20 && pv == 16);
+    ph_dsk_imbottitura(PH_DSK_FORMA_TONDO, &po, &pv);
+    VERIFICA(po == 12 && pv == 12);
+    ph_dsk_imbottitura(PH_DSK_FORMA_CAPSULA, &po, &pv);
+    VERIFICA(po == 24 && pv == 10);
+
+    /* Misure equivalenti: stanno nei limiti, sono quadrate per il tondo, il minimo e' il Piccolo,
+     * e dalla misura si ritrova il livello (cosi' un profilo senza misure non perde nulla). */
+    for (size_t i = 0; i < sizeof tutti / sizeof tutti[0]; i++)
+        for (unsigned st = 0; st < ph_dsk_stili_n(tutti[i]); st++) {
+            PhCfgWidgetTipo t = tutti[i];
+            PhDskLimiti lim = ph_dsk_misura_limiti(t, st);
+            PhDskMisura mp = ph_dsk_misura_equivalente(t, st, PH_CFG_WIDGET_PICCOLO);
+            VERIFICA(lim.min.larghezza == mp.larghezza && lim.min.altezza == mp.altezza);
+            VERIFICA(lim.max.larghezza > lim.min.larghezza && lim.max.altezza >= lim.min.altezza);
+            VERIFICA(lim.min.larghezza >= 48 && lim.max.larghezza <= 2048); /* ammessi dal profilo */
+            for (int dd = 0; dd < 3; dd++) {
+                PhDskMisura m = ph_dsk_misura_equivalente(t, st, (PhCfgWidgetDim)dd);
+                VERIFICA(m.larghezza <= lim.max.larghezza && m.altezza <= lim.max.altezza);
+                VERIFICA(m.larghezza >= lim.min.larghezza && m.altezza >= lim.min.altezza);
+                VERIFICA(ph_dsk_livello(t, st, m) == (PhCfgWidgetDim)dd);
+                PhDskMisura v = ph_dsk_misura_vincola(t, st, m);
+                VERIFICA(v.larghezza == m.larghezza && v.altezza == m.altezza);
+                if (ph_dsk_forma(t, st) == PH_DSK_FORMA_TONDO)
+                    VERIFICA(m.larghezza == m.altezza);
+                PhDskMisura da = ph_dsk_misura_da_profilo(t, st, (PhCfgWidgetDim)dd, 0, 0);
+                VERIFICA(da.larghezza == m.larghezza && da.altezza == m.altezza);
+            }
+        }
+    /* Le vecchie larghezze restano le larghezze dei mattonelle di oggi. */
+    for (int dd = 0; dd < 3; dd++)
+        VERIFICA(ph_dsk_misura_equivalente(PH_CFG_WIDGET_NOTIFICHE, 0, (PhCfgWidgetDim)dd).larghezza ==
+                 ph_dsk_larghezza_widget((PhCfgWidgetDim)dd));
+    /* Il quadrante dell'orologio analogico sta nel tondo (larghezza interna = lato - 2 * 12). */
+    for (int dd = 0; dd < 3; dd++)
+        for (unsigned st = PH_DSK_OROLOGIO_CLASSICO; st <= PH_DSK_OROLOGIO_ESSENZIALE; st++) {
+            PhDskMisura m = ph_dsk_misura_equivalente(PH_CFG_WIDGET_OROLOGIO, st, (PhCfgWidgetDim)dd);
+            VERIFICA(ph_dsk_quadrante_diametro(st, (PhCfgWidgetDim)dd) <= m.larghezza - 24);
+            VERIFICA(ph_dsk_orologio_altezza(st, (PhCfgWidgetDim)dd) <= m.altezza - 24);
+        }
+
+    /* Dal profilo: salvate e valide, si usano (dentro i limiti); 0 su un lato = equivalenti. */
+    PhDskMisura m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_PICCOLO, 300, 200);
+    VERIFICA(m.larghezza == 300 && m.altezza == 200);
+    m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_GRANDE, 300, 0);
+    VERIFICA(m.larghezza == 320 && m.altezza == 168);
+    m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_GRANDE, 0, 200);
+    VERIFICA(m.larghezza == 320 && m.altezza == 168);
+    m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_MEDIO, 48, 48); /* sotto il minimo */
+    VERIFICA(m.larghezza == 200 && m.altezza == 104);
+    m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_MEDIO, 2048, 2048); /* sopra il massimo */
+    VERIFICA(m.larghezza == 480 && m.altezza == 640);
+    m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_NOTIFICHE, 0, PH_CFG_WIDGET_MEDIO, -3, 500);
+    VERIFICA(m.larghezza == 250 && m.altezza == 128);
+    m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_BATTERIA, 0, PH_CFG_WIDGET_MEDIO, 300, 200); /* tondo: il lato corto */
+    VERIFICA(m.larghezza == 200 && m.altezza == 200);
+    m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_BATTERIA, 0, PH_CFG_WIDGET_MEDIO, 500, 500);
+    VERIFICA(m.larghezza == 320 && m.altezza == 320);
+    m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_SVEGLIA, 0, PH_CFG_WIDGET_MEDIO, 300, 500); /* capsula bassa */
+    VERIFICA(m.larghezza == 300 && m.altezza == 128);
+    /* Una misura salvata con un altro stile (tondo -> mattonella) si adatta ai limiti del nuovo. */
+    m = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_CLASSICO, PH_CFG_WIDGET_MEDIO, 250, 100);
+    VERIFICA(m.larghezza == 144 && m.altezza == 144);
+    /* Il campo del profilo c'e' e vale 0 di fabbrica. */
+    PhCfgWidget cw;
+    memset(&cw, 0, sizeof cw);
+    VERIFICA(cw.larghezza == 0 && cw.altezza == 0);
+
+    /* Livello dalla misura: serve tutta la larghezza E tutta l'altezza dell'equivalente. */
+    VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_OROLOGIO, 0, (PhDskMisura){249, 400}) == PH_CFG_WIDGET_PICCOLO);
+    VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_OROLOGIO, 0, (PhDskMisura){250, 100}) == PH_CFG_WIDGET_MEDIO);
+    VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_OROLOGIO, 0, (PhDskMisura){250, 99}) == PH_CFG_WIDGET_PICCOLO);
+    VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_OROLOGIO, 0, (PhDskMisura){319, 400}) == PH_CFG_WIDGET_MEDIO);
+    VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_OROLOGIO, 0, (PhDskMisura){480, 100}) == PH_CFG_WIDGET_GRANDE);
+    VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_OROLOGIO, 0, (PhDskMisura){1, 1}) == PH_CFG_WIDGET_PICCOLO);
+    VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_BATTERIA, 0, (PhDskMisura){200, 200}) == PH_CFG_WIDGET_MEDIO);
+    VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_BATTERIA, 0, (PhDskMisura){216, 216}) == PH_CFG_WIDGET_GRANDE);
+
+    /* Ridimensionamento: scatti di 8 px, l'angolo in alto a sinistra fermo (destra cala). */
+    PhDskMisura n;
+    int destra;
+    const PhDskMisura base = {250, 100}; /* orologio digitale, Medio */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_OROLOGIO, 0, base, 100, 50, 17, 0, 700, &n, &destra));
+    VERIFICA(n.larghezza == 266 && n.altezza == 100 && destra == 84);
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_OROLOGIO, 0, base, 100, 50, 11, 30, 700, &n, &destra));
+    VERIFICA(n.larghezza == 258 && n.altezza == 132 && destra == 92); /* 11/8 -> 1 scatto; 30/8 -> 4 scatti */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_OROLOGIO, 0, base, 100, 50, -24, -8, 700, &n, &destra));
+    VERIFICA(n.larghezza == 226 && n.altezza == 92 && destra == 124); /* restringe: destra cresce */
+    /* Meno di mezzo scatto: nessun cambiamento. */
+    VERIFICA(!ph_dsk_ridimensiona(PH_CFG_WIDGET_OROLOGIO, 0, base, 100, 50, 3, -3, 700, &n, &destra));
+    VERIFICA(n.larghezza == 250 && n.altezza == 100 && destra == 100);
+    /* Minimo del tipo (200 x 80 per l'orologio digitale), anche con spostamenti enormi. */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_OROLOGIO, 0, base, 100, 50, -5000, -5000, 700, &n, &destra));
+    VERIFICA(n.larghezza == 200 && n.altezza == 80 && destra == 150);
+    /* Massimo del tipo (480 x 640), con spazio a volonta'. */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_OROLOGIO, 0, base, 5000, 0, 5000, 5000, 5000, &n, &destra));
+    VERIFICA(n.larghezza == 480 && n.altezza == 640 && destra == 4770);
+    /* Non esce dall'area: a destra (destra0 + larghezza e' il tetto: destra non scende sotto 0)... */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_OROLOGIO, 0, base, 16, 50, 400, 0, 700, &n, &destra));
+    VERIFICA(n.larghezza == 266 && destra == 0);
+    /* ...e in basso (alto0 + altezza <= altezza utile). */
+    VERIFICA(!ph_dsk_ridimensiona(PH_CFG_WIDGET_OROLOGIO, 0, base, 100, 600, 0, 400, 700, &n, &destra));
+    VERIFICA(n.altezza == 100); /* sotto c'e' posto solo per 100 px: resta com'e' */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_NOTIFICHE, 0, (PhDskMisura){250, 128}, 100, 300, 0, 400, 700, &n, &destra));
+    VERIFICA(n.altezza == 400 && 300 + n.altezza <= 700);
+    /* Un widget gia' oltre l'area non si restringe da solo (nemmeno con un passo nullo in avanti)... */
+    VERIFICA(!ph_dsk_ridimensiona(PH_CFG_WIDGET_NOTIFICHE, 0, (PhDskMisura){250, 400}, 100, 500, 0, 0, 700, &n, &destra));
+    VERIFICA(n.altezza == 400);
+    /* ...ma non cresce ancora. */
+    VERIFICA(!ph_dsk_ridimensiona(PH_CFG_WIDGET_NOTIFICHE, 0, (PhDskMisura){250, 400}, 100, 500, 0, 80, 700, &n, &destra));
+    VERIFICA(n.altezza == 400);
+    /* Area minuscola: il minimo del tipo vince. */
+    VERIFICA(!ph_dsk_ridimensiona(PH_CFG_WIDGET_NOTIFICHE, 0, (PhDskMisura){250, 128}, 0, 0, 0, 0, 50, &n, &destra));
+    VERIFICA(n.altezza == 128 && n.larghezza == 250);
+    ph_dsk_ridimensiona(PH_CFG_WIDGET_NOTIFICHE, 0, (PhDskMisura){250, 128}, 0, 0, 0, -800, 50, &n, &destra);
+    VERIFICA(n.altezza == 104); /* il minimo del tipo, non meno, qualunque sia l'area */
+    /* Il tondo resta tondo con i due assi diversi (media dei due spostamenti, a scatti). */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_BATTERIA, 0, (PhDskMisura){176, 176}, 100, 50, 40, 0, 700, &n, &destra));
+    VERIFICA(n.larghezza == n.altezza && n.larghezza == 200 && destra == 76); /* 20 -> 24 */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_BATTERIA, 0, (PhDskMisura){176, 176}, 100, 50, -8, -64, 700, &n, &destra));
+    VERIFICA(n.larghezza == n.altezza && n.larghezza == 144 && destra == 132); /* -36 -> -32 */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_BATTERIA, 0, (PhDskMisura){176, 176}, 100, 50, -900, 30, 700, &n, &destra));
+    VERIFICA(n.larghezza == 136 && n.altezza == 136); /* minimo del tondo */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_BATTERIA, 0, (PhDskMisura){176, 176}, 9000, 0, 900, 900, 9000, &n, &destra));
+    VERIFICA(n.larghezza == 320 && n.altezza == 320); /* massimo del tondo */
+    /* Il tondo e' limitato dal lato piu' stretto dell'area: qui dal basso (altezza utile 300, alto 50: 250). */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_BATTERIA, 0, (PhDskMisura){176, 176}, 9000, 50, 400, 400, 300, &n, &destra));
+    VERIFICA(n.larghezza == 250 && n.altezza == 250);
+    /* La capsula tiene l'altezza entro 128. */
+    VERIFICA(ph_dsk_ridimensiona(PH_CFG_WIDGET_SVEGLIA, 0, (PhDskMisura){250, 80}, 100, 20, 0, 500, 900, &n, &destra));
+    VERIFICA(n.altezza == 128 && n.larghezza == 250);
+    /* Dopo ogni calcolo la misura e' dentro i limiti e sempre sul tipo giusto. */
+    for (int dxx = -300; dxx <= 300; dxx += 37)
+        for (int dyy = -300; dyy <= 300; dyy += 41) {
+            for (size_t i = 0; i < sizeof tutti / sizeof tutti[0]; i++) {
+                PhCfgWidgetTipo t = tutti[i];
+                PhDskLimiti lim = ph_dsk_misura_limiti(t, 0);
+                PhDskMisura b = ph_dsk_misura_equivalente(t, 0, PH_CFG_WIDGET_MEDIO);
+                ph_dsk_ridimensiona(t, 0, b, 40, 40, dxx, dyy, 800, &n, &destra);
+                VERIFICA(n.larghezza >= lim.min.larghezza && n.larghezza <= lim.max.larghezza);
+                VERIFICA(n.altezza >= lim.min.altezza && n.altezza <= lim.max.altezza);
+                VERIFICA(destra >= 0 && 40 + n.altezza <= 800);
+                if (ph_dsk_forma(t, 0) == PH_DSK_FORMA_TONDO)
+                    VERIFICA(n.larghezza == n.altezza);
+            }
+        }
+
+    /* Cambio di stile: forma uguale = la misura si tiene (entro i limiti del nuovo stile); forma
+     * diversa = si perde ({0, 0}). */
+    m = ph_dsk_misura_cambio_stile(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_DIGITALE, PH_DSK_OROLOGIO_TESTUALE,
+                                   (PhDskMisura){300, 200});
+    VERIFICA(m.larghezza == 300 && m.altezza == 200);
+    m = ph_dsk_misura_cambio_stile(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_DIGITALE, PH_DSK_OROLOGIO_TESTUALE,
+                                   (PhDskMisura){250, 90}); /* sotto il minimo del testuale (106) */
+    VERIFICA(m.larghezza == 250 && m.altezza == 106);
+    m = ph_dsk_misura_cambio_stile(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_CLASSICO, PH_DSK_OROLOGIO_ESSENZIALE,
+                                   (PhDskMisura){144, 144}); /* tondo -> tondo, minimo 152 */
+    VERIFICA(m.larghezza == 152 && m.altezza == 152);
+    m = ph_dsk_misura_cambio_stile(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_CLASSICO, PH_DSK_OROLOGIO_ESSENZIALE,
+                                   (PhDskMisura){200, 200});
+    VERIFICA(m.larghezza == 200 && m.altezza == 200);
+    m = ph_dsk_misura_cambio_stile(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_DIGITALE, PH_DSK_OROLOGIO_CLASSICO,
+                                   (PhDskMisura){300, 200});
+    VERIFICA(m.larghezza == 0 && m.altezza == 0);
+    m = ph_dsk_misura_cambio_stile(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_ESSENZIALE, PH_DSK_OROLOGIO_PALETTE,
+                                   (PhDskMisura){200, 200});
+    VERIFICA(m.larghezza == 0 && m.altezza == 0);
+    m = ph_dsk_misura_cambio_stile(PH_CFG_WIDGET_METEO, 0, 3, (PhDskMisura){400, 500}); /* stessa forma */
+    VERIFICA(m.larghezza == 400 && m.altezza == 500);
+
+    /* Maniglia: dentro la curva; 0 dove l'angolo e' poco curvo. */
+    VERIFICA(ph_dsk_maniglia_margine(28, 20) == 0 && ph_dsk_maniglia_margine(28, 16) == 0);
+    VERIFICA(ph_dsk_maniglia_margine(92, 12) == 14); /* 92*0,2929 + 7,07 - 8 - 12 = 14,0 */
+    VERIFICA(ph_dsk_maniglia_margine(36, 24) == 0 && ph_dsk_maniglia_margine(36, 10) == 0);
+    VERIFICA(ph_dsk_maniglia_margine(160, 12) > ph_dsk_maniglia_margine(92, 12));
+    VERIFICA(ph_dsk_maniglia_margine(0, 0) == 0 && ph_dsk_maniglia_margine(-10, 0) == 0);
 }
 
 static void prova_tavolozza_e_cartelle(void)
@@ -1671,6 +1903,7 @@ int main(void)
     prova_calendario();
     prova_catalogo();
     prova_orologio_stili();
+    prova_forme();
     prova_calendario_mese();
     prova_wx_altri();
     prova_meteo();

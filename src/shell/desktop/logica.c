@@ -141,32 +141,35 @@ int ph_dsk_larghezza_widget(PhCfgWidgetDim d)
     return d == PH_CFG_WIDGET_PICCOLO ? 200 : (d == PH_CFG_WIDGET_GRANDE ? 320 : 250);
 }
 
-int ph_dsk_altezza_stimata(PhCfgWidgetDim d)
-{
-    return d == PH_CFG_WIDGET_PICCOLO ? 90 : (d == PH_CFG_WIDGET_GRANDE ? 200 : 140);
-}
-
 /* Math.round del mockup: la meta' sale. */
 static long arrotonda(double v)
 {
     return (long)floor(v + 0.5);
 }
 
-void ph_dsk_posto_widget_nuovo(int altezza_utile, const PhDskWidgetPos *esistenti, size_t n,
-                               int *destra, int *alto)
+/* Due rettangoli (posto + misura, nelle coordinate dal bordo destro e dall'alto) si toccano
+ * se, allargati di `margine`, si sovrappongono sui due assi. */
+static bool si_toccano(int d1, int a1, PhDskMisura m1, int d2, int a2, PhDskMisura m2, int margine)
 {
-    const int stima = ph_dsk_altezza_stimata(PH_CFG_WIDGET_MEDIO);
-    for (int col = 0; col < 4; col++) {
-        long y = 16;
-        for (size_t i = 0; i < n; i++)
-            if (arrotonda((esistenti[i].destra - 16) / 266.0) == col)
-                y += ph_dsk_altezza_stimata(esistenti[i].dimensione) + 12;
-        if (y + stima <= (long)altezza_utile - 8) {
-            *destra = 16 + col * 266;
-            *alto = (int)y;
-            return;
+    return d1 < d2 + m2.larghezza + margine && d2 < d1 + m1.larghezza + margine &&
+           a1 < a2 + m2.altezza + margine && a2 < a1 + m1.altezza + margine;
+}
+
+void ph_dsk_posto_widget_nuovo(int larghezza_area, int altezza_utile, const PhDskWidgetPos *esistenti,
+                               size_t n, PhDskMisura nuovo, int *destra, int *alto)
+{
+    for (int d = PH_DSK_MARGINE; d + nuovo.larghezza <= larghezza_area - 8; d += PH_DSK_PASSO)
+        for (int a = PH_DSK_MARGINE; a + nuovo.altezza <= altezza_utile - 8; a += PH_DSK_PASSO) {
+            bool libero = true;
+            for (size_t i = 0; i < n && libero; i++)
+                libero = !si_toccano(d, a, nuovo, esistenti[i].destra, esistenti[i].alto,
+                                     (PhDskMisura){esistenti[i].larghezza, esistenti[i].altezza}, 12);
+            if (libero) {
+                *destra = d;
+                *alto = a;
+                return;
+            }
         }
-    }
     *destra = 16 + (int)(n % 4) * 24;
     *alto = 16 + (int)(n % 4) * 24;
 }
@@ -189,6 +192,191 @@ int ph_dsk_aggancia_destra(int destra_iniziale, double dx)
 int ph_dsk_aggancia_alto(int alto_iniziale, double dy)
 {
     return aggancia((double)alto_iniziale + dy);
+}
+
+/* ---- Forma e misura libera ---------------------------------------------------- */
+PhDskForma ph_dsk_forma(PhCfgWidgetTipo tipo, unsigned stile)
+{
+    switch (tipo) {
+    case PH_CFG_WIDGET_OROLOGIO:
+        stile = ph_dsk_stile_valido_di(tipo, stile);
+        return stile == PH_DSK_OROLOGIO_CLASSICO || stile == PH_DSK_OROLOGIO_ESSENZIALE
+                   ? PH_DSK_FORMA_TONDO
+                   : PH_DSK_FORMA_MATTONELLA;
+    case PH_CFG_WIDGET_BATTERIA: return PH_DSK_FORMA_TONDO;
+    case PH_CFG_WIDGET_SVEGLIA:
+    case PH_CFG_WIDGET_INTERRUTTORI: return PH_DSK_FORMA_CAPSULA;
+    default: return PH_DSK_FORMA_MATTONELLA;
+    }
+}
+
+int ph_dsk_raggio(PhDskForma forma, int larghezza, int altezza)
+{
+    int corto = larghezza < altezza ? larghezza : altezza;
+    if (corto < 0)
+        corto = 0;
+    switch (forma) {
+    case PH_DSK_FORMA_TONDO: return corto / 2;
+    case PH_DSK_FORMA_CAPSULA: return (altezza > 0 ? altezza : 0) / 2;
+    default: return corto / 2 < PH_DSK_RAGGIO_MATTONELLA ? corto / 2 : PH_DSK_RAGGIO_MATTONELLA;
+    }
+}
+
+void ph_dsk_imbottitura(PhDskForma forma, int *orizzontale, int *verticale)
+{
+    switch (forma) {
+    case PH_DSK_FORMA_TONDO: *orizzontale = 12; *verticale = 12; break;
+    case PH_DSK_FORMA_CAPSULA: *orizzontale = 24; *verticale = 10; break;
+    default: *orizzontale = 20; *verticale = 16; break;
+    }
+}
+
+/* Misure che tengono il contenuto di oggi (stime sul contenuto piu' l'imbottitura della
+ * forma): larghezze come le vecchie 200 / 250 / 320. Valgono come minimo (Piccolo) e come
+ * punto di partenza dei profili senza misure. Per ogni tipo le tre misure crescono in
+ * larghezza, cosi' ph_dsk_livello ritrova il livello di ogni misura equivalente. */
+typedef struct {
+    PhDskMisura m[3]; /* Piccolo, Medio, Grande */
+} Equivalenti;
+
+static Equivalenti equivalenti(PhCfgWidgetTipo tipo, unsigned stile)
+{
+    stile = ph_dsk_stile_valido_di(tipo, stile);
+    switch (tipo) {
+    case PH_CFG_WIDGET_OROLOGIO:
+        switch (stile) {
+        case PH_DSK_OROLOGIO_CLASSICO: return (Equivalenti){{{144, 144}, {184, 184}, {224, 224}}};
+        case PH_DSK_OROLOGIO_ESSENZIALE: return (Equivalenti){{{152, 152}, {184, 184}, {216, 216}}};
+        case PH_DSK_OROLOGIO_PALETTE: return (Equivalenti){{{200, 90}, {250, 136}, {320, 156}}};
+        case PH_DSK_OROLOGIO_TESTUALE: return (Equivalenti){{{200, 106}, {250, 128}, {320, 128}}};
+        case PH_DSK_OROLOGIO_DOPPIO_FUSO: return (Equivalenti){{{200, 100}, {250, 122}, {320, 122}}};
+        default: return (Equivalenti){{{200, 80}, {250, 100}, {320, 100}}};
+        }
+    case PH_CFG_WIDGET_CALENDARIO: return (Equivalenti){{{200, 110}, {250, 150}, {320, 210}}};
+    case PH_CFG_WIDGET_STATO: return (Equivalenti){{{200, 100}, {250, 124}, {320, 164}}};
+    case PH_CFG_WIDGET_NOTIFICHE: return (Equivalenti){{{200, 104}, {250, 128}, {320, 168}}};
+    case PH_CFG_WIDGET_MEMORIA: return (Equivalenti){{{200, 120}, {250, 144}, {320, 208}}};
+    case PH_CFG_WIDGET_METEO: return (Equivalenti){{{200, 150}, {250, 210}, {320, 300}}};
+    case PH_CFG_WIDGET_CALENDARIO_MESE: return (Equivalenti){{{200, 110}, {250, 290}, {320, 420}}};
+    case PH_CFG_WIDGET_SVEGLIA: return (Equivalenti){{{200, 72}, {250, 80}, {320, 104}}};
+    case PH_CFG_WIDGET_BATTERIA: return (Equivalenti){{{136, 136}, {176, 176}, {216, 216}}};
+    case PH_CFG_WIDGET_INTERRUTTORI: return (Equivalenti){{{200, 72}, {250, 96}, {320, 104}}};
+    case PH_CFG_WIDGET_TROVA: return (Equivalenti){{{200, 96}, {250, 120}, {320, 140}}};
+    case PH_CFG_WIDGET_APP_FREQUENTI: return (Equivalenti){{{200, 168}, {250, 180}, {320, 260}}};
+    case PH_CFG_WIDGET_TRASFERIMENTI: return (Equivalenti){{{200, 146}, {250, 206}, {320, 296}}};
+    default: return (Equivalenti){{{200, 110}, {250, 150}, {320, 210}}};
+    }
+}
+
+PhDskMisura ph_dsk_misura_equivalente(PhCfgWidgetTipo tipo, unsigned stile, PhCfgWidgetDim dim)
+{
+    int k = dim == PH_CFG_WIDGET_PICCOLO ? 0 : (dim == PH_CFG_WIDGET_GRANDE ? 2 : 1);
+    return equivalenti(tipo, stile).m[k];
+}
+
+PhDskLimiti ph_dsk_misura_limiti(PhCfgWidgetTipo tipo, unsigned stile)
+{
+    PhDskLimiti l;
+    l.min = equivalenti(tipo, stile).m[0];
+    switch (ph_dsk_forma(tipo, stile)) {
+    case PH_DSK_FORMA_TONDO: l.max = (PhDskMisura){320, 320}; break;
+    case PH_DSK_FORMA_CAPSULA: l.max = (PhDskMisura){480, 128}; break;
+    default: l.max = (PhDskMisura){480, 640}; break;
+    }
+    return l;
+}
+
+static int stringi(int v, int min, int max)
+{
+    return v < min ? min : (v > max ? max : v);
+}
+
+PhDskMisura ph_dsk_misura_vincola(PhCfgWidgetTipo tipo, unsigned stile, PhDskMisura m)
+{
+    PhDskLimiti l = ph_dsk_misura_limiti(tipo, stile);
+    if (ph_dsk_forma(tipo, stile) == PH_DSK_FORMA_TONDO) {
+        int lato = stringi(m.larghezza < m.altezza ? m.larghezza : m.altezza, l.min.larghezza,
+                           l.max.larghezza);
+        return (PhDskMisura){lato, lato};
+    }
+    return (PhDskMisura){stringi(m.larghezza, l.min.larghezza, l.max.larghezza),
+                         stringi(m.altezza, l.min.altezza, l.max.altezza)};
+}
+
+PhDskMisura ph_dsk_misura_da_profilo(PhCfgWidgetTipo tipo, unsigned stile, PhCfgWidgetDim dim,
+                                     int larghezza, int altezza)
+{
+    if (larghezza <= 0 || altezza <= 0)
+        return ph_dsk_misura_equivalente(tipo, stile, dim);
+    return ph_dsk_misura_vincola(tipo, stile, (PhDskMisura){larghezza, altezza});
+}
+
+PhDskMisura ph_dsk_misura_cambio_stile(PhCfgWidgetTipo tipo, unsigned stile_vecchio,
+                                       unsigned stile_nuovo, PhDskMisura attuale)
+{
+    if (ph_dsk_forma(tipo, stile_vecchio) != ph_dsk_forma(tipo, stile_nuovo))
+        return (PhDskMisura){0, 0};
+    return ph_dsk_misura_vincola(tipo, stile_nuovo, attuale);
+}
+
+PhCfgWidgetDim ph_dsk_livello(PhCfgWidgetTipo tipo, unsigned stile, PhDskMisura m)
+{
+    Equivalenti e = equivalenti(tipo, stile);
+    for (int k = 2; k > 0; k--)
+        if (m.larghezza >= e.m[k].larghezza && m.altezza >= e.m[k].altezza)
+            return k == 2 ? PH_CFG_WIDGET_GRANDE : PH_CFG_WIDGET_MEDIO;
+    return PH_CFG_WIDGET_PICCOLO;
+}
+
+bool ph_dsk_ridimensiona(PhCfgWidgetTipo tipo, unsigned stile, PhDskMisura iniziale, int destra0,
+                         int alto0, double dx, double dy, int altezza_utile, PhDskMisura *nuova,
+                         int *destra)
+{
+    PhDskLimiti lim = ph_dsk_misura_limiti(tipo, stile);
+    bool tondo = ph_dsk_forma(tipo, stile) == PH_DSK_FORMA_TONDO;
+    long passo_l = arrotonda(dx / PH_DSK_PASSO) * PH_DSK_PASSO;
+    long passo_a = arrotonda(dy / PH_DSK_PASSO) * PH_DSK_PASSO;
+    if (tondo)
+        passo_l = passo_a = arrotonda((dx + dy) / 2.0 / PH_DSK_PASSO) * PH_DSK_PASSO;
+    /* Tetti dell'area: il bordo destro (l'angolo in alto a sinistra resta fermo) e il fondo.
+     * Un widget gia' oltre il tetto non si restringe da solo. */
+    int tetto_l = destra0 + iniziale.larghezza, tetto_a = altezza_utile - alto0;
+    if (tetto_l < iniziale.larghezza)
+        tetto_l = iniziale.larghezza;
+    if (tetto_a < iniziale.altezza)
+        tetto_a = iniziale.altezza;
+    if (tetto_l > lim.max.larghezza)
+        tetto_l = lim.max.larghezza;
+    if (tetto_a > lim.max.altezza)
+        tetto_a = lim.max.altezza;
+    long l = iniziale.larghezza + passo_l, a = iniziale.altezza + passo_a;
+    if (tondo) {
+        int tetto = tetto_l < tetto_a ? tetto_l : tetto_a;
+        tetto_l = tetto_a = tetto;
+    }
+    /* Il minimo del tipo vince sul tetto dell'area. */
+    l = stringi((int)(l > 100000 ? 100000 : (l < -100000 ? -100000 : l)), lim.min.larghezza,
+                tetto_l > lim.min.larghezza ? tetto_l : lim.min.larghezza);
+    a = stringi((int)(a > 100000 ? 100000 : (a < -100000 ? -100000 : a)), lim.min.altezza,
+                tetto_a > lim.min.altezza ? tetto_a : lim.min.altezza);
+    if (tondo)
+        a = l;
+    int d = destra0 - ((int)l - iniziale.larghezza);
+    if (d < 0)
+        d = 0;
+    bool cambiato = l != iniziale.larghezza || a != iniziale.altezza;
+    nuova->larghezza = (int)l;
+    nuova->altezza = (int)a;
+    *destra = d;
+    return cambiato;
+}
+
+int ph_dsk_maniglia_margine(int raggio, int imbottitura)
+{
+    /* La maniglia (16 px) deve stare dentro la curva: il suo centro a 45 gradi, 10 px dentro
+     * il bordo. Dall'angolo del widget il centro dista raggio * (1 - cos 45) + 10 * cos 45. */
+    int m = (int)(raggio * 0.2929 + 7.07 - 8.0) - imbottitura;
+    return m > 0 ? m : 0;
 }
 
 /* ---- Menu ----------------------------------------------------------------- */

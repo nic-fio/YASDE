@@ -20,17 +20,22 @@ struct PhDskWidget {
     unsigned id;
     size_t indice;          /* posizione in profilo->widget */
     PhCfgWidgetTipo tipo;
-    PhCfgWidgetDim dim;
+    PhCfgWidgetDim dim;     /* livello di contenuto, ricavato dalla misura (ph_dsk_livello) */
     unsigned stile, opzione; /* stile e opzione (citta' del doppio fuso) dal profilo */
     int destra, alto;       /* come si mostra ora (durante il trascinamento) */
+    int larghezza, altezza; /* misura libera in px, come si mostra ora */
+    PhDskForma forma;
+    int percento;           /* riempimento della barra dell'ultima vista (-1 = nessuna barra) */
+    int raggio;             /* raggio con cui il vetro e' registrato (segue la misura) */
 
-    GtkWidget *scheda, *titolo, *testa, *sotto, *barra, *pieno, *quadrante;
+    GtkWidget *scheda, *interno, *maniglia, *titolo, *testa, *sotto, *barra, *pieno, *quadrante;
     GtkWidget *corpo;       /* contenuto proprio dei widget nuovi (wx_*.c), nascosto se non serve */
     GtkWidget *riga[PH_DSK_RIGHE_MAX], *riga_sx[PH_DSK_RIGHE_MAX], *riga_dx[PH_DSK_RIGHE_MAX];
 
     /* trascinamento */
     double inizio_x, inizio_y; /* punto di partenza nelle coordinate della radice */
     int destra0, alto0;
+    PhDskMisura misura0;       /* misura alla partenza del ridimensionamento */
 
     void *x;                /* stato proprio dei widget nuovi (wx_*.c), liberato da wx ferma */
 };
@@ -156,10 +161,7 @@ void ph_dsk_widget_memoria_chiedi(PhDesktop *d); /* solo se c'e' un widget Memor
 void ph_dsk_widget_calendario_chiedi(PhDesktop *d); /* solo se c'e' un widget Calendario */
 void ph_dsk_widget_dati_azzera(PhDesktop *d); /* altro telefono: via i dati dell'altro */
 void ph_dsk_widget_aggiungi(PhDesktop *d, PhCfgWidgetTipo tipo);
-void ph_dsk_widget_dimensione(PhDesktop *d, unsigned id, PhCfgWidgetDim dim);
 void ph_dsk_widget_rimuovi(PhDesktop *d, unsigned id);
-/* true e *dim se il widget esiste. */
-bool ph_dsk_widget_dimensione_di(PhDesktop *d, unsigned id, PhCfgWidgetDim *dim);
 void ph_dsk_widget_libera(PhDesktop *d);
 void ph_dsk_widget_libera_elemento(gpointer p); /* per g_ptr_array_new_with_free_func */
 

@@ -1,6 +1,6 @@
 /* Stile del pezzo shell-desktop (F-02): solo classi con prefisso ph-desktop-.
- * Colori: SOLO le variabili di src/shell/ossatura/base.css (--ph-*): widget, menu e
- * dialoghi sono vetro chiaro (ph_shell_vetro_registra) e le variabili cambiano da sole.
+ * Colori: SOLO le variabili di src/shell/ossatura/base.css (--ph-*): i widget sono vetro
+ * scuro, menu e dialoghi vetro chiaro (ph_shell_vetro_registra) e le variabili cambiano da sole.
  * Misure: i valori del mockup citati in COMPITO.md. Eccezioni: ogni colore scritto a
  * mano sta su una riga con il commento `colore-dato: ...` che dice perche' (la prova
  * di logica fallisce se ne trova uno senza). Il fondo e il bordo del widget li da' la
@@ -43,11 +43,46 @@ button.ph-desktop-icona:hover { background-color: rgba(255, 255, 255, 0.14); } /
   background-color: rgba(255, 255, 255, 0.08); /* colore-dato: idem */
 }
 
-/* ---- Widget: vetro chiaro (fondo e bordo dalla classe di vetro), raggio 14, imbottitura 12 16 ---- */
+/* ---- Widget: vetro scuro (come la barra). Fondo, testo e variabili vengono dalla classe del
+ * vetro (ph-vetro-scuro, base.css): qui nessun colore che valga solo su un fondo chiaro. La forma
+ * (raggio e imbottitura) dipende dal tipo: mattonella 28, tondo e capsula con il raggio al
+ * massimo (il CSS lo riduce a meta' del lato corto; il vetro con la sfocatura ha il raggio esatto
+ * dato da widget.c). ---- */
 .ph-desktop-widget {
-  border-radius: 14px;
-  padding: 12px 16px;
   color: var(--ph-testo);
+}
+.ph-desktop-forma-mattonella { border-radius: 28px; padding: 16px 20px; }
+.ph-desktop-forma-tondo { border-radius: 9999px; padding: 12px; }
+.ph-desktop-forma-capsula { border-radius: 9999px; padding: 10px 24px; }
+/* Sopra uno sfondo scuro il widget si stacca per il bordo chiaro e per l'ombra. */
+.ph-shell .ph-desktop-widget.ph-vetro-scuro {
+  box-shadow: inset 0 0 0 1px var(--ph-bordo-forte),
+              inset 0 1px 0 var(--ph-vetro-scuro-luce),
+              0 8px 24px rgba(0, 0, 0, 0.35); /* colore-dato: ombra sopra lo sfondo del desktop */
+}
+/* La finestra che ritaglia il contenuto non disegna nulla di suo. */
+.ph-desktop-widget scrolledwindow,
+.ph-desktop-widget viewport {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+/* Maniglia di ridimensionamento: un angolo disegnato con due bordi, visibile al passaggio del
+ * mouse e col fuoco da tastiera. */
+.ph-desktop-maniglia {
+  min-width: 12px;
+  min-height: 12px;
+  border-right: 2px solid var(--ph-testo-2);
+  border-bottom: 2px solid var(--ph-testo-2);
+  border-radius: 0 0 4px 0;
+  margin: 2px;
+  opacity: 0;
+}
+.ph-desktop-widget:hover .ph-desktop-maniglia,
+.ph-desktop-maniglia:focus-visible { opacity: 1; }
+.ph-desktop-maniglia:focus-visible {
+  outline: 2px solid var(--ph-fuoco);
+  outline-offset: 2px;
 }
 .ph-desktop-widget:focus-visible {
   outline: 2px solid var(--ph-fuoco);
