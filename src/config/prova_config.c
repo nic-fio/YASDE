@@ -104,6 +104,7 @@ static bool uguali_telefono(const PhCfgTelefono *a, const PhCfgTelefono *b)
     for (size_t i = 0; i < a->n_widget; i++)
         if (a->widget[i].tipo != b->widget[i].tipo || a->widget[i].destra != b->widget[i].destra ||
             a->widget[i].alto != b->widget[i].alto || a->widget[i].dimensione != b->widget[i].dimensione ||
+            a->widget[i].larghezza != b->widget[i].larghezza || a->widget[i].altezza != b->widget[i].altezza ||
             a->widget[i].stile != b->widget[i].stile || a->widget[i].opzione != b->widget[i].opzione)
             return false;
     for (size_t i = 0; i < a->n_finestre; i++)
@@ -1505,6 +1506,58 @@ static void prova_stile_widget(void)
     ph_cfg_telefono_libera(r);
 }
 
+/* ---------- misure libere dei widget ---------- */
+
+static void prova_misure_widget(void)
+{
+    PhErrore e = {{0}};
+    PhCfgTelefono *t = ph_cfg_telefono_nuovo(), *r = ph_cfg_telefono_nuovo();
+    PhBuffer b = PH_BUFFER_VUOTO;
+    /* i predefiniti hanno 0/0 e non scrivono le chiavi */
+    for (size_t i = 0; i < t->n_widget; i++)
+        CONTROLLA(t->widget[i].larghezza == 0 && t->widget[i].altezza == 0);
+    CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0);
+    CONTROLLA(b.dati != NULL && strstr((const char *)b.dati, "larghezza") == NULL &&
+              strstr((const char *)b.dati, "altezza") == NULL);
+    ph_buffer_libera(&b);
+    /* andata e ritorno, estremi compresi; una sola misura presente */
+    t->n_widget = 3;
+    t->widget[0].larghezza = 48;
+    t->widget[0].altezza = 2048;
+    t->widget[1].larghezza = 300;
+    t->widget[2].altezza = 77;
+    CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0);
+    CONTROLLA(b.dati != NULL && strstr((const char *)b.dati, "larghezza = 300\n") != NULL &&
+              strstr((const char *)b.dati, "altezza = 77\n") != NULL && strstr((const char *)b.dati, "dimensione") != NULL);
+    CONTROLLA(leggi_tel((char *)b.dati, b.lunghezza, r, &e) == 0 && r->n_widget == 3);
+    CONTROLLA(r->widget[0].larghezza == 48 && r->widget[0].altezza == 2048);
+    CONTROLLA(r->widget[1].larghezza == 300 && r->widget[1].altezza == 0);
+    CONTROLLA(r->widget[2].larghezza == 0 && r->widget[2].altezza == 77);
+    ph_buffer_libera(&b);
+    /* file vecchio senza le chiavi: 0 */
+    const char *vecchio = "[[widget]]\ntipo = \"meteo\"\ndestra = 5\nalto = 6\ndimensione = \"grande\"\n";
+    CONTROLLA(leggi_tel(vecchio, strlen(vecchio), r, &e) == 0 && r->n_widget == 1 && r->widget[0].larghezza == 0 &&
+              r->widget[0].altezza == 0 && r->widget[0].dimensione == PH_CFG_WIDGET_GRANDE);
+    /* valori non validi: 0, il resto della voce e il caricamento restano; l'altra misura valida resta */
+    const char *male[] = {"larghezza = 47\naltezza = 100\n", "larghezza = 2049\naltezza = 100\n",
+                          "larghezza = -1\naltezza = 100\n", "larghezza = \"300\"\naltezza = 100\n",
+                          "larghezza = 300.5\naltezza = 100\n", "larghezza = 99999999999\naltezza = 100\n",
+                          "larghezza = 1\naltezza = 100\n"};
+    for (int i = 0; i < 7; i++) {
+        char testo[256];
+        int k = snprintf(testo, sizeof testo, "[[widget]]\ntipo = \"note\"\ndestra = 9\n%s", male[i]);
+        CONTROLLA(leggi_tel(testo, (size_t)k, r, &e) == 0 && r->n_widget == 1 && r->widget[0].destra == 9 &&
+                  r->widget[0].larghezza == 0 && r->widget[0].altezza == 100);
+    }
+    /* altezza non valida con larghezza valida (ramo speculare) */
+    const char *alt = "[[widget]]\ntipo = \"note\"\nlarghezza = 200\naltezza = 3000\n";
+    CONTROLLA(leggi_tel(alt, strlen(alt), r, &e) == 0 && r->widget[0].larghezza == 200 && r->widget[0].altezza == 0);
+    const char *zero = "[[widget]]\ntipo = \"note\"\nlarghezza = 0\naltezza = 0\n";
+    CONTROLLA(leggi_tel(zero, strlen(zero), r, &e) == 0 && r->widget[0].larghezza == 0 && r->widget[0].altezza == 0);
+    ph_cfg_telefono_libera(t);
+    ph_cfg_telefono_libera(r);
+}
+
 /* ---------- widget nuovi e conteggio delle aperture ---------- */
 
 static void prova_aperture(void)
@@ -1884,6 +1937,7 @@ int main(void)
     prova_pulisci_sfondi();
     prova_fissate();
     prova_stile_widget();
+    prova_misure_widget();
     prova_aperture();
     prova_compatibilita();
     prova_meteo_luogo();

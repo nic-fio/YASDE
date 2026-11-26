@@ -37,6 +37,15 @@ static int leggi_intero(const PhTomlTabella *t, const char *k, int64_t min, int6
     return 1;
 }
 
+/* Misura libera di un widget: 0 oppure 48-2048. Qualunque altro valore (o un tipo
+ * sbagliato) lascia 0, "non salvata", senza far fallire il caricamento. */
+static void leggi_misura(const PhTomlTabella *t, const char *k, int *dst)
+{
+    int x = 0;
+    if (leggi_intero(t, k, 0, 2048, &x) && (x == 0 || x >= 48))
+        *dst = x;
+}
+
 static void leggi_decimale(const PhTomlTabella *t, const char *k, double min, double max, double *dst)
 {
     const PhTomlVoce *v = ph_toml_voce(t, k, PH_TOML_DECIMALE);
@@ -599,6 +608,8 @@ int ph_cfg_telefono_da_testo(const char *testo, size_t lunghezza, PhCfgTelefono 
             leggi_intero(r, "alto", 0, 16384, &w.alto);
             if (leggi_scelta(r, "dimensione", NOMI_DIM, N(NOMI_DIM), &x))
                 w.dimensione = (PhCfgWidgetDim)x;
+            leggi_misura(r, "larghezza", &w.larghezza);
+            leggi_misura(r, "altezza", &w.altezza);
             leggi_intero(r, "stile", 0, 15, &w.stile);
             leggi_intero(r, "opzione", 0, 255, &w.opzione);
             t->widget[t->n_widget++] = w;
@@ -697,6 +708,11 @@ int ph_cfg_telefono_in_testo(const PhCfgTelefono *t, PhBuffer *out)
         SCRIVI(ph_toml_scrivi_intero(out, "destra", t->widget[i].destra));
         SCRIVI(ph_toml_scrivi_intero(out, "alto", t->widget[i].alto));
         SCRIVI(ph_toml_scrivi_stringa(out, "dimensione", nome_di(NOMI_DIM, N(NOMI_DIM), (int)t->widget[i].dimensione)));
+        /* misure libere: solo se salvate (0 = vale `dimensione`) */
+        if (t->widget[i].larghezza != 0)
+            SCRIVI(ph_toml_scrivi_intero(out, "larghezza", t->widget[i].larghezza));
+        if (t->widget[i].altezza != 0)
+            SCRIVI(ph_toml_scrivi_intero(out, "altezza", t->widget[i].altezza));
         SCRIVI(ph_toml_scrivi_intero(out, "stile", t->widget[i].stile));
         SCRIVI(ph_toml_scrivi_intero(out, "opzione", t->widget[i].opzione));
     }

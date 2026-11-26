@@ -37,6 +37,8 @@
  *   destra = 16                 # px dal bordo destro
  *   alto = 16                   # px dall'alto
  *   dimensione = "medio"        # piccolo | medio | grande
+ *   larghezza = 0               # px; 0 = non salvata: vale `dimensione`
+ *   altezza = 0                 # px; come sopra
  *   stile = 0                   # 0-15, variante grafica
  *   opzione = 0                 # 0-255, dipende dallo stile
  *
@@ -344,6 +346,12 @@ typedef struct {
     PhCfgWidgetTipo tipo; /* obbligatorio; un tipo sconosciuto scarta la voce */
     int destra, alto;     /* px dal bordo destro e dall'alto, 0-16384; predefinito 16 */
     PhCfgWidgetDim dimensione; /* predefinito MEDIO */
+    int larghezza, altezza; /* misura libera in px; chiavi "larghezza" e "altezza".
+                               0 = non salvata (profili scritti prima delle misure
+                               libere): chi disegna usa `dimensione`. Valori ammessi
+                               0 oppure 48-2048; uno non intero o fuori intervallo torna
+                               a 0 senza far fallire il caricamento. Si scrivono solo se
+                               diversi da 0; `dimensione` si continua a scrivere. */
     int stile;   /* variante grafica del widget, 0-15, predefinito 0; chiave "stile" */
     int opzione; /* valore che dipende dallo stile (es. la citta' del doppio fuso),
                     0-255, predefinito 0; chiave "opzione". Come per gli altri campi,

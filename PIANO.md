@@ -250,3 +250,11 @@ Widget più belli e più utili: vetro scuro, forme diverse dal rettangolo, grafi
 ### Stato
 - Server: a disposizione del committente ma da ripreparare. Verificato il 26 nov: `/media` c'è ed è scrivibile, `/media/YASDE` non esiste, **manca `podman`** e l'installazione chiede la password di amministratore: la fa il committente, poi `strumenti/prepara-server.sh`.
 - Aperto: nome della versione che esce con questi widget (oggi l'unica è la 2.1).
+
+### 8.1 Fondamenta: decisioni tecniche (sessione principale)
+- **Profilo** (`src/config/config.h`, contratto già scritto): `PhCfgWidget` ha `larghezza` e `altezza`; 0 = non salvate, vale `dimensione`. `dimensione` resta e si continua a scrivere.
+- **Vetro:** i widget si registrano `PH_VETRO_SCURO`; menu e dialoghi del desktop restano chiari. I colori del testo vengono dalla classe del vetro: nel CSS dei widget nessun colore fisso che valga solo sul chiaro.
+- **Forma** (funzione pura in `logica.c`, con prova): per tipo e stile → mattonella (raggio 28), tondo (lato uguale, raggio = lato/2), capsula (raggio = altezza/2). Tondo: orologio negli stili analogici e batteria. Capsula: sveglia e interruttori. Mattonella: tutti gli altri. Il raggio del vetro segue la misura (se serve: `ph_shell_vetro_togli` e nuova registrazione).
+- **Misure libere:** maniglia nell'angolo in basso a destra (come nella pagina vista dal committente), visibile al passaggio del mouse e col fuoco da tastiera (frecce: 8 px); scatti di `PH_DSK_PASSO`. L'angolo in alto a sinistra resta fermo: allargando, `destra` nel profilo diminuisce di conseguenza. Minimo e massimo per tipo (funzione pura, con prova); il widget non esce dall'area. La voce «Size» del menu si toglie.
+- **Contenuto:** in questa fase il contenuto resta quello di oggi; il livello (piccolo / medio / grande) si ricava dalla misura con una funzione pura per tipo, così i disegni esistenti continuano a funzionare. Un profilo senza misure parte dalle misure equivalenti alla sua `dimensione`.
+- **Manuali:** capitolo dei widget e capitolo tecnico si aggiornano a fine passo 2 (una volta sola), prima di ogni consegna.
