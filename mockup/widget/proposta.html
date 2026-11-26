@@ -1,0 +1,752 @@
+<title>Proposta widget YASDE</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Impianto: una colonna di schede numerate; ogni scheda ha un "palco" con lo sfondo
+   del desktop dove stanno affiancati il widget di oggi e quello proposto. */
+:root {
+  --fondo: #EEF2F4;
+  --carta: #FFFFFF;
+  --testo: #10202E;
+  --testo-2: #45596B;
+  --filo: #D3DCE2;
+  --accento: #1F7A8C;
+  --su-accento: #FFFFFF;
+  --avviso: #9A5B0B;
+  --avviso-fondo: #FBEFD9;
+  /* Il palco imita il desktop di YASDE: stessi valori in tutti e due i temi, per scelta. */
+  --v-testo: #10202E;
+  --v-testo-2: #2F4558;
+  --v-velo: rgba(255, 255, 255, 0.58);
+  --v-bordo: rgba(255, 255, 255, 0.7);
+  --v-luce: rgba(255, 255, 255, 0.8);
+  --v-ombra: rgba(8, 24, 40, 0.6);
+  --v-solco: rgba(16, 32, 46, 0.12);
+  --v-riga: rgba(255, 255, 255, 0.5);
+  --v-accento: #1F7A8C;
+  --c-verde: #23895B;
+  --c-ambra: #D9861F;
+  --c-corallo: #E8604C;
+  --c-indaco: #4A63C9;
+  --c-viola: #7A5CC2;
+  --c-ardesia: #7C8FA1;
+  --c-bianco: #FFFFFF;
+  --palco-1: #0E3B4A;
+  --palco-2: #1F7A8C;
+  --palco-3: #E7B77A;
+  --palco-4: #5B4B8A;
+  --etichetta: rgba(8, 24, 40, 0.55);
+  --f-testo: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-titoli: "Space Grotesk", "Inter", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fondo: #0F1921; --carta: #17242E; --testo: #E6EDF2; --testo-2: #A9BAC7; --filo: #2A3B48;
+    --accento: #5CC2D4; --su-accento: #082028; --avviso: #F1C078; --avviso-fondo: #3A2C12;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --fondo: #0F1921; --carta: #17242E; --testo: #E6EDF2; --testo-2: #A9BAC7; --filo: #2A3B48;
+  --accento: #5CC2D4; --su-accento: #082028; --avviso: #F1C078; --avviso-fondo: #3A2C12;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--fondo); color: var(--testo);
+  font: 15px/1.55 var(--f-testo);
+  padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.pagina { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-titoli); margin: 0; text-wrap: balance; }
+h1 { font-size: 30px; line-height: 1.15; font-weight: 600; }
+h2 { font-size: 20px; font-weight: 600; margin-top: 12px; }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.intro { display: flex; flex-direction: column; gap: 10px; }
+.intro p { color: var(--testo-2); }
+.voce { display: flex; flex-direction: column; gap: 10px; }
+.voce > p { color: var(--testo-2); }
+.testa { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.sigla {
+  font: 600 12px/1 var(--f-titoli); letter-spacing: .04em;
+  background: var(--accento); color: var(--su-accento);
+  padding: 5px 8px; border-radius: 6px;
+}
+.verifica {
+  font-size: 12px; font-weight: 600; color: var(--avviso); background: var(--avviso-fondo);
+  padding: 3px 8px; border-radius: 6px;
+}
+
+/* ---- Palco: lo sfondo del desktop ---- */
+.palco {
+  border-radius: 16px; padding: 22px; color: var(--v-testo);
+  background:
+    radial-gradient(60% 70% at 85% 15%, var(--palco-3) 0%, transparent 60%),
+    radial-gradient(55% 80% at 10% 90%, var(--palco-4) 0%, transparent 65%),
+    radial-gradient(40% 50% at 45% 40%, var(--palco-2) 0%, transparent 70%),
+    var(--palco-1);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px;
+  align-items: start;
+}
+.lato { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; min-width: 0; }
+.lato > .w { max-width: 100%; }
+.cartello {
+  font: 600 11px/1 var(--f-testo); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--c-bianco); background: var(--etichetta); padding: 5px 8px; border-radius: 5px;
+}
+.azione { font-size: 13px; color: var(--testo-2); min-height: 1.55em; }
+.azione b { color: var(--testo); font-weight: 600; }
+
+/* ---- Vetro del widget ---- */
+.w {
+  background: var(--v-velo);
+  -webkit-backdrop-filter: blur(26px) saturate(1.6); backdrop-filter: blur(26px) saturate(1.6);
+  border: 1px solid var(--v-bordo); border-radius: 14px;
+  box-shadow: 0 30px 60px -20px var(--v-ombra), inset 0 1px 0 var(--v-luce);
+  padding: 12px 16px; color: var(--v-testo); font: 13px/1.35 var(--f-testo);
+  box-sizing: border-box;
+}
+.w.p { border-radius: 18px; padding: 16px; }
+.l250 { width: 250px; } .l320 { width: 320px; } .l200 { width: 200px; }
+
+/* Widget di oggi: titolo, testa, righe, barra */
+.o-titolo { font-size: 12px; color: var(--v-testo-2); margin-bottom: 6px; }
+.o-testa { font-size: 18px; font-weight: 600; }
+.o-testa.g { font-size: 34px; line-height: 1.1; }
+.o-sotto { font-size: 12px; color: var(--v-testo-2); margin-top: 6px; }
+.o-barra { height: 6px; border-radius: 3px; background: var(--v-solco); margin-top: 8px; overflow: hidden; }
+.o-barra i { display: block; height: 100%; background: var(--v-accento); border-radius: 3px; }
+.o-riga { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 12px; }
+.o-riga span:last-child { color: var(--v-testo-2); text-align: right; }
+.o-puls { display: flex; flex-direction: column; gap: 6px; }
+.o-puls span { background: var(--v-riga); border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; }
+
+/* Pezzi comuni delle proposte */
+.p-eti { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--v-testo-2); }
+.num { font-family: var(--f-titoli); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.tocca { cursor: pointer; border-radius: 10px; transition: background .15s, transform .15s; }
+.tocca:hover { background: var(--v-riga); }
+.tocca:active { transform: scale(.98); }
+.tocca:focus-visible, .w button:focus-visible, .maniglia:focus-visible { outline: 2px solid var(--v-testo); outline-offset: 2px; }
+.w button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+.ico { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* A1 batteria */
+.bat { display: flex; gap: 16px; align-items: center; }
+.anello { position: relative; width: 96px; height: 96px; flex: none; }
+.anello svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.anello circle { fill: none; stroke-width: 9; }
+.anello .solco { stroke: var(--v-solco); }
+.anello .pieno { stroke: var(--c-verde); stroke-linecap: round; }
+.anello div { position: absolute; inset: 0; display: grid; place-items: center; font-size: 26px; }
+.bat-dx { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bat-stato { font-weight: 600; color: var(--c-verde); display: flex; align-items: center; gap: 4px; }
+.gettoni { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.gettoni span { background: var(--v-riga); border-radius: 8px; padding: 5px 9px; font-size: 12px; }
+.gettoni b { font-weight: 600; }
+
+/* A2 memoria */
+.mem-testa { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 12px; }
+.mem-testa .num { font-size: 34px; line-height: 1; }
+.fette { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--v-solco); gap: 2px; }
+.fette i { display: block; height: 100%; }
+.legenda { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-top: 12px; font-size: 12px; }
+.legenda div { display: flex; align-items: center; gap: 6px; }
+.legenda i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.legenda b { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* A3 meteo */
+.wx-testa { display: flex; align-items: center; gap: 12px; }
+.wx-testa .num { font-size: 44px; line-height: 1; }
+.wx-sole { width: 44px; height: 44px; flex: none; }
+.wx-luogo { margin-left: auto; text-align: right; font-size: 12px; color: var(--v-testo-2); }
+.wx-luogo b { display: block; color: var(--v-testo); font-size: 13px; }
+.curva { margin-top: 12px; }
+.curva svg { display: block; width: 100%; height: 56px; }
+.curva .ore, .curva .gradi { display: flex; justify-content: space-between; font-size: 11px; color: var(--v-testo-2); font-variant-numeric: tabular-nums; }
+.curva .gradi { color: var(--v-testo); font-weight: 600; margin-bottom: 2px; }
+.giorni { margin-top: 12px; display: flex; flex-direction: column; gap: 2px; }
+.giorno { display: grid; grid-template-columns: 34px 1fr 62px; gap: 10px; align-items: center; padding: 4px 6px; font-size: 12px; }
+.giorno .tratto { height: 6px; border-radius: 3px; background: var(--v-solco); position: relative; }
+.giorno .tratto i { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, var(--v-accento), var(--c-ambra)); }
+.giorno span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.fonte { font-size: 10px; color: var(--v-testo-2); margin-top: 10px; }
+
+/* A4 notifiche, B3 chiamate */
+.elenco { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.nota { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; padding: 7px 6px; text-align: left; width: 100%; }
+.nota .tondo { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: var(--c-bianco); font-weight: 700; font-size: 13px; }
+.nota .t { min-width: 0; }
+.nota .t b { display: block; font-weight: 600; }
+.nota .t span { display: block; font-size: 12px; color: var(--v-testo-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nota time { font-size: 11px; color: var(--v-testo-2); font-variant-numeric: tabular-nums; }
+
+/* A5 calendario */
+.cal { display: grid; grid-template-columns: auto 1fr; gap: 14px; }
+.cal-oggi { text-align: center; }
+.cal-oggi .p-eti { color: var(--c-corallo); }
+.cal-oggi .num { font-size: 40px; line-height: 1; display: block; margin-top: 2px; }
+.cal-oggi small { font-size: 11px; color: var(--v-testo-2); }
+.impegni { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.impegno { display: grid; grid-template-columns: 4px 1fr; gap: 9px; padding: 5px 6px; text-align: left; width: 100%; }
+.impegno i { border-radius: 2px; }
+.impegno b { display: block; font-weight: 600; }
+.impegno span { font-size: 12px; color: var(--v-testo-2); font-variant-numeric: tabular-nums; }
+.impegno.ora b::after { content: "now"; margin-left: 6px; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-corallo); }
+
+/* A6 sveglia */
+.sve { display: flex; align-items: center; gap: 14px; padding: 2px; width: 100%; text-align: left; }
+.sve .tondo { width: 46px; height: 46px; border-radius: 50%; background: var(--c-ambra); color: var(--c-bianco); display: grid; place-items: center; flex: none; }
+.sve .num { font-size: 28px; line-height: 1.05; display: block; }
+.sve small { font-size: 12px; color: var(--v-testo-2); }
+
+/* A7 interruttori */
+.inter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.w .inter button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 2px; border-radius: 12px; font-size: 11px; text-align: center; }
+.inter .pall { width: 44px; height: 44px; border-radius: 50%; background: var(--v-riga); display: grid; place-items: center; transition: background .2s, color .2s; }
+.inter button[aria-pressed="true"] .pall { background: var(--v-accento); color: var(--c-bianco); }
+.inter button:hover .pall { box-shadow: 0 0 0 4px var(--v-riga); }
+.inter b { font-weight: 600; display: block; }
+.inter small { color: var(--v-testo-2); font-size: 11px; }
+
+/* B1 musica */
+.mus { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center; }
+.cop { width: 64px; height: 64px; border-radius: 12px; background: linear-gradient(135deg, var(--c-viola), var(--c-corallo) 60%, var(--c-ambra)); }
+.mus b { display: block; font-weight: 600; font-size: 14px; }
+.mus span { font-size: 12px; color: var(--v-testo-2); }
+.avanz { margin-top: 12px; }
+.avanz .o-barra { margin: 0; height: 4px; }
+.avanz .o-barra i { background: var(--c-viola); }
+.avanz div:last-child { display: flex; justify-content: space-between; font-size: 11px; color: var(--v-testo-2); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.comandi { display: flex; justify-content: center; gap: 14px; margin-top: 6px; align-items: center; }
+.w .comandi button { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; }
+.w .comandi button:hover { background: var(--v-riga); }
+.w .comandi .gioca { width: 44px; height: 44px; background: var(--c-viola); color: var(--c-bianco); }
+.w .comandi .gioca:hover { background: var(--c-viola); filter: brightness(1.1); }
+.comandi .ico { fill: currentColor; stroke: none; }
+
+/* B2 note */
+.w textarea {
+  display: block; width: 100%; box-sizing: border-box; margin-top: 8px; min-height: 92px; resize: none;
+  border: 0; border-radius: 10px; background: var(--v-riga); color: var(--v-testo);
+  font: 13px/1.45 var(--f-testo); padding: 9px 10px;
+}
+.w textarea:focus-visible { outline: 2px solid var(--v-accento); }
+
+/* B4 rete */
+.rete { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.rete > div { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; }
+.rete b { display: block; font-weight: 600; }
+.rete span { font-size: 12px; color: var(--v-testo-2); }
+.tacche { display: flex; gap: 2px; align-items: flex-end; height: 16px; }
+.tacche i { width: 4px; border-radius: 1px; background: var(--v-accento); }
+.tacche i.no { background: var(--v-solco); }
+
+/* C1 misura libera */
+.banco { display: block; }
+.banco .lato { align-items: stretch; }
+.telaio { position: relative; width: min(264px, 100%); height: 200px; }
+.telaio .w { width: 100%; height: 100%; container-type: size; overflow: hidden; padding: 14px; }
+.maniglia {
+  position: absolute; right: -8px; bottom: -8px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--c-bianco); color: var(--v-testo); border: 0; cursor: nwse-resize; touch-action: none;
+  display: grid; place-items: center; box-shadow: 0 4px 12px var(--v-ombra);
+}
+.misura { font-size: 12px; color: var(--c-bianco); font-variant-numeric: tabular-nums; }
+.el .wx-luogo, .el .curva, .el .giorni { display: none; }
+.el .wx-testa .num { font-size: 36px; }
+@container (min-width: 216px) { .el .wx-luogo { display: block; } }
+@container (min-height: 176px) { .el .curva { display: block; } }
+@container (min-height: 280px) and (min-width: 240px) { .el .giorni { display: flex; } }
+@container (min-width: 300px) { .el .wx-testa .num { font-size: 48px; } }
+
+/* D forme */
+.fila { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+.w.tondo { border-radius: 50%; width: 152px; height: 152px; padding: 0; display: grid; place-items: center; }
+.w.tondo .anello { width: 132px; height: 132px; }
+.w.tondo .anello circle { stroke-width: 7; }
+.w.tondo .anello div { font-size: 30px; align-content: center; gap: 0; }
+.w.tondo .anello small { font: 600 10px/1 var(--f-testo); letter-spacing: .07em; text-transform: uppercase; color: var(--c-verde); }
+.quadrante { width: 132px; height: 132px; }
+.w.capsula { border-radius: 999px; padding: 8px 20px 8px 8px; display: flex; align-items: center; gap: 12px; max-width: 100%; }
+.capsula .tondo { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--c-bianco); flex: none; }
+.capsula .num { font-size: 22px; line-height: 1.1; display: block; }
+.capsula small { font-size: 12px; color: var(--v-testo-2); display: block; }
+.capsula b { display: block; font-weight: 600; }
+.w.capsula.tasti { padding: 8px; gap: 8px; }
+.w .tasti button { width: 44px; height: 44px; border-radius: 50%; background: var(--v-riga); display: grid; place-items: center; transition: background .2s, color .2s; }
+.w .tasti button[aria-pressed="true"] { background: var(--v-accento); color: var(--c-bianco); }
+.nudo { color: var(--c-bianco); text-shadow: 0 2px 14px var(--v-ombra); }
+.nudo .num { font-size: 68px; line-height: 1; display: block; }
+.nudo span { font-size: 15px; font-weight: 500; }
+.nudo.mt { display: flex; align-items: center; gap: 12px; }
+.nudo.mt .num { font-size: 48px; }
+.mosaico { display: grid; grid-template-columns: repeat(2, 116px); grid-auto-rows: 116px; gap: 12px; }
+.mosaico .w { border-radius: 28px; padding: 14px; display: flex; flex-direction: column; justify-content: center; }
+.mosaico .larga { grid-column: span 2; }
+.mosaico .anello { width: 80px; height: 80px; margin: auto; }
+.mosaico .anello div { font-size: 20px; }
+.mosaico .centro { align-items: center; text-align: center; gap: 4px; }
+.mosaico .centro .num { font-size: 24px; }
+.mosaico .centro small { font-size: 11px; color: var(--v-testo-2); }
+
+/* E trasparenza: ogni variante ridefinisce i colori del vetro per i widget che contiene */
+.campione { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.campione .matt { border-radius: 28px; padding: 14px 16px; width: 232px; max-width: 100%; }
+.campione .sv { background: var(--c-ambra); }
+.testo-chiaro, .limpido, .scuro, .colorato {
+  --v-testo: #FFFFFF; --v-testo-2: rgba(255, 255, 255, 0.8); --v-solco: rgba(255, 255, 255, 0.24);
+  --v-riga: rgba(255, 255, 255, 0.16); --c-verde: #8CEBB9;
+}
+.limpido { --v-velo: rgba(255, 255, 255, 0.14); --v-bordo: rgba(255, 255, 255, 0.55); --v-luce: rgba(255, 255, 255, 0.5); }
+.scuro { --v-velo: rgba(8, 24, 40, 0.42); --v-bordo: rgba(255, 255, 255, 0.16); --v-luce: rgba(255, 255, 255, 0.1); }
+.colorato { --v-bordo: rgba(255, 255, 255, 0.4); --v-luce: rgba(255, 255, 255, 0.35); --c-verde: #FFFFFF; }
+.colorato .tondo { --v-velo: rgba(35, 137, 91, 0.46); }
+.colorato .capsula { --v-velo: rgba(217, 134, 31, 0.5); }
+.colorato .matt { --v-velo: rgba(31, 122, 140, 0.48); }
+.colorato .sv { background: rgba(255, 255, 255, 0.26); }
+.regolo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--c-bianco); font-size: 13px; font-weight: 600; }
+.regolo input { flex: 1 1 180px; max-width: 320px; accent-color: var(--c-bianco); }
+.regolo output { font-variant-numeric: tabular-nums; min-width: 3.5em; }
+
+.chiusa { border-top: 1px solid var(--filo); padding-top: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--testo-2); }
+.chiusa b { color: var(--testo); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-campana" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-luna" viewBox="0 0 24 24"><path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/></symbol>
+  <symbol id="i-torcia" viewBox="0 0 24 24"><path d="M8 3h8v4l-2 3v10h-4V10L8 7zM8 7h8"/></symbol>
+  <symbol id="i-sveglia" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 9.5V13l2.5 1.5M5 4 3 6M19 4l2 2"/></symbol>
+  <symbol id="i-fulmine" viewBox="0 0 24 24"><path d="M13 3 6 13h5l-1 8 7-10h-5z"/></symbol>
+  <symbol id="i-indietro" viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></symbol>
+  <symbol id="i-avanti" viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-pausa" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M3 9a13 13 0 0 1 18 0M6 12.5a9 9 0 0 1 12 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r=".8"/></symbol>
+  <symbol id="i-antenna" viewBox="0 0 24 24"><path d="M12 21V11M8 14a5 5 0 0 1 0-7M16 14a5 5 0 0 0 0-7M5 17a9 9 0 0 1 0-13M19 17a9 9 0 0 0 0-13"/></symbol>
+  <symbol id="i-angolo" viewBox="0 0 24 24"><path d="M9 19 19 9M14 19l5-5"/></symbol>
+  <symbol id="i-sole" viewBox="0 0 48 48"><circle cx="24" cy="24" r="9" fill="#D9861F" stroke="none"/><path stroke="#D9861F" stroke-width="3" d="M24 5v6M24 37v6M5 24h6M37 24h6M10.5 10.5l4.3 4.3M33.2 33.2l4.3 4.3M10.5 37.5l4.3-4.3M33.2 14.8l4.3-4.3"/></symbol>
+</svg>
+
+<div class="pagina">
+
+<header class="intro">
+  <h1>Widget di YASDE: oggi e proposta</h1>
+  <p>Ogni scheda mette a sinistra il widget com'è oggi e a destra come potrebbe diventare. I widget proposti si possono provare: passa il mouse, fai clic, e sotto compare che cosa succederebbe nell'app.</p>
+  <p>I widget di oggi sono ricostruiti dalle regole di stile dell'app, non sono fotografie dello schermo. Lo sfondo è indicativo. Dati e nomi sono inventati.</p>
+</header>
+
+<h2>Widget esistenti, rifatti</h2>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">A1</span><h3>Batteria</h3></div>
+  <p>Il livello diventa un anello che si legge da lontano; temperatura, salute e tensione diventano gettoni invece di righe.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Oggi</span>
+      <div class="w l250"><div class="o-titolo">Battery details</div><div class="o-testa g">78%</div><div class="o-sotto">Charging</div>
+        <div class="o-riga"><span>Temperature</span><span>31 °C</span></div><div class="o-riga"><span>Health</span><span>Good</span></div><div class="o-riga"><span>Voltage</span><span>4.21 V</span></div></div>
+    </div>
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l250 tocca" tabindex="0" role="button" data-az="apre le impostazioni della batteria del telefono in una finestra">
+        <div class="bat"><div class="anello"><svg viewBox="0 0 100 100"><circle class="solco" cx="50" cy="50" r="40"/><circle class="pieno" cx="50" cy="50" r="40" stroke-dasharray="196 251.3"/></svg><div class="num">78%</div></div>
+          <div class="bat-dx"><span class="p-eti">Battery</span><span class="bat-stato"><svg class="ico"><use href="#i-fulmine"/></svg>Charging</span></div></div>
+        <div class="gettoni"><span><b>31 °C</b></span><span>Health <b>Good</b></span><span><b>4.21 V</b></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">A2</span><h3>Memoria del telefono</h3></div>
+  <p>Una sola barra divisa per tipo di contenuto, con i colori ripresi nella legenda. In primo piano lo spazio libero, che è il numero che serve.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Oggi</span>
+      <div class="w l320"><div class="o-titolo">Phone storage</div><div class="o-testa">86 GB</div><div class="o-sotto">of 128 GB</div><div class="o-barra"><i style="width:67%"></i></div>
+        <div class="o-riga"><span>Images</span><span>21 GB</span></div><div class="o-riga"><span>Videos</span><span>34 GB</span></div><div class="o-riga"><span>Audio</span><span>3 GB</span></div><div class="o-riga"><span>Apps</span><span>18 GB</span></div></div>
+    </div>
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l320 tocca" tabindex="0" role="button" data-az="apre le impostazioni della memoria del telefono in una finestra">
+        <span class="p-eti">Storage</span>
+        <div class="mem-testa"><span class="num">42 GB</span><span>free of 128 GB</span></div>
+        <div class="fette"><i style="width:16.4%;background:var(--v-accento)"></i><i style="width:26.6%;background:var(--c-indaco)"></i><i style="width:2.3%;background:var(--c-ambra)"></i><i style="width:14.1%;background:var(--c-corallo)"></i><i style="width:7.8%;background:var(--c-ardesia)"></i></div>
+        <div class="legenda">
+          <div><i style="background:var(--v-accento)"></i>Images<b>21 GB</b></div><div><i style="background:var(--c-indaco)"></i>Videos<b>34 GB</b></div>
+          <div><i style="background:var(--c-ambra)"></i>Audio<b>3 GB</b></div><div><i style="background:var(--c-corallo)"></i>Apps<b>18 GB</b></div>
+          <div><i style="background:var(--c-ardesia)"></i>Other<b>10 GB</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">A3</span><h3>Meteo</h3></div>
+  <p>Oggi ogni stile mostra una cosa sola. La proposta le unisce nella misura grande: adesso, la curva delle prossime ore e i giorni con la fascia tra minima e massima.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Oggi</span>
+      <div class="w l250"><div class="o-titolo">Weather · Rome</div><div style="display:flex;align-items:center;gap:10px"><svg class="wx-sole" style="width:32px;height:32px"><use href="#i-sole"/></svg><div class="o-testa g">21°</div></div><div class="o-sotto">Clear sky</div><div class="o-riga"><span>High 22°</span><span>Low 12°</span></div><div class="fonte">Weather data by Open-Meteo.com</div></div>
+    </div>
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l320">
+        <div class="wx-testa"><svg class="wx-sole"><use href="#i-sole"/></svg><span class="num">21°</span><div class="wx-luogo"><b>Rome</b>Clear sky · 22° / 12°</div></div>
+        <div class="curva" data-t="21,21,20,18,16,15,14" data-ore="16,18,20,22,00,02,04"></div>
+        <div class="giorni">
+          <button class="giorno tocca" data-az="mostra la curva delle ore di domani"><span>Fri</span><span class="tratto"><i style="left:25%;right:12%"></i></span><span>12° / 22°</span></button>
+          <button class="giorno tocca" data-az="mostra la curva delle ore di sabato"><span>Sat</span><span class="tratto"><i style="left:19%;right:25%"></i></span><span>11° / 20°</span></button>
+          <button class="giorno tocca" data-az="mostra la curva delle ore di domenica"><span>Sun</span><span class="tratto"><i style="left:31%;right:0"></i></span><span>13° / 24°</span></button>
+        </div>
+        <div class="fonte">Weather data by Open-Meteo.com</div>
+      </div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">A4</span><h3>Notifiche recenti</h3></div>
+  <p>Ogni notifica ha l'icona della sua app e l'ora. Un clic apre l'app nella sua finestra, come fa già il pannello delle notifiche.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Oggi</span>
+      <div class="w l250"><div class="o-titolo">Recent notifications</div><div class="o-riga"><span>Messages</span><span>See you at 8?</span></div><div class="o-riga"><span>Mail</span><span>Invoice for October</span></div><div class="o-riga"><span>Calendar</span><span>Dentist at 17:30</span></div></div>
+    </div>
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l320"><span class="p-eti">Notifications</span>
+        <div class="elenco">
+          <button class="nota tocca" data-az="apre Messages nella sua finestra, sulla conversazione"><span class="tondo" style="background:var(--c-verde)">M</span><span class="t"><b>Alex</b><span>See you at 8?</span></span><time>15:52</time></button>
+          <button class="nota tocca" data-az="apre Mail nella sua finestra"><span class="tondo" style="background:var(--c-indaco)">@</span><span class="t"><b>Invoice for October</b><span>Your invoice is ready to download</span></span><time>15:20</time></button>
+          <button class="nota tocca" data-az="apre Calendar nella sua finestra"><span class="tondo" style="background:var(--c-corallo)">23</span><span class="t"><b>Dentist</b><span>Today at 17:30</span></span><time>14:30</time></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">A5</span><h3>Calendario del giorno</h3></div>
+  <p>Il giorno in grande, gli impegni con il colore del loro calendario e un segno su quello in corso. Un clic su un impegno lo apre nell'app Calendario del telefono.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Oggi</span>
+      <div class="w l250"><div class="o-titolo">Calendar</div><div class="o-riga"><span>Project review</span><span>15:30</span></div><div class="o-riga"><span>Dentist</span><span>17:30</span></div><div class="o-riga"><span>Dinner</span><span>20:00</span></div></div>
+    </div>
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l320"><div class="cal">
+        <div class="cal-oggi"><span class="p-eti">Thu</span><span class="num">26</span><small>November</small></div>
+        <div class="impegni">
+          <button class="impegno tocca ora" data-az="apre l'impegno nell'app Calendario del telefono"><i style="background:var(--c-indaco)"></i><span><b>Project review</b><span>15:30 – 16:30</span></span></button>
+          <button class="impegno tocca" data-az="apre l'impegno nell'app Calendario del telefono"><i style="background:var(--c-corallo)"></i><span><b>Dentist</b><span>17:30 – 18:15</span></span></button>
+          <button class="impegno tocca" data-az="apre l'impegno nell'app Calendario del telefono"><i style="background:var(--c-verde)"></i><span><b>Dinner</b><span>20:00</span></span></button>
+        </div>
+      </div></div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">A6</span><h3>Prossima sveglia</h3></div>
+  <p>Oltre al giorno e all'ora, quanto manca. Un clic apre l'app Orologio del telefono per cambiarla.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Oggi</span>
+      <div class="w l200"><div class="o-titolo">Next alarm</div><div class="o-testa">Fri 07:00</div></div>
+    </div>
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l250"><button class="sve tocca" data-az="apre l'app Orologio del telefono sulle sveglie"><span class="tondo"><svg class="ico" style="width:24px;height:24px"><use href="#i-sveglia"/></svg></span><span><span class="p-eti">Next alarm</span><span class="num">07:00</span><small>Friday · in 15 h 0 min</small></span></button></div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">A7</span><h3>Interruttori rapidi</h3></div>
+  <p>Tre tasti rotondi che si colorano quando sono accesi, con lo stato scritto sotto. Qui funzionano davvero: provali.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Oggi</span>
+      <div class="w l250"><div class="o-titolo">Quick switches</div><div class="o-puls"><span>Ringer: Rings</span><span>Do not disturb: Off</span><span>Flashlight: Off</span></div></div>
+    </div>
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l250"><span class="p-eti">Quick switches</span>
+        <div class="inter">
+          <button id="suoneria" aria-pressed="true"><span class="pall"><svg class="ico"><use href="#i-campana"/></svg></span><span><b>Ringer</b><small>Rings</small></span></button>
+          <button class="scatto" aria-pressed="false" data-nome="Non disturbare"><span class="pall"><svg class="ico"><use href="#i-luna"/></svg></span><span><b>Do not disturb</b><small>Off</small></span></button>
+          <button class="scatto" aria-pressed="false" data-nome="Torcia"><span class="pall"><svg class="ico"><use href="#i-torcia"/></svg></span><span><b>Flashlight</b><small>Off</small></span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<h2>Widget nuovi</h2>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">B1</span><h3>In riproduzione</h3><span class="verifica">da verificare sul telefono</span></div>
+  <p>Copertina, titolo, avanzamento e comandi. Prima di prometterlo va provato che il telefono dia brano e copertina, e accetti i comandi, senza root.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l320"><div class="mus"><div class="cop"></div><div><span class="p-eti">Now playing</span><b>Sample Song</b><span>Sample Artist</span></div></div>
+        <div class="avanz"><div class="o-barra"><i style="width:38%"></i></div><div><span>1:24</span><span>3:41</span></div></div>
+        <div class="comandi">
+          <button aria-label="Previous" data-az="brano precedente sul telefono"><svg class="ico"><use href="#i-indietro"/></svg></button>
+          <button class="gioca" id="gioca" aria-label="Pause"><svg class="ico" style="width:22px;height:22px"><use href="#i-pausa"/></svg></button>
+          <button aria-label="Next" data-az="brano successivo sul telefono"><svg class="ico"><use href="#i-avanti"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">B2</span><h3>Note rapide</h3></div>
+  <p>Un foglietto in cui scrivere direttamente sul desktop. Le note restano sul PC, nel profilo del telefono: non serve nessuna app di note sul telefono. Qui puoi scriverci.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l250"><label class="p-eti" for="foglio">Quick notes</label><textarea id="foglio">Call the plumber
+Train tickets for Saturday</textarea></div>
+    </div>
+  </div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">B3</span><h3>Chiamate recenti</h3><span class="verifica">da verificare sul telefono</span></div>
+  <p>Le ultime chiamate con il verso (ricevuta, fatta, persa). Un clic apre l'app Telefono su quel contatto; la chiamata la fai partire tu da lì.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l320"><span class="p-eti">Recent calls</span>
+        <div class="elenco">
+          <button class="nota tocca" data-az="apre l'app Telefono su questo contatto"><span class="tondo" style="background:var(--c-corallo)">↙</span><span class="t"><b>Alex</b><span>Missed</span></span><time>15:10</time></button>
+          <button class="nota tocca" data-az="apre l'app Telefono su questo contatto"><span class="tondo" style="background:var(--c-verde)">↗</span><span class="t"><b>Sam</b><span>Outgoing · 4 min</span></span><time>12:41</time></button>
+          <button class="nota tocca" data-az="apre l'app Telefono su questo contatto"><span class="tondo" style="background:var(--v-accento)">↙</span><span class="t"><b>Office</b><span>Incoming · 12 min</span></span><time>09:05</time></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">B4</span><h3>Rete</h3><span class="verifica">da verificare sul telefono</span></div>
+  <p>Wi-Fi e rete mobile del telefono con la forza del segnale. Un clic apre le impostazioni di rete del telefono.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">Proposta</span>
+      <div class="w p l250 tocca" tabindex="0" role="button" data-az="apre le impostazioni di rete del telefono in una finestra"><span class="p-eti">Network</span>
+        <div class="rete">
+          <div><svg class="ico" style="width:24px;height:24px"><use href="#i-wifi"/></svg><span><b>Home network</b><span>Wi-Fi · 5 GHz</span></span><span class="tacche"><i style="height:5px"></i><i style="height:9px"></i><i style="height:13px"></i><i style="height:16px"></i></span></div>
+          <div><svg class="ico" style="width:24px;height:24px"><use href="#i-antenna"/></svg><span><b>Mobile</b><span>5G</span></span><span class="tacche"><i style="height:5px"></i><i style="height:9px"></i><i style="height:13px"></i><i class="no" style="height:16px"></i></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<h2>Misure libere</h2>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">C1</span><h3>Ridimensionare trascinando l'angolo</h3></div>
+  <p>Al posto di Piccolo, Medio e Grande. Trascina il tondo bianco in basso a destra (o usa le frecce della tastiera quando è selezionato): il widget cresce a scatti di 8 pixel e mostra di più man mano che c'è spazio.</p>
+  <div class="palco banco">
+    <div class="lato"><span class="cartello" style="align-self:flex-start">Proposta</span>
+      <div class="telaio" id="telaio">
+        <div class="w p el">
+          <div class="wx-testa"><svg class="wx-sole"><use href="#i-sole"/></svg><span class="num">21°</span><div class="wx-luogo"><b>Rome</b>22° / 12°</div></div>
+          <div class="curva" data-t="21,21,20,18,16,15,14" data-ore="16,18,20,22,00,02,04"></div>
+          <div class="giorni">
+            <div class="giorno"><span>Fri</span><span class="tratto"><i style="left:25%;right:12%"></i></span><span>12° / 22°</span></div>
+            <div class="giorno"><span>Sat</span><span class="tratto"><i style="left:19%;right:25%"></i></span><span>11° / 20°</span></div>
+            <div class="giorno"><span>Sun</span><span class="tratto"><i style="left:31%;right:0"></i></span><span>13° / 24°</span></div>
+          </div>
+        </div>
+        <button class="maniglia" id="maniglia" aria-label="Ridimensiona il widget"><svg class="ico"><use href="#i-angolo"/></svg></button>
+      </div>
+      <span class="misura" id="misura"></span>
+    </div>
+  </div>
+</section>
+
+<h2>Forme</h2>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">D1</span><h3>Tondi</h3></div>
+  <p>Per i widget che sono già un cerchio: l'orologio analogico e la batteria. Il vetro prende la forma del contenuto, senza scheda intorno.</p>
+  <div class="palco banco"><div class="fila">
+    <div class="w tondo"><svg class="quadrante" viewBox="0 0 100 100" role="img" aria-label="Orologio analogico, 16:08"><circle cx="50" cy="50" r="44" fill="none" stroke="#2F4558" stroke-width="5" stroke-dasharray="1 22.04" transform="rotate(-1.3 50 50)"/><line x1="50" y1="50" x2="50" y2="26" stroke="#10202E" stroke-width="4" stroke-linecap="round" transform="rotate(124 50 50)"/><line x1="50" y1="50" x2="50" y2="14" stroke="#10202E" stroke-width="2.5" stroke-linecap="round" transform="rotate(48 50 50)"/><line x1="50" y1="58" x2="50" y2="12" stroke="#E8604C" stroke-width="1.2" stroke-linecap="round" transform="rotate(210 50 50)"/><circle cx="50" cy="50" r="3" fill="#E8604C"/></svg></div>
+    <div class="w tondo"><div class="anello"><svg viewBox="0 0 100 100"><circle class="solco" cx="50" cy="50" r="44"/><circle class="pieno" cx="50" cy="50" r="44" stroke-dasharray="215.6 276.5"/></svg><div class="num">78%<small>Charging</small></div></div></div>
+  </div></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">D2</span><h3>Capsule</h3></div>
+  <p>Per i widget piccoli, che dicono una cosa sola o hanno pochi tasti: sveglia, musica in forma ridotta, interruttori. Occupano una riga e si infilano ovunque. I tasti qui funzionano.</p>
+  <div class="palco banco"><div class="fila">
+    <div class="w capsula"><span class="tondo" style="background:var(--c-ambra)"><svg class="ico" style="width:22px;height:22px"><use href="#i-sveglia"/></svg></span><span><span class="num">07:00</span><small>Fri · in 15 h</small></span></div>
+    <div class="w capsula"><span class="tondo" style="background:linear-gradient(135deg,var(--c-viola),var(--c-corallo) 60%,var(--c-ambra))"></span><span><b>Sample Song</b><small>Sample Artist</small></span><span class="tondo" style="background:var(--c-viola)"><svg class="ico" style="fill:currentColor;stroke:none"><use href="#i-pausa"/></svg></span></div>
+    <div class="w capsula tasti">
+      <button class="scatto" aria-pressed="true" aria-label="Ringer" data-nome="Suoneria"><svg class="ico"><use href="#i-campana"/></svg><small hidden></small></button>
+      <button class="scatto" aria-pressed="false" aria-label="Do not disturb" data-nome="Non disturbare"><svg class="ico"><use href="#i-luna"/></svg><small hidden></small></button>
+      <button class="scatto" aria-pressed="false" aria-label="Flashlight" data-nome="Torcia"><svg class="ico"><use href="#i-torcia"/></svg><small hidden></small></button>
+    </div>
+  </div></div>
+  <div class="azione" aria-live="polite"></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">D3</span><h3>Senza fondo</h3></div>
+  <p>Niente scheda: ora e meteo scritti direttamente sullo sfondo, in grande. È la forma più leggera, ma dipende dallo sfondo: su un'immagine chiara o molto mossa si legge peggio, quindi andrebbe offerta come stile a scelta e non come unica forma.</p>
+  <div class="palco banco"><div class="fila" style="gap:40px">
+    <div class="nudo"><span class="num">16:08</span><span>Thursday, 26 November</span></div>
+    <div class="nudo mt"><svg class="wx-sole"><use href="#i-sole"/></svg><span class="num">21°</span><span>Rome<br>Clear sky</span></div>
+  </div></div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">D4</span><h3>Mattonelle</h3></div>
+  <p>Quadrati dagli angoli molto morbidi, in due misure (singola e doppia), che si accostano a formare un mosaico ordinato. Si sposa con le misure libere: trascinando l'angolo si passa da una mattonella a due o a quattro.</p>
+  <div class="palco banco"><div class="mosaico">
+    <div class="w larga"><div class="wx-testa"><svg class="wx-sole"><use href="#i-sole"/></svg><span class="num">21°</span><div class="wx-luogo"><b>Rome</b>Clear sky<br>22° / 12°</div></div></div>
+    <div class="w"><div class="anello"><svg viewBox="0 0 100 100"><circle class="solco" cx="50" cy="50" r="40"/><circle class="pieno" cx="50" cy="50" r="40" stroke-dasharray="196 251.3"/></svg><div class="num">78%</div></div></div>
+    <div class="w centro"><svg class="ico" style="width:24px;height:24px;color:var(--c-ambra)"><use href="#i-sveglia"/></svg><span class="num">07:00</span><small>Fri · in 15 h</small></div>
+  </div></div>
+</section>
+
+<h2>Trasparenza</h2>
+
+<template id="modello">
+  <div class="campione">
+    <div class="w tondo"><div class="anello"><svg viewBox="0 0 100 100"><circle class="solco" cx="50" cy="50" r="44"/><circle class="pieno" cx="50" cy="50" r="44" stroke-dasharray="215.6 276.5"/></svg><div class="num">78%<small>Charging</small></div></div></div>
+    <div class="w capsula"><span class="tondo sv"><svg class="ico" style="width:22px;height:22px"><use href="#i-sveglia"/></svg></span><span><span class="num">07:00</span><small>Fri · in 15 h</small></span></div>
+    <div class="w matt"><div class="wx-testa"><svg class="wx-sole"><use href="#i-sole"/></svg><span class="num">21°</span><div class="wx-luogo"><b>Rome</b>Clear sky</div></div></div>
+  </div>
+</template>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">E1–E4</span><h3>Quattro vetri a confronto</h3></div>
+  <p>Gli stessi tre widget con quattro vetri diversi. E1 è quello di oggi (velo bianco al 58%). E2 lascia vedere molto di più lo sfondo e passa al testo bianco. E3 è il vetro scuro che ha già la barra in basso. E4 tinge il vetro con il colore del widget.</p>
+  <div class="palco">
+    <div class="lato"><span class="cartello">E1 · Vetro di oggi</span><div data-campione></div></div>
+    <div class="lato limpido"><span class="cartello">E2 · Limpido</span><div data-campione></div></div>
+    <div class="lato scuro"><span class="cartello">E3 · Scuro</span><div data-campione></div></div>
+    <div class="lato colorato"><span class="cartello">E4 · Colorato</span><div data-campione></div></div>
+  </div>
+</section>
+
+<section class="voce">
+  <div class="testa"><span class="sigla">E5</span><h3>Trasparenza a scelta</h3></div>
+  <p>In alternativa a un vetro fisso: un cursore nelle impostazioni, uguale per tutti i widget. Spostalo per vedere l'effetto; sotto una certa soglia il testo diventa bianco da solo per restare leggibile.</p>
+  <div class="palco banco"><div class="lato" id="regolato">
+    <div class="regolo"><label for="velo">Opacità del vetro</label><input type="range" id="velo" min="0" max="90" step="2" value="58"><output id="velo-val" for="velo">58%</output></div>
+    <div data-campione></div>
+  </div></div>
+</section>
+
+<footer class="chiusa">
+  <p><b>Come rispondere.</b> Basta dirmi le sigle che ti convincono (per esempio «A1, A3, A7, B2, C1, D2») e che cosa cambieresti. Solo quello entra nel piano di lavoro.</p>
+  <p>B1, B3 e B4 dipendono da una prova in sola lettura sul telefono. B2 e tutte le schede A usano dati che YASDE legge già.</p>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  // Curve delle temperature: una sola scala per linea, area ed etichette.
+  var n = 0;
+  document.querySelectorAll('.curva').forEach(function (el) {
+    var t = el.dataset.t.split(',').map(Number), ore = el.dataset.ore.split(',');
+    var min = Math.min.apply(null, t), max = Math.max.apply(null, t), W = 100, H = 42;
+    var pt = t.map(function (v, i) { return [4 + i * (W - 8) / (t.length - 1), 6 + (max - v) / (max - min || 1) * (H - 16)]; });
+    var d = 'M' + pt[0][0] + ' ' + pt[0][1];
+    for (var i = 0; i < pt.length - 1; i++) {
+      var a = pt[Math.max(i - 1, 0)], b = pt[i], c = pt[i + 1], e = pt[Math.min(i + 2, pt.length - 1)];
+      d += ' C' + (b[0] + (c[0] - a[0]) / 6) + ' ' + (b[1] + (c[1] - a[1]) / 6) + ' ' + (c[0] - (e[0] - b[0]) / 6) + ' ' + (c[1] - (e[1] - b[1]) / 6) + ' ' + c[0] + ' ' + c[1];
+    }
+    var id = 'sfum' + (n++);
+    el.innerHTML = '<div class="gradi">' + t.map(function (v) { return '<span>' + v + '°</span>'; }).join('') + '</div>' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D9861F" stop-opacity=".45"/><stop offset="1" stop-color="#D9861F" stop-opacity="0"/></linearGradient></defs>' +
+      '<path d="' + d + ' L' + pt[pt.length - 1][0] + ' ' + H + ' L' + pt[0][0] + ' ' + H + ' Z" fill="url(#' + id + ')"/>' +
+      '<path d="' + d + '" fill="none" stroke="#D9861F" stroke-width="2.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>' +
+      '<div class="ore">' + ore.map(function (o) { return '<span>' + o + '</span>'; }).join('') + '</div>';
+  });
+
+  function dici(da, testo) {
+    var riga = da.closest('.voce').querySelector('.azione');
+    if (riga) riga.innerHTML = '<b>Nell\'app:</b> ' + testo + '.';
+  }
+  document.addEventListener('click', function (ev) {
+    var el = ev.target.closest('[data-az]');
+    if (el) dici(el, el.dataset.az);
+  });
+  document.addEventListener('keydown', function (ev) {
+    if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('div[data-az]')) { ev.preventDefault(); dici(ev.target, ev.target.dataset.az); }
+  });
+
+  // Interruttori: la suoneria gira su tre stati, gli altri due sono acceso/spento.
+  var stati = ['Rings', 'Vibrates', 'Silent'], quale = 0, suo = document.getElementById('suoneria');
+  suo.addEventListener('click', function () {
+    quale = (quale + 1) % 3;
+    suo.querySelector('small').textContent = stati[quale];
+    suo.setAttribute('aria-pressed', quale === 0 ? 'true' : 'false');
+    dici(suo, 'mette la suoneria del telefono su «' + stati[quale] + '»');
+  });
+  document.querySelectorAll('.scatto').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var acceso = b.getAttribute('aria-pressed') !== 'true';
+      b.setAttribute('aria-pressed', acceso ? 'true' : 'false');
+      b.querySelector('small').textContent = acceso ? 'On' : 'Off';
+      dici(b, (acceso ? 'accende' : 'spegne') + ' «' + b.dataset.nome + '» sul telefono');
+    });
+  });
+
+  var gioca = document.getElementById('gioca'), suona = true;
+  gioca.addEventListener('click', function () {
+    suona = !suona;
+    gioca.querySelector('use').setAttribute('href', suona ? '#i-pausa' : '#i-play');
+    gioca.setAttribute('aria-label', suona ? 'Pause' : 'Play');
+    dici(gioca, suona ? 'riprende la riproduzione sul telefono' : 'mette in pausa la riproduzione sul telefono');
+  });
+
+  // Trasparenza: gli stessi tre widget copiati in ogni variante, e il cursore dell'opacita'.
+  var modello = document.getElementById('modello');
+  document.querySelectorAll('[data-campione]').forEach(function (c) { c.appendChild(modello.content.cloneNode(true)); });
+  var velo = document.getElementById('velo'), reg = document.getElementById('regolato'), veloVal = document.getElementById('velo-val');
+  function vela() {
+    var v = Number(velo.value);
+    reg.style.setProperty('--v-velo', 'rgba(255,255,255,' + v / 100 + ')');
+    reg.classList.toggle('testo-chiaro', v < 36);
+    veloVal.textContent = v + '%';
+  }
+  velo.addEventListener('input', vela); vela();
+
+  // Misura libera: scatti di 8 px, dentro i limiti del palco.
+  var telaio = document.getElementById('telaio'), man = document.getElementById('maniglia'), mis = document.getElementById('misura');
+  function metti(w, h) {
+    var maxW = telaio.parentElement.clientWidth - 8;
+    w = Math.max(152, Math.min(Math.min(400, maxW), Math.round(w / 8) * 8));
+    h = Math.max(88, Math.min(344, Math.round(h / 8) * 8));
+    telaio.style.width = w + 'px'; telaio.style.height = h + 'px';
+    mis.textContent = w + ' × ' + h + ' px';
+  }
+  metti(telaio.offsetWidth, telaio.offsetHeight);
+  var inizio = null;
+  man.addEventListener('pointerdown', function (ev) {
+    inizio = { x: ev.clientX, y: ev.clientY, w: telaio.offsetWidth, h: telaio.offsetHeight };
+    man.setPointerCapture(ev.pointerId); ev.preventDefault();
+  });
+  man.addEventListener('pointermove', function (ev) {
+    if (inizio) metti(inizio.w + ev.clientX - inizio.x, inizio.h + ev.clientY - inizio.y);
+  });
+  function fine() { inizio = null; }
+  man.addEventListener('pointerup', fine); man.addEventListener('pointercancel', fine);
+  man.addEventListener('keydown', function (ev) {
+    var dx = { ArrowRight: 8, ArrowLeft: -8 }[ev.key] || 0, dy = { ArrowDown: 8, ArrowUp: -8 }[ev.key] || 0;
+    if (dx || dy) { ev.preventDefault(); metti(telaio.offsetWidth + dx, telaio.offsetHeight + dy); }
+  });
+})();
+</script>
