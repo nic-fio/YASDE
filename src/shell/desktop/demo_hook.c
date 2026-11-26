@@ -22,9 +22,12 @@ void ph_demo_controlli(PhShell *sh, const char *cosa); /* agente D: demo_control
 /* agente A: inizio */
 static void vecchi_avvia(PhShell *sh, PhDesktop *d, PhCfgTelefono *p); /* in fondo al file */
 static void vecchi_foto(PhDesktop *d, PhCfgTelefono *p, const char *quale);
-uint64_t ph_dsk_widget_adesso_ms(int *scarto_s); /* widget.c: l'«adesso» dei widget (ora congelata se c'e') */
+static PhDskWidget *vecchi_widget(PhDesktop *d, PhCfgWidgetTipo tipo);
 /* Ora congelata di «vecchi» e delle sue foto: le 13:30, quando il «Lunch» del finto (13:00-14:00) e'
  * in corso e restano tre impegni dopo. Cosi' a qualunque ora vera si vedono sempre gli stessi impegni. */
+/* La data resta quella vera: se la prova scavalca la mezzanotte vera il finto da' gli impegni del
+ * giorno prima e la prova cade con un messaggio chiaro (falso fallimento possibile per pochi
+ * secondi al giorno, mai un falso passato). */
 #define VECCHI_ORA (13 * 3600 + 30 * 60)
 /* agente A: fine */
 
@@ -2061,8 +2064,33 @@ static void vecchi_imposta(PhDesktop *d, PhCfgTelefono *p, const VecchiMis *m)
     ph_dsk_widget_ricostruisci(d);
 }
 
+/* Per le foto: scrive su stderr le misure vere del calendario del giorno (colonna del giorno, colonna
+ * degli impegni, prima riga, barretta, titolo), nelle coordinate del corpo. */
+static void vecchi_misura_stampa(PhDesktop *d)
+{
+    PhDskWidget *w = vecchi_widget(d, PH_CFG_WIDGET_CALENDARIO);
+    static const char *const CLASSI[] = {"ph-desktop-giorno-colonna", "ph-desktop-giorno-impegni",
+                                         "ph-desktop-giorno-impegno", "ph-desktop-giorno-impegno-barra",
+                                         "ph-desktop-giorno-impegno-titolo"};
+    fprintf(stderr, "vecchi-misura: calendario %dx%d, corpo largo %d\n", w->larghezza, w->altezza,
+            gtk_widget_get_width(w->corpo));
+    for (size_t i = 0; i < G_N_ELEMENTS(CLASSI); i++) {
+        GtkWidget *x = trova(w->corpo, CLASSI[i], 0);
+        graphene_rect_t b;
+        if (x != NULL && gtk_widget_compute_bounds(x, w->corpo, &b))
+            fprintf(stderr, "vecchi-misura: %-34s x %6.1f larghezza %6.1f (halign %d hexpand %d)\n", CLASSI[i], b.origin.x,
+                    b.size.width, (int)gtk_widget_get_halign(x), gtk_widget_get_hexpand(x));
+        else
+            fprintf(stderr, "vecchi-misura: %-34s assente\n", CLASSI[i]);
+    }
+}
+
 static void vecchi_foto(PhDesktop *d, PhCfgTelefono *p, const char *quale)
 {
+    if (strcmp(quale, "misura") == 0) {
+        vecchi_misura_stampa(d);
+        return;
+    }
     ph_dsk_orologio_ora_fissa(VECCHI_ORA); /* il calendario mostra impegni, non lo stato vuoto */
     if (strcmp(quale, "grandi") == 0)
         vecchi_imposta(d, p, VM_GRANDI);
@@ -2171,11 +2199,30 @@ static int vecchi_geometria(PhDesktop *d)
         graphene_rect_t bc, bi;
         if (!gtk_widget_compute_bounds(colg, cw->corpo, &bc) || !gtk_widget_compute_bounds(imp, cw->corpo, &bi))
             return 0;
+        /* La colonna del giorno e' larga 64 px (il suo contenuto), non 120 come la larghezza naturale del
+         * numero: i px in piu' sarebbero vuoto tra il giorno e gli impegni, anche con «vuoto» piccolo
+         * misurato dal suo bordo. */
+        if (bc.size.width > 72)
+            g_error("vecchi: calendario %dx%d: la colonna del giorno e' larga %.0f px (attesi 64)", cw->larghezza,
+                    cw->altezza, bc.size.width);
         float vuoto = bi.origin.x - (bc.origin.x + bc.size.width);
         if (vuoto < 0 || vuoto >= 24)
             g_error("vecchi: calendario %dx%d: tra la colonna del giorno e quella degli impegni ci sono %.0f px "
                     "(attesi meno di 24: il giorno finisce a %.0f, gli impegni cominciano a %.0f)",
                     cw->larghezza, cw->altezza, vuoto, bc.origin.x + bc.size.width, bi.origin.x);
+        /* E le righe dentro la colonna partono dal suo bordo sinistro: la barretta colorata del primo
+         * impegno e' attaccata (meno di 24 px dalla fine del giorno), non centrata o a destra. */
+        GtkWidget *barretta = trova(cw->corpo, "ph-desktop-giorno-impegno-barra", 0);
+        if (barretta != NULL) {
+            graphene_rect_t bb;
+            if (gtk_widget_get_width(barretta) <= 0 || !gtk_widget_compute_bounds(barretta, cw->corpo, &bb))
+                return 0;
+            float stacco = bb.origin.x - (bc.origin.x + bc.size.width);
+            if (stacco < 0 || stacco >= 24)
+                g_error("vecchi: calendario %dx%d: la barretta del primo impegno comincia a %.0f px dalla fine del "
+                        "giorno (attesi meno di 24: giorno fino a %.0f, barretta a %.0f, colonna degli impegni a %.0f)",
+                        cw->larghezza, cw->altezza, stacco, bc.origin.x + bc.size.width, bb.origin.x, bi.origin.x);
+        }
     }
     GtkWidget *leg = trova(w->corpo, "ph-desktop-legenda", 0);
     if (leg == NULL || !gtk_widget_is_visible(leg))
@@ -2464,7 +2511,9 @@ static gboolean vecchi_tick(gpointer dati)
     ph_srv_notifiche(d->srv, &n_notifiche, NULL);
     bool pronto = d->memoria_nota && d->dettaglio_noto && d->eventi_noti && d->app_calendario != NULL &&
                   n_notifiche > 0;
-    if (v->fase < 4 && !pronto) {
+    /* I dati si aspettano dopo aver messo la misura (mettere i widget fa partire le richieste: l'app del
+     * calendario, tolta dalla fase 2, torna solo cosi'). */
+    if (v->fase < 4 && v->applicata && !pronto && !(v->fase == 2 && v->svuotato)) {
         if (g_get_monotonic_time() > v->scadenza)
             g_error("vecchi: dopo 5 s mancano dati: memoria %d dettaglio %d eventi %d app calendario %d notifiche %zu",
                     d->memoria_nota, d->dettaglio_noto, d->eventi_noti, d->app_calendario != NULL, n_notifiche);
@@ -2500,7 +2549,14 @@ static gboolean vecchi_tick(gpointer dati)
         vecchi_controlla(d, "maniglia, dopo");
         break;
     case 2:
-        vecchi_controlla(d, NOMI[2]);
+        if (!v->svuotato) {
+            vecchi_controlla(d, NOMI[2]);
+            /* Senza l'app del calendario le righe non sono pulsanti: stesso aspetto, controllato al
+             * fotogramma dopo (geometria) con la stessa misura. */
+            vecchi_senza_app_calendario(d);
+            v->svuotato = true;
+            return G_SOURCE_CONTINUE;
+        }
         break;
     case 3:
         vecchi_controlla(d, NOMI[3]);

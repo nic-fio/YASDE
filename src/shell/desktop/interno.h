@@ -395,4 +395,9 @@ void ph_dsk_dialoghi_annulla_scelta(PhDesktop *d);
 const char *ph_dsk_wx_telefono_clic_prova(PhDskWidget *w, const char *forza);
 /* ---- fine agente B ---- */
 
+/* agente A: l'«adesso» dei widget in millisecondi (l'ora congelata da ph_dsk_orologio_ora_fissa,
+ * se c'e'; altrimenti l'ora vera). *scarto_s, se non NULL: scarto del fuso da UTC in secondi. Solo
+ * lettura; serve alle prove del demo. Thread GTK. */
+uint64_t ph_dsk_widget_adesso_ms(int *scarto_s);
+
 #endif

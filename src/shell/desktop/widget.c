@@ -492,19 +492,25 @@ static void calendario_giorno_aggiorna(PhDskWidget *w, PhDskVista *v)
         snprintf(num, sizeof num, "%d", g_date_time_get_day_of_month(dt));
         ph_dsk_maiuscola_prima(ph_dsk_nome_mese(g_date_time_get_month(dt)), mese, sizeof mese);
         GtkWidget *col = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-        gtk_widget_set_size_request(col, 64, -1);
-        gtk_widget_set_valign(col, GTK_ALIGN_START);
-        /* Larghezza fissa: senza questo l'espansione del numero si propaga alla colonna e lo spazio in piu' si
-         * divide con gli impegni, che finiscono stretti a destra con un vuoto in mezzo. */
-        gtk_widget_set_hexpand(col, FALSE);
-        gtk_widget_set_halign(col, GTK_ALIGN_START);
-        gtk_widget_add_css_class(col, "ph-desktop-giorno-colonna");
         GtkWidget *nu = ph_dsk_numero_nuovo();
         gtk_widget_set_size_request(nu, 64, 52);
         ph_dsk_numero_imposta(nu, ph_dsk_giorno_breve(g_date_time_get_day_of_week(dt) - 1), num, "");
         gtk_box_append(GTK_BOX(col), nu);
         gtk_box_append(GTK_BOX(col), etichetta_corpo(mese, "ph-desktop-w-sotto-nom", true));
-        gtk_box_append(GTK_BOX(riga), col);
+        /* Larghezza FISSA di 64 px. gtk_widget_set_size_request fissa solo il minimo: il numero ha una
+         * larghezza naturale di 120 e la colonna la prenderebbe (halign START) lasciando 56 px vuoti tra
+         * il giorno e gli impegni. Dentro una finestra che scorre (invisibile, senza clic) la larghezza
+         * naturale e' quella minima del contenuto: 64. */
+        GtkWidget *fisso = gtk_scrolled_window_new();
+        gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(fisso), GTK_POLICY_EXTERNAL, GTK_POLICY_NEVER);
+        gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(fisso), 64);
+        gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(fisso), col);
+        gtk_widget_set_hexpand(fisso, FALSE);
+        gtk_widget_set_halign(fisso, GTK_ALIGN_START);
+        gtk_widget_set_valign(fisso, GTK_ALIGN_START);
+        gtk_widget_set_can_target(fisso, FALSE); /* solo da guardare: il trascinamento del widget passa */
+        gtk_widget_add_css_class(fisso, "ph-desktop-giorno-colonna");
+        gtk_box_append(GTK_BOX(riga), fisso);
         g_date_time_unref(dt);
     }
     GtkWidget *impegni = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
