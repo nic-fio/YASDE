@@ -206,3 +206,47 @@ Regole fisse (quelle già in `CLAUDE.md` non si ripetono):
 - **Come è fatto**: sorgenti in `sito/`; `sito/costruisci.py` genera `sito/pubblico/` (non registrata in git); nessuna risorsa esterna. `sito/pubblica.sh` lo copia sul server web (server passato con `YASDE_SITO_SERVER`, mai scritto nei file).
 - **Server web**: cartella `/srv/www/yasde.nicfio.it` e blocco del sito nella configurazione del server web, preparati il 25 nov 2026; record DNS `yasde.nicfio.it` e alias email `yasde@nicfio.it` creati lo stesso giorno nel pannello del fornitore del dominio.
 - **Pubblicato il 25 nov 2026**: `https://yasde.nicfio.it/` risponde in HTTPS (certificato ottenuto dal server web), con le cinque pagine identiche a quelle generate dal repository; gli altri siti sullo stesso server verificati attivi dopo la modifica. La release 2.1 è stata pubblicata su GitHub lo stesso giorno, per ordine del committente («rendi disponibile sul sito e sul repo github l'appimage»), con AppImage, archivio dei sorgenti di terze parti e `SHA256SUMS`: i pulsanti di scaricamento del sito funzionano.
+
+## 8. Widget nuovi: forma, vetro, funzioni (26 nov 2026, approvato dal committente)
+
+Nasce dalla pagina di confronto mostrata al committente (sigle A, B, C, D, E). Le sue scelte prevalgono sulla specifica 5.2.3 dove la superano (tre misure fisse, schede rettangolari).
+
+### Obiettivo
+Widget più belli e più utili: vetro scuro, forme diverse dal rettangolo, grafica al posto delle righe di testo, clic che fanno qualcosa, misure libere, quattro widget nuovi.
+
+### Deciso dal committente (26 nov)
+- **Vetro scuro (E3)** per tutti i widget: lo stesso della barra in basso, testo bianco. «E3 vince l'oscar».
+- **Forme (D):** i tondi e le altre forme piacciono.
+- **Tipi e funzioni (A, B):** «siamo già un passo avanti».
+
+### Confermato dal committente (26 nov, «Sì li confermo»)
+- Forma per tipo di widget: mattonella (angoli molto morbidi) per quelli ricchi (meteo, calendario, notifiche, memoria, stato del telefono, app frequenti, trasferimenti); tondo per orologio analogico e batteria; capsula per sveglia e interruttori; «senza fondo» (D3) solo come stile a scelta di orologio e meteo.
+- Misure libere (C1) al posto di Piccolo / Medio / Grande, a scatti di 8 px; i tondi restano tondi.
+- Tutti i widget A1–A7 rifatti come nella pagina; orologio, stato del telefono, app frequenti e trasferimenti tengono il contenuto di oggi e prendono solo vetro e forma nuovi.
+
+### Passi
+0. **Preparazione** (serve il committente): ricreare l'ambiente sul server (`strumenti/prepara-server.sh`); prova in sola lettura sul telefono per sapere se musica, chiamate e rete si leggono senza root (B1, B3, B4). Ciò che il telefono non dà non si fa.
+1. **Fondamenta** (in sequenza, un solo agente): vetro scuro sui widget, anche nel percorso senza sfocatura (fondo scuro quasi opaco); forme, cioè il raggio del vetro e della scheda per tipo; misure libere con maniglia nell'angolo, contenuto che compare al crescere dello spazio; profilo che salva larghezza e altezza e legge i profili di oggi (piccolo / medio / grande diventano le misure equivalenti, senza perdere niente).
+2. **Widget rifatti** (in parallelo, un file per agente): batteria ad anello, memoria a fette colorate, meteo con curva e giorni, notifiche con icona e ora, calendario del giorno, sveglia con il tempo che manca, interruttori tondi. Clic: notifica → la sua app; impegno → Calendario; sveglia → Orologio; batteria e memoria → la pagina delle impostazioni del telefono (richieste standard di Android, nessuna dipendenza da un produttore).
+3. **Widget nuovi:** note rapide (solo PC, nel profilo del telefono); musica, chiamate e rete solo se il passo 0 li conferma (toccano telefono, protocollo, dati e desktop: contratto prima, poi codice).
+4. **Chiusura:** manuali (capitolo dei widget, capitolo tecnico del desktop, schermate rifatte), `tutto`, `veloce`, `telefono`, revisore su ogni pezzo, AppImage, prova a schermo e poi col telefono vero prima della consegna.
+
+### File
+`src/shell/desktop/` (widget, stile, logica, prove), `src/config/` (profilo: misure libere), `src/shell/comune/vetro.c` solo se il vetro scuro dei widget lo richiede; per B1/B3/B4 anche `docs/protocollo.md`, `src/dati/`, `telefono/`; `docs/sources/user/ch05_widgets.py` e il capitolo tecnico corrispondente.
+
+### Rischi
+- Vetro scuro sopra sfondi scuri: il widget si stacca poco; lo tengono leggibile il bordo chiaro e l'ombra. Da giudicare a schermo sullo sfondo del committente.
+- Misure libere: ogni widget deve restare leggibile alla misura minima; per ognuno si fissa un minimo sotto cui non scende.
+- Musica, chiamate, rete: possono risultare non leggibili senza root; in quel caso restano fuori, come «Trova il telefono».
+- Profili esistenti: la lettura delle vecchie misure deve avere la sua prova.
+- Prove sul telefono: una alla volta, in sola lettura al passo 0; nessun suono, nessuna impostazione toccata.
+
+### Criteri di completamento
+- Ogni widget del catalogo si vede con vetro scuro e forma nuova, si ridimensiona dall'angolo e ricorda misura e posto alla riapertura.
+- Ogni clic descritto apre ciò che promette, o non fa nulla se il telefono non sa quale app aprire (mai un errore a schermo).
+- Un profilo salvato con la 2.1 di oggi si apre con i widget al loro posto.
+- `tutto`, `veloce`, `telefono` puliti; revisore APPROVATO; manuali rigenerati e `--controlla` pulito; visto a schermo dal committente.
+
+### Stato
+- Server: a disposizione del committente ma da ripreparare. Verificato il 26 nov: `/media` c'è ed è scrivibile, `/media/YASDE` non esiste, **manca `podman`** e l'installazione chiede la password di amministratore: la fa il committente, poi `strumenti/prepara-server.sh`.
+- Aperto: nome della versione che esce con questi widget (oggi l'unica è la 2.1).
