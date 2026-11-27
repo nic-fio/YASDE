@@ -258,3 +258,12 @@ Approvato dal committente dal vivo («È meraviglioso») e pubblicato come relea
 **Rischi:** API di Android raggiungibili dal processo shell solo in parte (da provare sul telefono vero quando il committente non usa YASDE); il comando ai lettori musicali agisce sul telefono: è un'azione dell'utente, nessun ripristino; nessun suono avviato da una prova senza consenso.
 
 **Finito quando:** `tutto`, `veloce`, `telefono` puliti; revisori APPROVATO; manuali allineati; prova sul telefono vero; il committente la vede dal vivo; release 2.3 e sito pubblicati.
+
+### 9.1 Stato (27 nov 2026, mattina)
+
+- Fatto, approvato dai revisori e registrato (commit `5a93c10`): i tre widget, il menu delle note, il clic su Phone status, le pagine che non si accumulano, protocollo 3, manuali, versione 2.3. `tutto` 91 OK / 0 Fail, `veloce` e `telefono` puliti. AppImage 2.3 consegnata al committente nella sua home; release 2.3 NON ancora pubblicata.
+- Provato sul telefono vero in sola lettura (`telefono/dati/prove/prova_telefonia.py`): chiamate e rete complete; l'API diretta per SSID, telefonia, dati mobili e media non è raggiungibile dal processo shell (SecurityException / NullPointerException), valgono le strade di riserva (`cmd wifi status`, `dumpsys telephony.registry`, `dumpsys media_session`).
+- **Aperto, «Now playing»:** il committente ha visto «Nothing playing» con un video in corso in una finestra di YASDE. Osservato dopo, in sola lettura, con il video in corso: la sessione dell'app dichiara `STOPPED(1)`, `actions=0`, ma ha i metadati del brano, e `dumpsys audio` mostra un `AudioPlaybackConfiguration` dell'uid dell'app con `state:started`. Con questi dati il lettore attuale dà il brano «in pausa» senza comandi. Da chiarire con il committente che cosa vede ora; miglioria decisa: stato «in riproduzione» ricavato dai lettori audio attivi dell'uid proprietario della sessione, quando la sessione non lo dichiara.
+- Mai premuti dal vero i comandi play/pausa, avanti, indietro (serve un lettore che dichiari le azioni e il consenso del committente).
+- Pulizia: tolte le quattro copie di lavoro degli agenti (`.claude/worktrees`) e i loro rami locali, già uniti da tempo.
+- Restano: sito (immagini nuove, pubblicazione: serve l'accesso al server web), release 2.3.
