@@ -272,5 +272,5 @@ Approvato dal committente dal vivo («È meraviglioso») e pubblicato come relea
 
 - Il committente ha confermato dal vivo che «Now playing» funziona e considera stabile l'AppImage: release `v2.3` pubblicata (AppImage identica a quella provata, sorgenti di terze parti, somme).
 - Sito: schermata vetrina `docs/sources/img/desktop-widgets.png` (undici widget, dati finti) fatta con il passo di solo demo `vetrina` (`src/shell/desktop/demo_vetrina.c`, non entra in `yasde`); tutte le schermate rifatte con la 2.3; `sito/index.html` con la vetrina in testata, testi sui widget dai manuali, scaricamenti verso `v2.3`. Revisore: approvato dopo la correzione del conteggio dei widget.
-- Da fare: pubblicazione con `sito/pubblica.sh` (il sito è sulla VPS del committente; l'accesso lo dà lui a ogni lancio). La schermata «Add widget» mostra solo le prime sei voci.
+- Sito pubblicato il 27 nov 2026 con `sito/pubblica.sh` (il sito è sulla VPS del committente; l'accesso lo dà lui a ogni lancio, mai scritto nei file): le cinque pagine in linea sono identiche a quelle generate dal repository e i tre scaricamenti della `v2.3` rispondono. La schermata «Add widget» mostra solo le prime sei voci.
 - Miglioria ancora da fare su «Now playing»: stato «in riproduzione» dai lettori audio attivi quando l'app non lo dichiara (oggi il brano risulta «in pausa», senza comandi).
