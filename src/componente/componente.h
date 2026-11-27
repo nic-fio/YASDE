@@ -19,7 +19,7 @@
 #include "comune/buffer.h"
 #include "comune/errore.h"
 
-#define PH_PROTOCOLLO_VERSIONE 2
+#define PH_PROTOCOLLO_VERSIONE 3
 
 /* ---- Codifica dei messaggi (parte pura, provata con i byte attesi) -------*/
 enum {

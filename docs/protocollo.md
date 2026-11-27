@@ -1,4 +1,4 @@
-# Protocollo PC ↔ componente sul telefono (versione 2)
+# Protocollo PC ↔ componente sul telefono (versione 3)
 
 Contratto tra `src/componente/` (C, PC) e `telefono/` (Java). Chi lo trova sbagliato o incompleto **non lo cambia da solo**: lo segnala a chi coordina.
 
@@ -42,7 +42,7 @@ Sul canale `comandi` il PC manda **una richiesta alla volta** e aspetta la rispo
 
 | Tipo | Nome | Verso | Corpo |
 |---|---|---|---|
-| 0x01 | SALUTO | PC→T | `u16` versione del protocollo (2) |
+| 0x01 | SALUTO | PC→T | `u16` versione del protocollo (3) |
 | 0x02 | OK | T→PC | dipende dalla richiesta (vuoto se non detto) |
 | 0x03 | ERRORE | T→PC | `stringa` frase in italiano. Tipo sconosciuto: `tipo sconosciuto` |
 | 0x04 | CHIUDI | PC→T | vuoto: il servizio ripristina tutto e termina (risponde OK prima) |
@@ -259,6 +259,26 @@ Widget «Interruttori rapidi» (richieste del committente, `PIANO.md`). «Trova 
   - la torcia accesa da YASDE si spegne alla chiusura ordinata (`Registro.registraChiusura`) e, se il servizio muore di colpo, la spegne il sistema (la torcia di `setTorchMode` è legata al processo che l'ha accesa: DA VERIFICARE sul telefono; se non fosse così, la torcia resta «non disponibile», perché non esiste un comando di shell per spegnerla dal guardiano);
 - **Trova il telefono: NON disponibile in questa versione** (decisione del committente). Il bit 3 di «comandi possibili» è sempre 0; TROVA_AVVIA risponde `ERRORE` («non disponibile su questa versione») senza toccare nulla; TROVA_FERMA risponde OK senza fare nulla; «trova in corso» è sempre 0. Cause misurate: dal processo shell `AudioTrack` non si crea; il passaggio a «suona» alza il volume salvato da 0 a 1 senza ritorno. I tipi 0x84 e 0x85 restano nella tabella.
 - CONTROLLI_CAMBIATI parte solo dopo la prima CONTROLLI_STATO; se non c'è un modo puro di essere avvisati, il telefono controlla da solo non più di una volta ogni 2 s e manda l'evento solo se qualcosa è cambiato (anche per i cambi fatti a mano sul telefono).
+
+### 2.12 Chiamate, rete e media (0x91–0x94, versione 3, sul canale `comandi`) — cartella `telefono/dati/`, classi `CampiTelefonia` (parte pura) e `NascosteTelefonia`
+
+Tre letture e un comando per i widget Chiamate, Rete e Media. Il telefono le fa in SOLA lettura (nessuna impostazione cambiata) e il PC le chiede solo mentre il widget è sul desktop. Per le tre letture `esito` è 0 (ok), 1 (non disponibile: servizio assente, provider che non risponde in 3 s) o 2 (permesso negato all'utente shell): con `esito` ≠ 0 tutti gli altri campi sono zero o vuoti (il PC rifiuta la risposta se non lo sono). Sono risposte `OK`, non `ERRORE`, così il widget può dire perché non mostra nulla.
+
+| Tipo | Nome | Corpo della richiesta | Corpo dell'OK |
+|---|---|---|---|
+| 0x91 | CHIAMATE | `u8` massimo (1–20) | `u8` esito, `u8` n (0 se esito ≠ 0; mai oltre il massimo), poi n volte: `u8` tipo (0 altro, 1 entrante, 2 uscente, 3 persa, 4 rifiutata), `u64` ora (millisecondi dal 1970), `u32` durata in secondi, `stringa` nome (vuota se ignoto), `stringa` numero. Le più recenti per prime |
+| 0x92 | RETE | vuoto | `u8` esito, `u8` wifi (0 spento, 1 acceso, 2 connesso), `u8` livello wifi (0–4), `stringa` nome della rete (vuota se ignoto o nascosto: senza virgolette e senza «&lt;unknown ssid&gt;»), `u8` mobile (0 assente, 1 senza servizio, 2 in servizio), `u8` livello mobile (0–4), `u8` generazione (0 ignota, 2, 3, 4, 5), `stringa` operatore, `u8` dati mobili (0 no, 1 sì, 2 ignoto), `u8` modalità aereo (0 no, 1 sì, 2 ignoto): mai un valore inventato, se non si legge vale 2 |
+| 0x93 | MEDIA | vuoto | `u8` esito, `u8` stato (0 nessuna sessione, 1 in pausa, 2 in riproduzione), `stringa` titolo, `stringa` artista, `stringa` pacchetto, `u8` comandi possibili (bit 0 play/pausa, bit 1 avanti, bit 2 indietro) |
+| 0x94 | MEDIA_COMANDO | `u8` comando (1 play/pausa, 2 avanti, 3 indietro) | vuoto. `ERRORE` se il comando è fuori elenco, se non c'è una sessione o se la sessione non lo permette (nulla toccato). Mai altri comandi |
+
+- **Lunghezze massime** (byte UTF-8, tagliate sul telefono a confine di carattere): nome 127, numero 47, rete 99, operatore 63, titolo 159, artista 127, pacchetto 255. Il PC rifiuta (lettura fallita) una stringa più lunga o non UTF-8.
+- **Fonti sul telefono**: chiamate dal provider `call_log` (`CallLog.Calls`, ordinato per data decrescente, con limite), letto come fa il calendario (provider preso come shell); rete da `WifiManager`, `ConnectivityManager`, `TelephonyManager` e dalle impostazioni globali `airplane_mode_on` e `mobile_data`; media da `MediaSessionManager.getActiveSessions` e `MediaController` (metadati, stato di riproduzione, `TransportControls`). Se più sessioni: quella in riproduzione, altrimenti la prima attiva. I comandi possibili vengono dalle azioni dichiarate dallo stato di riproduzione: il bit 0 vale, in riproduzione, solo con l'azione PAUSE o PLAY_PAUSE; in pausa o fermo solo con PLAY o PLAY_PAUSE; il comando 1 manda pausa se la sessione suona, altrimenti play, e MEDIA_COMANDO lo rifiuta se il bit corrispondente non c'è.
+- **Strade di riserva** (solo se l'API diretta fallisce, tutte con scadenza di 2 s e output limitato a 2 MiB, mai nei log): `dumpsys media_session` per MEDIA (lettore prudente: se il testo non si capisce, esito 1; con le azioni illeggibili i comandi possibili sono 0), con i comandi `cmd media_session dispatch play-pause|next|previous` (o `input keyevent 85/87/88`) solo se la lettura ha trovato una sessione (limite: le app che non pubblicano lo stato di riproduzione (stato NONE ma con un brano) mostrano solo il brano, come «in pausa» e senza comandi; la descrizione «titolo, artista, album» è divisa da destra (album scartato, penultimo artista, il resto titolo); il tasto va alla sessione che sceglie Android, di norma quella letta; se `cmd media_session dispatch` è partito, anche con errore o scadenza, il telefono NON ripiega su `input keyevent`, per non mandare due play/pausa; ripiega solo se `cmd` non parte o risponde che il servizio non c'è, cioè quando il comando non ha agito); `cmd wifi status` per il nome della rete quando l'SSID è nascosto; `dumpsys telephony.registry` per la parte mobile.
+- **Dati mobili e aereo**: dati mobili da `TelephonyManager.isDataEnabled()`, con riserva sulla chiave globale `mobile_data`; aereo dalla chiave globale `airplane_mode_on`. Se non si leggono: 2.
+- Una stringa con U+0000 lo ha sostituito con uno spazio sul telefono. Ogni lettura ha una scadenza (6 s); se scade o la precedente è ancora in corso: esito 1.
+- **Tipi delle chiamate**: segreteria, bloccata e «risposta altrove» valgono 0 (altro).
+- **Riservatezza**: nomi, numeri, reti e titoli sono dati personali: mai in un log, mai su disco, né sul telefono né sul PC.
+- Un jar della versione 2 non conosce questi tipi, ma il SALUTO con versione 3 lo rifiuta prima.
 
 ## 3. Regole per il lato telefono
 

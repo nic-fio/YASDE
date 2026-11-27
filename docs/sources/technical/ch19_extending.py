@@ -12,7 +12,7 @@ S2 = p("Take a request that returns data, like the existing " + c("SVEGLIA") + "
         ["0x60–0x6f", "Physical panel", c("Pannello") + " (" + c("telefono/pannello/") + ")"],
         ["0x70–0x7f", "Phone data (0x74–0x75 in " + c("telefono/archivio/") + ")", c("Dati") + " (" + c("telefono/dati/") + "), " + c("Archivio")],
         ["0x80–0x8f", "Quick switches", c("Controlli") + " (" + c("telefono/controlli/") + ")"],
-        ["0x90–0x9f", "Approximate position", c("Dati")],
+        ["0x90–0x9f", "Approximate position (0x90); calls, network and media (0x91–0x94)", c("Dati")],
     ], "«TAB» — Message ranges of " + c("docs/protocollo.md")) + steps([
     "<b>Specify it</b> in " + c("docs/protocollo.md") + ": the type number inside the right range (§2), the direction, the request body and the OK body. Numbers are big endian, a string is a 2-byte length plus UTF-8, a message is a type byte, a 4-byte length (at most 1 MiB) and the body. "
     "Say what the phone touches, and its restore if it changes anything (the guardian rule).",

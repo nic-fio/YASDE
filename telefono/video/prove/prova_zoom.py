@@ -44,7 +44,7 @@ def prova(app):
     p, _ = P.lancia()
     P.adb("forward", "tcp:%d" % P.PORTA, "localabstract:yasde")
     c = P.Comandi()
-    c.chiedi(1, struct.pack(">H", 2))
+    c.chiedi(1, struct.pack(">H", 3))
     pre = schermi()
     t, b = P.apri_video(c, 1, 720, 1280, 450, app)
     P.controlla(t == 2, "sessione aperta con l'app")

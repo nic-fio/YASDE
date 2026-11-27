@@ -4,7 +4,7 @@ import java.io.DataInputStream;
 import java.util.List;
 
 /**
- * Dati del telefono, parte 1: comandi 0x70-0x73, 0x76-0x77, 0x7b-0x7d, 0x90 ed eventi 0x7e-0x7f (docs/protocollo.md §2.6).
+ * Dati del telefono, parte 1: comandi 0x70-0x73, 0x76-0x77, 0x7b-0x7d, 0x90-0x94 ed eventi 0x7e-0x7f (docs/protocollo.md §2.6).
  * Elenco app, icone, stato e notifiche; dopo la prima richiesta di STATO o NOTIFICHE un solo
  * thread controlla (lo stato ogni 2 s, le notifiche ogni 5 s) e avvisa solo se qualcosa e' cambiato (Android non offre a un
  * processo shell un ascoltatore puro: registerListener e' riservato al sistema).
@@ -14,6 +14,7 @@ public final class Dati {
     private static final int MEMORIA_DETTAGLIO = 0x76, CALENDARIO = 0x77;
     private static final int CALENDARIO_INTERVALLO = 0x7b, SVEGLIA = 0x7c, BATTERIA = 0x7d;
     private static final int POSIZIONE = 0x90;
+    private static final int CHIAMATE = 0x91, RETE = 0x92, MEDIA = 0x93, MEDIA_COMANDO = 0x94;
     private static final int STATO_CAMBIATO = 0x7e, NOTIFICHE_CAMBIATE = 0x7f;
     /** Intervalli del controllo dei cambi (protocollo §2.6): lo stato ogni 2 s, le notifiche ogni 5 s (leggerle costa). */
     private static final long INTERVALLO_MS = 2000;
@@ -124,9 +125,31 @@ public final class Dati {
                 if (permessa > 1) throw new IllegalArgumentException("richiesta permessa non valida (0/1)");
                 return LogicaPosizione.codifica(NascosteDati.posizione(permessa == 1));
             }
+            case CHIAMATE: {
+                int massimo = CampiTelefonia.controllaMassimoChiamate(in.readUnsignedByte());
+                senzaCoda(in);
+                return NascosteTelefonia.chiamate(massimo);
+            }
+            case RETE:
+                senzaCoda(in);
+                return NascosteTelefonia.rete();
+            case MEDIA:
+                senzaCoda(in);
+                return NascosteTelefonia.media();
+            case MEDIA_COMANDO: {
+                int comando = CampiTelefonia.controllaComando(in.readUnsignedByte());
+                senzaCoda(in);
+                NascosteTelefonia.comandoMedia(comando);
+                return new byte[0];
+            }
             default:
                 throw new IllegalArgumentException("tipo sconosciuto");
         }
+    }
+
+    /** Il corpo e' finito: byte in piu' = richiesta non valida (nulla toccato). */
+    private static void senzaCoda(DataInputStream in) throws java.io.IOException {
+        if (in.available() != 0) throw new IllegalArgumentException("corpo della richiesta troppo lungo");
     }
 
     /** Da chiamare con `lock` preso. */

@@ -204,12 +204,61 @@ final class Sessione {
      * del telefono: niente da ripristinare.
      */
     void pagina(int pagina) throws Exception {
+        final long partenza = System.nanoTime(); // il PC aspetta 15 s in tutto: si smette di aspettare a 12
         if (chiusa) throw new IllegalStateException("sessione chiusa");
         if (specchio()) throw new IllegalStateException("sessione specchio: nessuna app");
         String azione = Pagine.azioneRichiesta(pagina);
         ComponentName c = risolviPagina(azione);
         if (c == null) throw new IllegalStateException("nessuna attivita' risponde alla pagina");
-        lancia(azione, c, FLAG_AVVIO); // task nuovo: i precedenti restano sotto fino alla chiusura
+        // Task dello schermo PRIMA del lancio: sono gli unici che si toglieranno (se la lettura
+        // fallisce non si toglie nulla, ma la pagina si apre lo stesso).
+        List<Integer> prima = null;
+        try {
+            prima = NascosteVideo.taskDelloSchermo(idSchermo);
+        } catch (RuntimeException e) {
+            System.out.println("[video] task prima della pagina non letti");
+        }
+        lancia(azione, c, FLAG_AVVIO); // task nuovo (niente riuso); se fallisce si esce senza togliere nulla
+        if (prima != null && !prima.isEmpty()) togliPrecedenti(prima, partenza);
+    }
+
+    /**
+     * Dopo una pagina aperta si tolgono i task di prima (le pagine non si accumulano). Nessun lock, ogni
+     * attesa ha il suo limite (3 s). Un errore qui non fa fallire VIDEO_PAGINA: la pagina e' gia' aperta.
+     */
+    private void togliPrecedenti(List<Integer> prima, final long partenza) {
+        try {
+            PaginaTask.esegui(new PaginaTask.Schermo() {
+                @Override
+                public List<Integer> task() {
+                    return NascosteVideo.taskDelloSchermo(idSchermo);
+                }
+
+                @Override
+                public boolean togli(int idTask) {
+                    return NascosteVideo.togliTask(idTask);
+                }
+
+                @Override
+                public void attendi() throws InterruptedException {
+                    Thread.sleep(100);
+                }
+
+                @Override
+                public boolean scaduto() {
+                    return System.nanoTime() - partenza > 12_000_000_000L;
+                }
+
+                @Override
+                public void riga(String testo) {
+                    System.out.println("[video] " + testo);
+                }
+            }, prima, 30);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Throwable t) {
+            System.out.println("[video] task precedenti non tolti: " + t.getClass().getSimpleName());
+        }
     }
 
     /** Lancia l'attivita' sullo schermo virtuale (con l'azione, se c'e') e controlla l'esito (con tempo massimo). */

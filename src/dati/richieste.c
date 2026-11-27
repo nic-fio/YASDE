@@ -46,7 +46,7 @@ static int stato_leggi(const uint8_t *p, size_t n, PhDatiStato *s)
         return -1;
     s->batteria = p[0];
     s->in_carica = p[1] != 0;
-    s->rete = (PhDatiRete)p[2];
+    s->rete = (PhDatiTipoRete)p[2];
     s->segnale = p[3];
     s->bloccato = p[4] != 0;
     return 0;

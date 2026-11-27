@@ -46,6 +46,12 @@ static void bat_non_disp(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_BATTE
 static void bat_errore(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_BATTERIA, si, PH_FINTO_MODO_ERRORE); }
 static void ctl_non_disp(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_CONTROLLI, si, PH_FINTO_MODO_NON_DISPONIBILE); }
 static void ctl_rifiuta(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_CONTROLLI, si, PH_FINTO_MODO_ERRORE); }
+static void chi_assenti(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_CHIAMATE, si, PH_FINTO_MODO_NON_DISPONIBILE); }
+static void chi_negato(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_CHIAMATE, si, PH_FINTO_MODO_ERRORE); }
+static void rete_assente(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_RETE, si, PH_FINTO_MODO_NON_DISPONIBILE); }
+static void rete_negata(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_RETE, si, PH_FINTO_MODO_ERRORE); }
+static void media_non_disp(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_MEDIA, si, PH_FINTO_MODO_NON_DISPONIBILE); }
+static void media_negato(PhFinto *f, bool si) { modo_voce(f, PH_FINTO_VOCE_MEDIA, si, PH_FINTO_MODO_ERRORE); }
 static void torcia_manca(PhFinto *f, bool si) { ph_finto_torcia_disponibile(f, !si); }
 static void tel_silenzioso(PhFinto *f, bool si)
 {
@@ -153,6 +159,14 @@ GtkWidget *ph_finto_comandi_nuovi(PhFinto *f)
     interruttore(box, c, ctl_non_disp, "Controlli non disponibili", "Controlli disponibili");
     interruttore(box, c, torcia_manca, "Torcia non disponibile", "Torcia disponibile");
     interruttore(box, c, ctl_rifiuta, "Rifiuta i controlli", "Accetta i controlli");
+    interruttore(box, c, chi_assenti, "Chiamate recenti non disponibili", "Chiamate recenti disponibili");
+    interruttore(box, c, chi_negato, "Chiamate recenti: permesso negato", "Chiamate recenti: permesso dato");
+    interruttore(box, c, rete_assente, "Rete non disponibile", "Rete disponibile");
+    interruttore(box, c, rete_negata, "Rete: permesso negato", "Rete: permesso dato");
+    interruttore(box, c, ph_finto_rete_aereo, "Modalità aereo", "Modalità aereo spenta");
+    interruttore(box, c, media_non_disp, "In riproduzione non disponibile", "In riproduzione disponibile");
+    interruttore(box, c, media_negato, "In riproduzione: permesso negato", "In riproduzione: permesso dato");
+    interruttore(box, c, ph_finto_media_assente, "Nessun lettore attivo", "Lettore attivo");
     interruttore(box, c, tel_silenzioso, "Dal telefono: silenzioso", "Dal telefono: suoneria attiva");
     interruttore(box, c, tel_non_disturbare, "Dal telefono: Non disturbare acceso", "Dal telefono: Non disturbare spento");
     interruttore(box, c, tel_torcia, "Dal telefono: torcia accesa", "Dal telefono: torcia spenta");
@@ -308,7 +322,7 @@ int ph_finto_demo(int argc, char **argv, const char *titolo, PhFintoInstalla ins
     ph_shell_strato_aggiungi(sh, PH_STRATO_DESKTOP, sfondo);
 
     GtkWidget *win = gtk_window_new();
-    gtk_window_set_title(GTK_WINDOW(win), titolo != NULL ? titolo : "YASDE 2.2 - demo");
+    gtk_window_set_title(GTK_WINDOW(win), titolo != NULL ? titolo : "YASDE 2.3 - demo");
     gtk_window_set_default_size(GTK_WINDOW(win), larg, alt);
     gtk_window_set_child(GTK_WINDOW(win), ph_shell_radice(sh));
     GtkEventController *k = gtk_event_controller_key_new();

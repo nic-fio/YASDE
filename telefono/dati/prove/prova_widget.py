@@ -60,7 +60,7 @@ def main():
     try:
         s = socket.create_connection(("127.0.0.1", PORTA), timeout=15)
         s.sendall(b"comandi\n")
-        chiedi(s, 1, struct.pack(">H", 2))
+        chiedi(s, 1, struct.pack(">H", 3))
         print("API mancanti nel log:", [x for x in log if "MANCANTE" in x])
         t, b, ms = chiedi(s, 0x76)
         controlla(t == 2 and len(b) == 32, "MEMORIA_DETTAGLIO -> OK 32 byte", "%.0f ms" % ms)

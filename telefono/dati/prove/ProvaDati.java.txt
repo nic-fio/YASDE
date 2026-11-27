@@ -627,6 +627,241 @@ public final class ProvaDati {
                 "localita': Geocoder lento oltre il limite = vuota; la seconda richiesta non avvia un altro thread");
         lento.countDown();
 
+        // ---- chiamate, rete, media (protocollo 3) ----
+        controlla(CampiTelefonia.tipoChiamata(1) == 1 && CampiTelefonia.tipoChiamata(2) == 2 && CampiTelefonia.tipoChiamata(3) == 3
+                && CampiTelefonia.tipoChiamata(5) == 4, "tipi di chiamata: entrante, uscente, persa, rifiutata");
+        controlla(CampiTelefonia.tipoChiamata(4) == 0 && CampiTelefonia.tipoChiamata(6) == 0 && CampiTelefonia.tipoChiamata(7) == 0
+                && CampiTelefonia.tipoChiamata(99) == 0 && CampiTelefonia.tipoChiamata(-1) == 0, "tipi di chiamata sconosciuti = altro");
+        boolean maxChiamate = true;
+        for (int m = -2; m < 30; m++) {
+            boolean va;
+            try {
+                CampiTelefonia.controllaMassimoChiamate(m);
+                va = true;
+            } catch (IllegalArgumentException ex) {
+                va = false;
+            }
+            if (va != (m >= 1 && m <= 20)) maxChiamate = false;
+        }
+        controlla(maxChiamate, "massimo delle chiamate: solo 1..20");
+        java.util.List<CampiTelefonia.Chiamata> cl = new java.util.ArrayList<>();
+        cl.add(new CampiTelefonia.Chiamata(3, 1700000000123L, 0, "Mario", "+390000000000"));
+        cl.add(new CampiTelefonia.Chiamata(1, 5L, 125, null, null));
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaChiamate(0, cl, 20)));
+        controlla(in.readUnsignedByte() == 0 && in.readUnsignedByte() == 2, "chiamate: esito 0 e n = 2");
+        controlla(in.readUnsignedByte() == 3 && in.readLong() == 1700000000123L && in.readInt() == 0
+                && CampiDati.leggiStringa(in).equals("Mario") && CampiDati.leggiStringa(in).equals("+390000000000"), "chiamate: prima voce");
+        controlla(in.readUnsignedByte() == 1 && in.readLong() == 5L && in.readInt() == 125
+                && CampiDati.leggiStringa(in).isEmpty() && CampiDati.leggiStringa(in).isEmpty() && in.available() == 0, "chiamate: seconda voce, nome e numero assenti = vuoti");
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaChiamate(0, cl, 1)));
+        controlla(in.readUnsignedByte() == 0 && in.readUnsignedByte() == 1, "chiamate: mai oltre il massimo chiesto");
+        for (int esi = 1; esi <= 2; esi++) {
+            in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaChiamate(esi, cl, 20)));
+            controlla(in.readUnsignedByte() == esi && in.readUnsignedByte() == 0 && in.available() == 0, "chiamate: esito " + esi + " con lista vuota");
+        }
+        java.util.List<CampiTelefonia.Chiamata> venticinque = new java.util.ArrayList<>();
+        for (int i = 0; i < 25; i++) venticinque.add(new CampiTelefonia.Chiamata(1, i, i, "", ""));
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaChiamate(0, venticinque, 20)));
+        controlla(in.readUnsignedByte() == 0 && in.readUnsignedByte() == 20, "chiamate: mai oltre 20 anche se il telefono ne ha di piu'");
+        java.util.List<CampiTelefonia.Chiamata> lunghe = new java.util.ArrayList<>();
+        lunghe.add(new CampiTelefonia.Chiamata(1, 1, 1, ripeti("\u00e8", 100), ripeti("1", 100)));
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaChiamate(0, lunghe, 20)));
+        in.readUnsignedByte(); in.readUnsignedByte(); in.readUnsignedByte(); in.readLong(); in.readInt();
+        String nomeT = CampiDati.leggiStringa(in), numT = CampiDati.leggiStringa(in);
+        controlla(nomeT.getBytes("UTF-8").length == 126 && numT.length() == 47, "chiamate: nome tagliato a 127 byte a confine di carattere, numero a 47");
+        controlla(new CampiTelefonia.Chiamata(1, -5, -7, "", "").oraMs == 0 && new CampiTelefonia.Chiamata(1, 1, -7, "", "").durataS == 0
+                && new CampiTelefonia.Chiamata(1, 1, 1L << 40, "", "").durataS == 0xffffffffL, "chiamate: ora e durata mai negative, durata limitata a 32 bit");
+        // rete
+        controlla(CampiTelefonia.nomeRete("\"Casa\"").equals("Casa") && CampiTelefonia.nomeRete("<unknown ssid>").isEmpty()
+                && CampiTelefonia.nomeRete("\"<unknown ssid>\"").isEmpty() && CampiTelefonia.nomeRete(null).isEmpty()
+                && CampiTelefonia.nomeRete("Senza").equals("Senza") && CampiTelefonia.nomeRete("\"").equals("\""), "nome della rete: via virgolette e segnaposto");
+        controlla(CampiTelefonia.generazione(1) == 2 && CampiTelefonia.generazione(2) == 2 && CampiTelefonia.generazione(3) == 3
+                && CampiTelefonia.generazione(15) == 3 && CampiTelefonia.generazione(13) == 4 && CampiTelefonia.generazione(19) == 4
+                && CampiTelefonia.generazione(20) == 5 && CampiTelefonia.generazione(0) == 0 && CampiTelefonia.generazione(18) == 0
+                && CampiTelefonia.generazione(99) == 0, "generazione dal tipo di rete");
+        CampiTelefonia.Rete rt = new CampiTelefonia.Rete();
+        rt.wifi = 2; rt.wifiLivello = 3; rt.wifiNome = "Casa"; rt.mobile = 2; rt.mobileLivello = 4; rt.generazione = 4;
+        rt.operatore = "Op"; rt.datiMobili = 1; rt.aereo = 0;
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaRete(rt)));
+        controlla(in.readUnsignedByte() == 0 && in.readUnsignedByte() == 2 && in.readUnsignedByte() == 3
+                && CampiDati.leggiStringa(in).equals("Casa") && in.readUnsignedByte() == 2 && in.readUnsignedByte() == 4
+                && in.readUnsignedByte() == 4 && CampiDati.leggiStringa(in).equals("Op") && in.readUnsignedByte() == 1
+                && in.readUnsignedByte() == 0 && in.available() == 0, "rete: tutti i campi nell'ordine");
+        rt.esito = 2;
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaRete(rt)));
+        boolean tuttoZero = in.readUnsignedByte() == 2;
+        tuttoZero &= in.readUnsignedByte() == 0 && in.readUnsignedByte() == 0 && CampiDati.leggiStringa(in).isEmpty();
+        tuttoZero &= in.readUnsignedByte() == 0 && in.readUnsignedByte() == 0 && in.readUnsignedByte() == 0 && CampiDati.leggiStringa(in).isEmpty();
+        tuttoZero &= in.readUnsignedByte() == 0 && in.readUnsignedByte() == 0 && in.available() == 0;
+        controlla(tuttoZero, "rete: con esito != 0 il resto e' zero");
+        rt.datiMobili = 9; rt.aereo = -3;
+        rt.esito = 0; rt.wifi = 9; rt.wifiLivello = 9; rt.mobile = 9; rt.mobileLivello = 9; rt.generazione = 7; rt.wifiNome = ripeti("w", 300); rt.operatore = ripeti("o", 300);
+        byte[] fuoriMisura = CampiTelefonia.codificaRete(rt);
+        in = new DataInputStream(new ByteArrayInputStream(fuoriMisura));
+        in.readUnsignedByte();
+        boolean limitato = in.readUnsignedByte() == 2 && in.readUnsignedByte() == 4 && CampiDati.leggiStringa(in).length() == 99;
+        limitato &= in.readUnsignedByte() == 2 && in.readUnsignedByte() == 4 && in.readUnsignedByte() == 0 && CampiDati.leggiStringa(in).length() == 63;
+        controlla(limitato, "rete: valori fuoriMisura elenco limitati, generazione 7 -> 0, stringhe tagliate a 99 e 63");
+        // U+0000 diventa spazio prima della codifica
+        java.util.List<CampiTelefonia.Chiamata> nul = new java.util.ArrayList<>();
+        nul.add(new CampiTelefonia.Chiamata(1, 1, 1, "a\u0000b", "1\u0000"));
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaChiamate(0, nul, 20)));
+        in.readUnsignedByte(); in.readUnsignedByte(); in.readUnsignedByte(); in.readLong(); in.readInt();
+        controlla(CampiDati.leggiStringa(in).equals("a b") && CampiDati.leggiStringa(in).equals("1 "), "chiamate: U+0000 diventa spazio");
+        CampiTelefonia.Media mnul = new CampiTelefonia.Media();
+        mnul.stato = 1; mnul.titolo = "t\u0000"; mnul.artista = "\u0000"; mnul.pacchetto = "p";
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaMedia(mnul)));
+        in.readUnsignedByte(); in.readUnsignedByte();
+        controlla(CampiDati.leggiStringa(in).equals("t ") && CampiDati.leggiStringa(in).equals(" "), "media: U+0000 diventa spazio");
+        CampiTelefonia.Rete rnul = new CampiTelefonia.Rete();
+        rnul.wifiNome = "\u0000x"; rnul.operatore = "\u0000";
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaRete(rnul)));
+        in.readUnsignedByte(); in.readUnsignedByte(); in.readUnsignedByte();
+        controlla(CampiDati.leggiStringa(in).equals(" x"), "rete: U+0000 diventa spazio");
+        // media
+        controlla(CampiTelefonia.statoMedia(3) == 2 && CampiTelefonia.statoMedia(6) == 2 && CampiTelefonia.statoMedia(2) == 1
+                && CampiTelefonia.statoMedia(1) == 1 && CampiTelefonia.statoMedia(0) == 1 && CampiTelefonia.statoMedia(7) == 1, "stato media: in riproduzione / in pausa");
+        controlla(CampiTelefonia.comandiPossibili(0, 1) == 0 && CampiTelefonia.comandiPossibili(4, 1) == 1 && CampiTelefonia.comandiPossibili(2, 1) == 0
+                && CampiTelefonia.comandiPossibili(512, 1) == 1 && CampiTelefonia.comandiPossibili(32, 1) == 2 && CampiTelefonia.comandiPossibili(16, 1) == 4
+                && CampiTelefonia.comandiPossibili(4 | 32 | 16 | 64 | 1024, 1) == 7 && CampiTelefonia.comandiPossibili(64 | 256 | 1024, 1) == 0,
+                "comandi possibili in pausa: play/pausa solo con PLAY o PLAY_PAUSE");
+        controlla(CampiTelefonia.comandiPossibili(2, 2) == 1 && CampiTelefonia.comandiPossibili(4, 2) == 0 && CampiTelefonia.comandiPossibili(512, 2) == 1
+                && CampiTelefonia.comandiPossibili(4 | 32, 2) == 2 && CampiTelefonia.comandiPossibili(2 | 16, 2) == 5,
+                "comandi possibili in riproduzione: play/pausa solo con PAUSE o PLAY_PAUSE");
+        controlla(CampiTelefonia.comandoPermesso(1, 1) && !CampiTelefonia.comandoPermesso(2, 1) && CampiTelefonia.comandoPermesso(2, 2)
+                && CampiTelefonia.comandoPermesso(3, 4) && !CampiTelefonia.comandoPermesso(3, 3) && !CampiTelefonia.comandoPermesso(1, 0), "comando permesso: bit comando-1");
+        boolean cmdOk = true;
+        for (int c = -1; c < 300; c++) {
+            boolean va;
+            try {
+                CampiTelefonia.controllaComando(c);
+                va = true;
+            } catch (IllegalArgumentException ex) {
+                va = false;
+            }
+            if (va != (c >= 1 && c <= 3)) cmdOk = false;
+        }
+        controlla(cmdOk, "comando media: solo 1, 2, 3");
+        controlla(CampiTelefonia.scegliSessione(new int[0]) == -1 && CampiTelefonia.scegliSessione(null) == -1
+                && CampiTelefonia.scegliSessione(new int[] {1, 1}) == 0 && CampiTelefonia.scegliSessione(new int[] {1, 2, 2}) == 1
+                && CampiTelefonia.scegliSessione(new int[] {2, 1}) == 0, "sessione scelta: in riproduzione, altrimenti la prima");
+        CampiTelefonia.Media mdia = new CampiTelefonia.Media();
+        mdia.stato = 2; mdia.titolo = "Tit"; mdia.artista = "Art"; mdia.pacchetto = "com.finto"; mdia.comandi = 7;
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaMedia(mdia)));
+        controlla(in.readUnsignedByte() == 0 && in.readUnsignedByte() == 2 && CampiDati.leggiStringa(in).equals("Tit")
+                && CampiDati.leggiStringa(in).equals("Art") && CampiDati.leggiStringa(in).equals("com.finto") && in.readUnsignedByte() == 7 && in.available() == 0, "media: campi nell'ordine");
+        mdia = new CampiTelefonia.Media();
+        mdia.titolo = "x"; mdia.comandi = 7;   // stato 0 = nessuna sessione: nessun dato
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaMedia(mdia)));
+        controlla(in.readUnsignedByte() == 0 && in.readUnsignedByte() == 0 && CampiDati.leggiStringa(in).isEmpty() && CampiDati.leggiStringa(in).isEmpty()
+                && CampiDati.leggiStringa(in).isEmpty() && in.readUnsignedByte() == 0 && in.available() == 0, "media: nessuna sessione = tutto vuoto");
+        mdia = new CampiTelefonia.Media();
+        mdia.esito = 2; mdia.stato = 2; mdia.titolo = "x"; mdia.comandi = 7;
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaMedia(mdia)));
+        controlla(in.readUnsignedByte() == 2 && in.readUnsignedByte() == 0 && CampiDati.leggiStringa(in).isEmpty() && CampiDati.leggiStringa(in).isEmpty()
+                && CampiDati.leggiStringa(in).isEmpty() && in.readUnsignedByte() == 0 && in.available() == 0, "media: esito 2 = tutto zero");
+        mdia = new CampiTelefonia.Media();
+        mdia.stato = 1; mdia.titolo = ripeti("t", 400); mdia.artista = ripeti("a", 400); mdia.pacchetto = ripeti("p", 400); mdia.comandi = 255;
+        in = new DataInputStream(new ByteArrayInputStream(CampiTelefonia.codificaMedia(mdia)));
+        in.readUnsignedByte(); in.readUnsignedByte();
+        controlla(CampiDati.leggiStringa(in).length() == 159 && CampiDati.leggiStringa(in).length() == 127 && CampiDati.leggiStringa(in).length() == 255
+                && in.readUnsignedByte() == 7, "media: stringhe tagliate a 159, 127, 255; comandi limitati a 3 bit");
+        controlla(CampiTelefonia.negato(new RuntimeException(new SecurityException("x"))) && CampiTelefonia.negato(new java.lang.reflect.InvocationTargetException(new SecurityException("x"))) && !CampiTelefonia.negato(new RuntimeException("y")) && !CampiTelefonia.negato(null),
+                "negato: SecurityException nella catena delle cause");
+
+        // ---- lettori di riserva (testi d'esempio inventati) ----
+        String intest = "MEDIA SESSION SERVICE (dumpsys media_session)\n\n=== PACKAGE SUMMARY ===\nTotal sessions: 2 across 2 package(s)\n\n"
+                + "Package Name                              UID      Sessions  Active\n------------------------------------------------------------------------\n"
+                + "org.sample.player                         10301    1         0\n\n=== DETAILED SESSION INFO ===\n12 sessions listeners.\n"
+                + "Global priority session is org.sample.player/Classe/1 (userId=0)\n"
+                + "  Last MediaButtonReceiver: MBR {pi=PendingIntent{x}, componentName=ComponentInfo{org.altro/Classe}}\n"
+                + "  High priority mediakey receiver: null\n"
+                + "  Media button session is org.sample.player/Classe playerlib/51 (userId=0)\n"
+                + "  Sessions Stack - have 2 sessions:\n";
+        String sess1 = "    Prima org.finto.prima/Classe prima/50 (userId=0)\n      SUMMARY: package=org.finto.prima, uid=1, controllers=4, active=false\n"
+                + "      ownerPid=1, ownerUid=2, userId=0\n      package=org.finto.prima\n      launchIntent=null\n      active=false\n      flags=3\n"
+                + "      state=PlaybackState {state=PAUSED(2), position=5, buffered position=0, speed=0.0, updated=1, actions=" + (4 | 32) + ", custom actions=[], active item id=-1, error=null}\n"
+                + "      audioAttrs=AudioAttributes: usage=USAGE_MEDIA\n      metadata: size=7, description=Altro Brano, Altro Artista, Album\n      queueTitle=null, size=0\n";
+        String sess2 = "    Seconda org.sample.player/Classe playerlib/51 (userId=0)\n      SUMMARY: package=org.sample.player, uid=1, controllers=4, active=false\n"
+                + "      package=org.sample.player\n      active=false\n"
+                + "      state=PlaybackState {state=PLAYING(3), position=5, buffered position=0, speed=1.0, updated=1, actions=" + (2 | 32 | 16) + ", custom actions=[], active item id=-1, error=null}\n"
+                + "      metadata: size=7, description=Sample Song, Sample Artist, Sample Album\n      queueTitle=null, size=0\n";
+        String coda = "isAppCastingOn:false\nUser Records:\nRecord for full_user=0\n";
+        String dumpMedia = intest + sess1 + sess2 + coda;
+        CampiTelefonia.Media dmz = LettoriShell.mediaDaDumpsys(dumpMedia);
+        controlla(dmz != null && dmz.esito == 0 && dmz.stato == 2 && dmz.pacchetto.equals("org.sample.player") && dmz.titolo.equals("Sample Song")
+                && dmz.artista.equals("Sample Artist") && dmz.comandi == 7, "dumpsys media: sceglie la sessione in riproduzione (PLAYING(3)), titolo, artista, comandi dalle azioni");
+        CampiTelefonia.Media dmA = LettoriShell.mediaDaDumpsys(intest + sess2.replace("PLAYING(3)", "PAUSED(2)") + sess1.replace("PAUSED(2)", "NONE(0)") + coda);
+        controlla(dmA != null && dmA.pacchetto.equals("org.sample.player") && dmA.stato == 1 && dmA.comandi == 6, "dumpsys media: una sessione in pausa; play/pausa solo con PLAY o PLAY_PAUSE (qui no)");
+        CampiTelefonia.Media dmB = LettoriShell.mediaDaDumpsys(intest + sess1 + coda);
+        controlla(dmB != null && dmB.stato == 1 && dmB.pacchetto.equals("org.finto.prima") && dmB.titolo.equals("Altro Brano") && dmB.comandi == 3,
+                "dumpsys media: in pausa con PLAY e avanti = comandi 1 e 2");
+        CampiTelefonia.Media dmC = LettoriShell.mediaDaDumpsys(dumpMedia.replace("actions=" + (2 | 32 | 16), "actions=x"));
+        controlla(dmC != null && dmC.stato == 2 && dmC.comandi == 0, "dumpsys media: azioni illeggibili = nessun comando (0)");
+        CampiTelefonia.Media dmD = LettoriShell.mediaDaDumpsys(dumpMedia.replace("description=Sample Song, Sample Artist, Sample Album", "description=null, null, null"));
+        controlla(dmD != null && dmD.titolo.isEmpty() && dmD.artista.isEmpty(), "dumpsys media: descrizione null = vuota");
+        CampiTelefonia.Media dmE = LettoriShell.mediaDaDumpsys(dumpMedia.replace("PLAYING(3)", "3"));
+        controlla(dmE != null && dmE.stato == 2 && dmE.titolo.equals("Sample Song"), "dumpsys media: anche il solo numero dello stato");
+        // il caso reale: stato NONE(0), azioni 8192, ma il brano e' presente -> in pausa (1), niente comandi
+        String reale = intest.replace("Total sessions: 2 across 2", "Total sessions: 1 across 1").replace("have 2 sessions", "have 1 sessions")
+                + sess2.replace("PLAYING(3)", "NONE(0)").replace("actions=" + (2 | 32 | 16), "actions=8192") + coda;
+        CampiTelefonia.Media dmR = LettoriShell.mediaDaDumpsys(reale);
+        controlla(dmR != null && dmR.esito == 0 && dmR.stato == 1 && dmR.titolo.equals("Sample Song") && dmR.artista.equals("Sample Artist")
+                && dmR.pacchetto.equals("org.sample.player") && dmR.comandi == 0, "dumpsys media: caso reale, stato NONE(0) con brano = in pausa, comandi 0");
+        String senzaBrano = reale.replace("description=Sample Song, Sample Artist, Sample Album", "description=null, null, null");
+        CampiTelefonia.Media dmS = LettoriShell.mediaDaDumpsys(senzaBrano);
+        controlla(dmS != null && dmS.esito == 0 && dmS.stato == 0 && dmS.titolo.isEmpty() && dmS.pacchetto.isEmpty() && dmS.comandi == 0,
+                "dumpsys media: stato NONE(0) senza brano = nessuna sessione (stato 0, esito 0), non «non disponibile»");
+        controlla(LettoriShell.mediaDaDumpsys(senzaBrano.replace("metadata: size=7, description=null, null, null", "metadata: null")).stato == 0
+                && LettoriShell.mediaDaDumpsys(senzaBrano.replace("NONE(0)", "STOPPED(1)")).stato == 0 && LettoriShell.mediaDaDumpsys(senzaBrano.replace("NONE(0)", "ERROR(7)")).stato == 0,
+                "dumpsys media: metadata null, STOPPED, ERROR senza brano = nessuna sessione");
+        CampiTelefonia.Media dmF = LettoriShell.mediaDaDumpsys(reale.replace("NONE(0)", "BUFFERING(6)"));
+        controlla(dmF != null && dmF.stato == 2, "dumpsys media: BUFFERING conta come in riproduzione");
+        // descrizione divisa da destra
+        String[][] desc = {
+            {"Titolo, Artista, Album", "Titolo", "Artista"},
+            {"Ti, to, Artista, Album", "Ti, to", "Artista"},
+            {"Solo titolo", "Solo titolo", ""},
+            {"Titolo, Artista", "Titolo", "Artista"},
+            {"null, null, null", "", ""},
+            {"Titolo, null, Album", "Titolo", ""},
+            {"A, b, C, d, Album", "A, b, C", "d"}};
+        boolean descOk = true;
+        for (String[] dd : desc) {
+            CampiTelefonia.Media mm = LettoriShell.mediaDaDumpsys(reale.replace("description=Sample Song, Sample Artist, Sample Album", "description=" + dd[0]));
+            boolean vuota = dd[1].isEmpty() && dd[2].isEmpty();
+            descOk &= mm != null && mm.titolo.equals(dd[1]) && mm.artista.equals(dd[2]) && (vuota ? mm.stato == 0 : mm.stato == 1);
+        }
+        controlla(descOk, "dumpsys media: descrizione divisa da destra (2 virgole, 3 virgole, nessuna virgola, due campi, null)");
+        String zero = "MEDIA SESSION SERVICE\n=== PACKAGE SUMMARY ===\nTotal sessions: 0 across 0 package(s)\n=== DETAILED SESSION INFO ===\nGlobal priority session is x/1 (userId=0)\n  Sessions Stack - have 0 sessions:\nUser Records:\n";
+        CampiTelefonia.Media dvz = LettoriShell.mediaDaDumpsys(zero);
+        controlla(dvz != null && dvz.stato == 0 && dvz.esito == 0 && dvz.titolo.isEmpty(), "dumpsys media: zero sessioni = stato 0");
+        controlla(LettoriShell.mediaDaDumpsys("") == null && LettoriShell.mediaDaDumpsys("Can't find service: media_session") == null && LettoriShell.mediaDaDumpsys(null) == null
+                && LettoriShell.mediaDaDumpsys(reale.replace("state=PlaybackState", "state=Boh")) == null,
+                "dumpsys media: testo non capito (sessioni dichiarate ma nessuna leggibile) = null (esito 1), mai dati a caso");
+        controlla(LettoriShell.nomeDaWifiStatus("Wifi is enabled\nWifi is connected to \"Rete Finta\"\nWifiInfo: SSID: \"Altra\", BSSID: aa").equals("Rete Finta")
+                && LettoriShell.nomeDaWifiStatus("x\nWifiInfo: SSID: \"Solo, Virgola\", BSSID: aa:bb, MAC: cc").equals("Solo, Virgola")
+                && LettoriShell.nomeDaWifiStatus("Wifi is connected to <unknown ssid>").isEmpty() && LettoriShell.nomeDaWifiStatus("Wifi is disabled").isEmpty()
+                && LettoriShell.nomeDaWifiStatus(null).isEmpty() && LettoriShell.nomeDaWifiStatus("WifiInfo: SSID: <unknown ssid>, BSSID: <none>").isEmpty(), "cmd wifi status: nome della rete");
+        String regT = "  Phone Id=0\n    mServiceState={mVoiceRegState=1(OUT_OF_SERVICE), mDataRegState=1(OUT_OF_SERVICE), mOperatorAlphaLong=, mOperatorAlphaShort=, getRilDataRadioTechnology=0(Unknown), getRilVoiceRadioTechnology=0(Unknown), x=y}\n"
+                + "    mSignalStrength=SignalStrength:{mLte=Invalid}\n"
+                + "  Phone Id=1\n    mServiceState={mVoiceRegState=0(IN_SERVICE), mDataRegState=0(IN_SERVICE), mOperatorAlphaLong=Op Finto, mOperatorAlphaShort=OF, getRilVoiceRadioTechnology=14(LTE), getRilDataRadioTechnology=20(NR), x=y}\n"
+                + "    mSignalStrength=SignalStrength:{mCdma=Invalid,mLte=CellSignalStrengthLte: rssi=-81 level=2 parametersUseForLevel=0,mNr=CellSignalStrengthNr: level=3,SignalBarInfo{ lteLevel=1 }}\n";
+        LettoriShell.Mobile moA = LettoriShell.mobileDaRegistry(regT);
+        controlla(moA != null && moA.mobile == 2 && moA.livello == 3 && moA.generazione == 5 && moA.operatore.equals("Op Finto"), "registro telefonia: primo slot in servizio, livello, generazione, operatore");
+        LettoriShell.Mobile moB = LettoriShell.mobileDaRegistry(regT.replace("getRilDataRadioTechnology=20(NR)", "getRilDataRadioTechnology=0(Unknown)").replace("mOperatorAlphaLong=Op Finto", "mOperatorAlphaLong="));
+        controlla(moB != null && moB.generazione == 4 && moB.operatore.equals("OF"), "registro telefonia: generazione dalla voce e operatore breve se manca il lungo");
+        LettoriShell.Mobile moC = LettoriShell.mobileDaRegistry(regT.replace("0(IN_SERVICE)", "1(OUT_OF_SERVICE)"));
+        controlla(moC != null && moC.mobile == 1 && moC.livello == 0 && moC.operatore.isEmpty(), "registro telefonia: nessuno slot in servizio = senza servizio");
+        controlla(LettoriShell.nomeDaWifiStatus("  BSSID: aa\nWifiInfo: SSID: \"Reale\", BSSID: aa:bb, MAC: cc").equals("Reale")
+                && LettoriShell.nomeDaWifiStatus("    BSSID: \"Falso\"\n").isEmpty()
+                && LettoriShell.nomeDaWifiStatus("Wifi is connected to \"Troncat").isEmpty()
+                && LettoriShell.nomeDaWifiStatus("WifiInfo: SSID: \"Troncat").isEmpty() && LettoriShell.nomeDaWifiStatus("Wifi is connected to \"").isEmpty(),
+                "cmd wifi status: BSSID non e' SSID, virgoletta senza chiusura = vuoto");
+        controlla(LettoriShell.mobileDaRegistry("niente di utile") == null && LettoriShell.mobileDaRegistry(null) == null, "registro telefonia: testo non capito = null");
+        controlla(LettoriShell.generazioneDaNome("LTE") == 4 && LettoriShell.generazioneDaNome("HSPAP") == 3 && LettoriShell.generazioneDaNome("EDGE") == 2
+                && LettoriShell.generazioneDaNome("Unknown") == 0 && LettoriShell.generazioneDaNome(null) == 0, "generazione dal nome della tecnologia");
+
         System.out.println(falliti == 0 ? "tutte le prove superate" : falliti + " prove fallite");
         if (falliti != 0) System.exit(1);
     }

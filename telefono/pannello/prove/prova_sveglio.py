@@ -201,7 +201,7 @@ def avvia_servizio(limite_ms=None):
     servizio = pp.lancia(limite_ms)
     pid = pp.pid_servizio()
     c = proteggi(pp.Comandi())
-    t, b = c.chiedi(1, struct.pack(">H", 2))  # il SALUTO e' il primo segno di vita: senza, il lock non si prende
+    t, b = c.chiedi(1, struct.pack(">H", 3))  # il SALUTO e' il primo segno di vita: senza, il lock non si prende
     return servizio, pid, c, t == 2
 
 

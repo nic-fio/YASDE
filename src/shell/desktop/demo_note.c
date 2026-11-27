@@ -12,7 +12,11 @@
  *   6. senza profilo il campo non e' modificabile e rifiuta il testo, senza salvataggi; col profilo
  *      di nuovo presente si scrive;
  *   7. widget tolto: il testo resta nel profilo;
- *   8. un altro telefono (profilo nuovo): il campo mostra il suo testo, nessun testo del vecchio.
+ *   8. un altro telefono (profilo nuovo): il campo mostra il suo testo, nessun testo del vecchio;
+ *   9. il clic destro sul campo apre il menu della shell (non quello di GTK): Cut, Copy, Paste, Select
+ *      all e Remove widget; Cut e Copy spenti senza selezione; Select all, Copy e Paste funzionano;
+ *      Paste passa dal filtro (un carattere di controllo negli appunti non entra); Cut toglie il
+ *      testo; Remove widget toglie il widget.
  * Il testo e' un dato dell'utente: i messaggi di questa prova non lo riportano mai.
  *   note-attendi   se all'uscita la prova non e' arrivata in fondo, il processo esce con errore
  *   note-avvia     parte la sequenza (aspetta il profilo del telefono finto, con scadenza) */
@@ -47,6 +51,7 @@ typedef struct {
     gint64 scadenza; /* della fase in corso */
     unsigned base;           /* d->salvataggi prima del passo */
     GtkWidget *vista[2];     /* il campo del widget a destra 16 (0) e di quello a destra 300 (1) */
+    int sub;                 /* passo del menu del campo (fase 9) */
 } Prova;
 
 #define SCADENZA_US (6 * G_USEC_PER_SEC)
@@ -221,6 +226,39 @@ static void controlla_trascinamento(Prova *v)
     VERIFICA(w->destra0 == w->destra, "il trascinamento non parte dal titolo");
 }
 
+/* Il clic destro sul campo: si emette «pressed» del gesto secondario del campo (come il mouse). */
+static void apri_menu_campo(GtkWidget *vista)
+{
+    GListModel *m = gtk_widget_observe_controllers(vista);
+    bool fatto = false;
+    for (guint i = 0; i < g_list_model_get_n_items(m) && !fatto; i++) {
+        GObject *c = g_list_model_get_item(m, i);
+        if (GTK_IS_GESTURE_CLICK(c) &&
+            gtk_gesture_single_get_button(GTK_GESTURE_SINGLE(c)) == GDK_BUTTON_SECONDARY) {
+            g_signal_emit_by_name(c, "pressed", 1, 10.0, 10.0);
+            fatto = true;
+        }
+        g_object_unref(c);
+    }
+    g_object_unref(m);
+    if (!fatto)
+        FALLISCI("%s", "il campo non ha il gesto del clic destro");
+}
+
+/* La voce del menu con quel testo (chiave italiana, tradotta come nel menu); NULL se non c'e'. */
+static GtkWidget *voce_menu(PhDesktop *d, const char *chiave)
+{
+    const char *atteso = ph_tv(chiave);
+    for (GtkWidget *c = gtk_widget_get_first_child(d->menu_voci); c != NULL; c = gtk_widget_get_next_sibling(c)) {
+        if (!GTK_IS_BUTTON(c))
+            continue;
+        GtkWidget *l = gtk_button_get_child(GTK_BUTTON(c));
+        if (GTK_IS_LABEL(l) && strcmp(gtk_label_get_text(GTK_LABEL(l)), atteso) == 0)
+            return c;
+    }
+    return NULL;
+}
+
 static gboolean fotogramma(GtkWidget *radice, GdkFrameClock *clock, gpointer dati)
 {
     (void)radice;
@@ -387,9 +425,81 @@ static gboolean fotogramma(GtkWidget *radice, GdkFrameClock *clock, gpointer dat
         VERIFICA(trova_viste(v, 1), "il widget Note aggiunto non c'e'");
         VERIFICA(testo_e(v->vista[0], "senza widget"), "il widget aggiunto non mostra il testo del nuovo telefono");
         controlla_senza_annullamento(v, v->vista[0], "dopo l'aggiunta si puo' annullare verso il vecchio telefono");
-        sequenza_finita = true;
-        g_message("note: battuta con salvataggio, due widget, limite, riallineamento, profilo assente, rimozione, cambio profilo, senza annullamento");
-        return G_SOURCE_REMOVE;
+        v->fase = 9;
+        v->sub = 0;
+        v->scadenza = g_get_monotonic_time() + SCADENZA_US;
+        return G_SOURCE_CONTINUE;
+    }
+    case 9: { /* 9. il menu del clic destro sul campo */
+        if (v->sub == 3) { /* Remove widget: il widget e il suo campo non ci sono piu' */
+            ATTENDI(v, trova_viste(v, 0), "Remove widget dal menu del campo");
+            sequenza_finita = true;
+            g_message("note: battuta con salvataggio, due widget, limite, riallineamento, profilo assente, rimozione, cambio profilo, senza annullamento, menu del campo");
+            return G_SOURCE_REMOVE;
+        }
+        ATTENDI(v, trova_viste(v, 1), "il campo per il menu");
+        GtkWidget *vista = v->vista[0];
+        GtkTextBuffer *b = gtk_text_view_get_buffer(GTK_TEXT_VIEW(vista));
+        switch (v->sub) {
+        case 0: {
+            apri_menu_campo(vista);
+            VERIFICA(voce_menu(v->d, "Taglia") && voce_menu(v->d, "Copia") && voce_menu(v->d, "Incolla") &&
+                         voce_menu(v->d, "Seleziona tutto") && voce_menu(v->d, "Rimuovi widget"),
+                     "il menu del campo non ha tutte le voci");
+            VERIFICA(!gtk_widget_get_sensitive(voce_menu(v->d, "Taglia")) &&
+                         !gtk_widget_get_sensitive(voce_menu(v->d, "Copia")),
+                     "Cut e Copy accesi senza selezione");
+            VERIFICA(gtk_widget_get_sensitive(voce_menu(v->d, "Incolla")) &&
+                         gtk_widget_get_sensitive(voce_menu(v->d, "Seleziona tutto")),
+                     "Paste o Select all spenti");
+            g_signal_emit_by_name(voce_menu(v->d, "Seleziona tutto"), "clicked");
+            VERIFICA(gtk_text_buffer_get_has_selection(b), "Select all non ha selezionato");
+            apri_menu_campo(vista);
+            VERIFICA(gtk_widget_get_sensitive(voce_menu(v->d, "Taglia")) && gtk_widget_get_sensitive(voce_menu(v->d, "Copia")),
+                     "Cut e Copy spenti con la selezione");
+            g_signal_emit_by_name(voce_menu(v->d, "Copia"), "clicked");
+            /* Incolla in fondo: il testo raddoppia (la lettura degli appunti e' asincrona). */
+            GtkTextIter fine;
+            gtk_text_buffer_get_end_iter(b, &fine);
+            gtk_text_buffer_place_cursor(b, &fine);
+            apri_menu_campo(vista);
+            g_signal_emit_by_name(voce_menu(v->d, "Incolla"), "clicked");
+            v->sub = 1;
+            v->scadenza = g_get_monotonic_time() + SCADENZA_US;
+            return G_SOURCE_CONTINUE;
+        }
+        case 1: {
+            ATTENDI(v, testo_e(vista, "senza widgetsenza widget"), "Copy e Paste dal menu");
+            /* Il filtro vale anche per Paste: un controllo negli appunti non entra. */
+            gdk_clipboard_set_text(gtk_widget_get_clipboard(vista), "x\x01y");
+            GtkTextIter fine;
+            gtk_text_buffer_get_end_iter(b, &fine);
+            gtk_text_buffer_place_cursor(b, &fine);
+            apri_menu_campo(vista);
+            g_signal_emit_by_name(voce_menu(v->d, "Incolla"), "clicked");
+            v->sub = 2;
+            v->scadenza = g_get_monotonic_time() + SCADENZA_US;
+            return G_SOURCE_CONTINUE;
+        }
+        case 2: {
+            ATTENDI(v, testo_e(vista, "senza widgetsenza widgetxy"), "Paste dal menu passa dal filtro");
+            VERIFICA(nota_e(v, "senza widgetsenza widgetxy"), "Paste non e' arrivato nel profilo");
+            /* Cut: toglie il testo selezionato. */
+            apri_menu_campo(vista);
+            g_signal_emit_by_name(voce_menu(v->d, "Seleziona tutto"), "clicked");
+            apri_menu_campo(vista);
+            g_signal_emit_by_name(voce_menu(v->d, "Taglia"), "clicked");
+            VERIFICA(testo_e(vista, "") && nota_e(v, ""), "Cut non ha tolto il testo");
+            /* Remove widget dal menu del campo. */
+            apri_menu_campo(vista);
+            g_signal_emit_by_name(voce_menu(v->d, "Rimuovi widget"), "clicked");
+            v->sub = 3;
+            v->scadenza = g_get_monotonic_time() + SCADENZA_US;
+            return G_SOURCE_CONTINUE;
+        }
+        default:
+            return G_SOURCE_REMOVE;
+        }
     }
     default:
         return G_SOURCE_REMOVE;

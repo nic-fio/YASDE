@@ -210,6 +210,9 @@ typedef enum {
     PH_SRV_EV_METEO,            /* previsioni del tempo cambiate (23 nov sera) */
     PH_SRV_EV_DECODIFICA,       /* il video si decodifica col processore: avviso da mostrare (24 nov);
                                    al massimo UNO per sessione di collegamento, decide il backend */
+    PH_SRV_EV_CHIAMATE,         /* chiamate recenti cambiate (27 nov, PIANO.md 9) */
+    PH_SRV_EV_RETE,             /* Wi-Fi e rete mobile cambiati (27 nov) */
+    PH_SRV_EV_MEDIA,            /* brano in riproduzione cambiato (27 nov) */
     PH_SRV_EV_NUMERO
 } PhSrvEvento;
 
@@ -823,5 +826,83 @@ typedef void (*PhSrvMeteoCercaFatta)(PhServizi *s, PhSrvEsito esito, const char 
                                      size_t n, void *utente);
 void ph_srv_meteo_cerca(PhServizi *s, const char *testo, const char *lingua, GCancellable *annulla,
                         PhSrvMeteoCercaFatta fatto, void *utente);
+
+/* ---- Widget del 27 nov (PIANO.md 9): chiamate recenti, rete, in riproduzione ----
+ * Stesso schema dei controlli: una fotografia dell'ultimo valore letto
+ * (funzione che non blocca e non legge dal telefono) + un evento sul thread
+ * GTK a ogni nuova lettura. Le letture le fa il backend su un suo thread, MAI
+ * sul thread GTK, e SOLO mentre qualcuno osserva: ph_srv_<x>_osserva(s, true)
+ * a ogni widget aggiunto, false a ogni widget tolto (contatore: si smette
+ * quando torna a zero; false senza true e' ignorato). Ritmi: chiamate 60 s,
+ * rete 15 s, media 3 s (e subito dopo un comando). Senza sessione col
+ * telefono lo stato e' PH_SRV_LET_NON_DISPONIBILE.
+ * Dal gestore dell'evento (thread GTK, nessun lock tenuto) si possono
+ * chiamare: le funzioni di lettura qui sotto, ph_srv_*_osserva,
+ * ph_srv_media_comando, ph_srv_smetti. I puntatori restituiti valgono fino al
+ * ritorno al ciclo GTK. Nomi, numeri, titoli e nomi di reti non vanno mai su
+ * disco, nei log o nei messaggi d'errore. */
+typedef enum {
+    PH_SRV_LET_ATTESA = 0,       /* nessuna lettura ancora arrivata */
+    PH_SRV_LET_OK,
+    PH_SRV_LET_NON_DISPONIBILE,  /* funzione assente sul telefono o nessuna sessione */
+    PH_SRV_LET_NEGATO,           /* permesso negato dal telefono */
+} PhSrvLettura;
+
+/* Chiamate recenti. */
+#define PH_SRV_CHIAMATE_MAX 20
+enum { PH_SRV_CHIAMATA_ALTRO = 0, PH_SRV_CHIAMATA_ENTRANTE = 1, PH_SRV_CHIAMATA_USCENTE = 2,
+       PH_SRV_CHIAMATA_PERSA = 3, PH_SRV_CHIAMATA_RIFIUTATA = 4 };
+typedef struct {
+    uint8_t tipo;        /* PH_SRV_CHIAMATA_* */
+    uint64_t ora_ms;     /* ms dal 1970 (ora del telefono) */
+    uint32_t durata_s;
+    char nome[128];      /* "" se il numero non e' in rubrica */
+    char numero[48];     /* "" se nascosto */
+} PhSrvChiamata;
+typedef struct {
+    PhSrvLettura stato;
+    size_t n;            /* <= PH_SRV_CHIAMATE_MAX, piu' recenti per prime */
+    PhSrvChiamata v[PH_SRV_CHIAMATE_MAX];
+} PhSrvChiamate;
+const PhSrvChiamate *ph_srv_chiamate(PhServizi *s);
+void ph_srv_chiamate_osserva(PhServizi *s, bool osserva);
+
+/* Rete. */
+enum { PH_SRV_WIFI_SPENTO = 0, PH_SRV_WIFI_ACCESO = 1, PH_SRV_WIFI_CONNESSO = 2 };
+enum { PH_SRV_MOBILE_ASSENTE = 0, PH_SRV_MOBILE_SENZA_SERVIZIO = 1, PH_SRV_MOBILE_IN_SERVIZIO = 2 };
+/* Valore si / no / ignoto (il telefono non lo dice): «ignoto» non e' mai ne' si ne' no. */
+enum { PH_SRV_TRI_NO = 0, PH_SRV_TRI_SI = 1, PH_SRV_TRI_IGNOTO = 2 };
+typedef struct {
+    PhSrvLettura stato;
+    uint8_t wifi;             /* PH_SRV_WIFI_* */
+    uint8_t wifi_livello;     /* 0-4 */
+    char wifi_nome[100];      /* "" se non connesso o non noto */
+    uint8_t mobile;           /* PH_SRV_MOBILE_* */
+    uint8_t mobile_livello;   /* 0-4 */
+    uint8_t generazione;      /* 0 non nota, 2, 3, 4, 5 */
+    char operatore[64];
+    uint8_t dati_mobili;      /* PH_SRV_TRI_* */
+    uint8_t aereo;            /* PH_SRV_TRI_* */
+} PhSrvReteDettaglio;
+const PhSrvReteDettaglio *ph_srv_rete(PhServizi *s);
+void ph_srv_rete_osserva(PhServizi *s, bool osserva);
+
+/* In riproduzione. */
+enum { PH_SRV_MEDIA_NESSUNA = 0, PH_SRV_MEDIA_PAUSA = 1, PH_SRV_MEDIA_RIPRODUZIONE = 2 };
+enum { PH_SRV_MEDIA_CMD_PLAY_PAUSA = 1, PH_SRV_MEDIA_CMD_AVANTI = 2, PH_SRV_MEDIA_CMD_INDIETRO = 3 };
+enum { PH_SRV_MEDIA_PUO_PLAY_PAUSA = 1, PH_SRV_MEDIA_PUO_AVANTI = 2, PH_SRV_MEDIA_PUO_INDIETRO = 4 };
+typedef struct {
+    PhSrvLettura stato_lettura;
+    uint8_t stato;            /* PH_SRV_MEDIA_* */
+    char titolo[160];
+    char artista[128];
+    char pacchetto[256];      /* app che suona ("" se non noto): per il clic */
+    uint8_t comandi;          /* PH_SRV_MEDIA_PUO_* uniti con | */
+} PhSrvMedia;
+const PhSrvMedia *ph_srv_media(PhServizi *s);
+void ph_srv_media_osserva(PhServizi *s, bool osserva);
+/* comando 1, 2 o 3 (PH_SRV_MEDIA_CMD_*): altri valori ignorati. Non blocca,
+ * non risponde; dopo il comando il backend rilegge subito il media. */
+void ph_srv_media_comando(PhServizi *s, int comando);
 
 #endif

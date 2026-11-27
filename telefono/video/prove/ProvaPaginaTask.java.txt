@@ -1,0 +1,95 @@
+package it.yasde;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/** Prova su JVM di VIDEO_PAGINA (PaginaTask): si tolgono solo i task di prima, mai lo schermo vuoto. */
+public final class ProvaPaginaTask {
+    private static int falliti;
+
+    private static void controlla(boolean ok, String nome) {
+        System.out.println((ok ? "ok      " : "FALLITA ") + nome);
+        if (!ok) falliti++;
+    }
+
+    private static List<Integer> l(Integer... v) {
+        return new ArrayList<Integer>(Arrays.asList(v));
+    }
+
+    /** Schermo finto: il task nuovo compare dopo `attesePerComparire` attese (0 = subito). */
+    private static final class Finto implements PaginaTask.Schermo {
+        final List<Integer> task;
+        final List<Integer> tolti = new ArrayList<Integer>();
+        final int nuovo;
+        int attesePerComparire, attese, scadeDopo = Integer.MAX_VALUE;
+        boolean vuotoMai = true;
+
+        Finto(List<Integer> iniziali, int nuovo, int attesePerComparire) {
+            this.task = iniziali;
+            this.nuovo = nuovo;
+            this.attesePerComparire = attesePerComparire;
+            if (attesePerComparire == 0) task.add(nuovo);
+        }
+
+        @Override
+        public List<Integer> task() {
+            return new ArrayList<Integer>(task);
+        }
+
+        @Override
+        public boolean togli(int idTask) {
+            tolti.add(idTask);
+            task.remove(Integer.valueOf(idTask));
+            if (task.isEmpty()) vuotoMai = false;
+            return true;
+        }
+
+        @Override
+        public void attendi() {
+            attese++;
+            if (attese == attesePerComparire) task.add(nuovo);
+        }
+
+        @Override
+        public boolean scaduto() {
+            return attese >= scadeDopo;
+        }
+
+        @Override
+        public void riga(String testo) {}
+    }
+
+    public static void main(String[] args) throws Exception {
+        controlla(PaginaTask.daTogliere(l(1, 2), l(1, 2)).isEmpty(), "nessun task nuovo: non si toglie nulla");
+        controlla(PaginaTask.daTogliere(l(1, 2), l(1, 2, 3)).equals(l(1, 2)), "task nuovo: si tolgono i due vecchi");
+        controlla(PaginaTask.daTogliere(l(1, 2), l(2, 3)).equals(l(2)), "un vecchio gia' sparito: si toglie solo l'altro");
+        controlla(PaginaTask.daTogliere(l(), l(3)).isEmpty(), "niente prima: niente da togliere");
+        controlla(PaginaTask.daTogliere(l(1, 1), l(1, 4)).equals(l(1)), "id doppio: tolto una volta sola");
+        controlla(PaginaTask.daTogliere(l(1), l(1, 3, 9)).equals(l(1)), "mai il nuovo ne' altri sconosciuti");
+
+        Finto a = new Finto(l(1, 2), 3, 0);
+        int n = PaginaTask.esegui(a, l(1, 2), 5);
+        controlla(n == 2 && a.tolti.equals(l(1, 2)) && a.task.equals(l(3)), "esegui: restano solo i nuovi");
+        controlla(a.vuotoMai, "lo schermo non e' mai vuoto");
+
+        Finto b = new Finto(l(1, 2), 3, 3);
+        n = PaginaTask.esegui(b, l(1, 2), 10);
+        controlla(n == 2 && b.attese == 3 && b.task.equals(l(3)), "esegui: aspetta che il nuovo compaia");
+        controlla(b.vuotoMai, "mai vuoto neanche aspettando");
+
+        Finto c = new Finto(l(1, 2), 3, 100);
+        n = PaginaTask.esegui(c, l(1, 2), 4);
+        controlla(n == 0 && c.tolti.isEmpty() && c.attese == 4 && c.task.equals(l(1, 2)),
+            "il nuovo non compare: scadenza e nulla tolto");
+
+        Finto d = new Finto(l(1, 2), 3, 5);
+        d.scadeDopo = 2;
+        n = PaginaTask.esegui(d, l(1, 2), 30);
+        controlla(n == 0 && d.tolti.isEmpty() && d.attese == 2 && d.task.equals(l(1, 2)),
+            "tempo totale finito prima che il nuovo compaia: si smette e nulla tolto");
+
+        System.out.println(falliti == 0 ? "ProvaPaginaTask: tutto ok" : "ProvaPaginaTask: " + falliti + " FALLITE");
+        if (falliti != 0) System.exit(1);
+    }
+}

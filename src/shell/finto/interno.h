@@ -71,6 +71,13 @@ struct PhFinto {
     GSource *meteo_primo, *meteo_ciclo;     /* prima risposta / ripubblicazione periodica */
     int cal_massimo; /* eventi al massimo nel calendario del mese (0 = quello del contratto) */
     GSource *trova_src;  /* arresto automatico di «trova il telefono» (NULL = nessuno) */
+    /* Chiamate, rete, media (27 nov; thread di lavoro). Stato in memoria, niente timer: si
+     * pubblica all'osservazione e a ogni cambio. */
+    bool osserva_chi, osserva_rete, osserva_media;
+    bool rete_aereo, media_assente;
+    int media_brano, media_stato;       /* indice del brano; PH_SRV_MEDIA_* */
+    atomic_int media_ultimo_cmd;        /* ultimo comando ricevuto (0 = nessuno) */
+    atomic_uint media_comandi_n;        /* comandi ricevuti */
 };
 
 /* Esegue fn(f, dati) sul thread di lavoro dopo ritardo_ms; libera(dati) dopo

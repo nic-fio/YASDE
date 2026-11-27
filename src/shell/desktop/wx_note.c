@@ -14,10 +14,9 @@
  * messaggio d'errore (nemmeno la lunghezza).
  *
  * Il trascinamento del widget NON parte dal campo (li' il mouse seleziona): lo nega widget.c con
- * ph_dsk_note_su_campo. Il clic destro sul campo apre il menu del widget, come sul resto del
- * widget (si e' scelto questo e non il menu del testo di GTK: e' un popover del toolkit, fuori dal
- * sistema di popup della shell, e qui serve soprattutto poter togliere o spostare il widget);
- * copia e incolla restano sulle scorciatoie da tastiera. */
+ * ph_dsk_note_su_campo. Il clic destro sul campo apre un menu della shell (non il popover del
+ * testo di GTK, che sta fuori dal sistema di popup) con Taglia, Copia, Incolla, Seleziona tutto e
+ * Rimuovi widget; Incolla passa dal buffer, quindi dal filtro e dal limite. */
 #include <string.h>
 
 #include "interno.h"
@@ -136,6 +135,9 @@ static void buffer_assicura(PhDesktop *d)
  * vivi tengono il loro riferimento. */
 void ph_dsk_note_chiudi(PhDesktop *d)
 {
+    if (d->note_menu_vista != NULL)
+        g_object_remove_weak_pointer(G_OBJECT(d->note_menu_vista), (gpointer *)&d->note_menu_vista);
+    d->note_menu_vista = NULL;
     if (d->note_testo != NULL) {
         g_signal_handlers_disconnect_by_data(d->note_testo, d);
         g_clear_object(&d->note_testo);
@@ -147,7 +149,7 @@ static void apri_menu(Note *n, double x, double y)
 {
     double rx, ry;
     ph_dsk_in_radice(n->w->d, n->vista, x, y, &rx, &ry);
-    ph_dsk_menu_widget(n->w->d, n->w->id, rx, ry);
+    ph_dsk_menu_note(n->w->d, n->w->id, n->vista, rx, ry);
 }
 
 /* Clic destro: in fase di cattura, cosi' il campo non apre il suo menu del toolkit. */

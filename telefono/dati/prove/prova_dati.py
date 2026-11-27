@@ -134,7 +134,7 @@ def main():
     print("log avvio:", righe)
     c = Comandi()
     try:
-        c.chiedi(1, struct.pack(">H", 2))
+        c.chiedi(1, struct.pack(">H", 3))
 
         # ---- APP_ELENCO ----
         t, b = c.chiedi(0x70)

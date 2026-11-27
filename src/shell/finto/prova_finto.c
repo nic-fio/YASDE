@@ -14,6 +14,7 @@
 #include "finto.h"
 #include "interno.h"
 #include "shell/servizi.h"
+#include "shell/servizi_backend.h"
 #include "shell/shell.h"
 
 static int errori;
@@ -1242,6 +1243,227 @@ static void prova_widget(PhFinto *f, int *conta)
     CONTROLLA(aspetta(w2_finito, &t4, 3000) && t4.esito == PH_SRV_ESITO_OK);
 }
 
+/* ---- Chiamate, rete, media (27 nov) ---------------------------------------------- */
+static bool chi_stato(void *d) { return ph_srv_chiamate(S)->stato == *(PhSrvLettura *)d; }
+static bool rete_stato(void *d) { return ph_srv_rete(S)->stato == *(PhSrvLettura *)d; }
+static bool media_stato_l(void *d) { return ph_srv_media(S)->stato_lettura == *(PhSrvLettura *)d; }
+static bool media_stato_riprod(void *d) { return ph_srv_media(S)->stato == *(int *)d; }
+static bool media_titolo(void *d) { return strcmp(ph_srv_media(S)->titolo, (const char *)d) == 0; }
+static bool rete_aereo_on(void *d) { return (ph_srv_rete(S)->aereo == PH_SRV_TRI_SI) == *(bool *)d; }
+
+static void prova_nuovi(PhFinto *f, int *conta)
+{
+    (void)conta;
+    PhSrvLettura ok = PH_SRV_LET_OK, nd = PH_SRV_LET_NON_DISPONIBILE, neg = PH_SRV_LET_NEGATO;
+    /* Niente osservatori: niente pubblicazioni (stato resta «in attesa»). */
+    int c0 = CONTA[PH_SRV_EV_CHIAMATE] + CONTA[PH_SRV_EV_RETE] + CONTA[PH_SRV_EV_MEDIA];
+    ph_finto_media_assente(f, false);
+    barriera();
+    CONTROLLA(CONTA[PH_SRV_EV_CHIAMATE] + CONTA[PH_SRV_EV_RETE] + CONTA[PH_SRV_EV_MEDIA] == c0);
+    CONTROLLA(ph_srv_chiamate(S)->stato == PH_SRV_LET_ATTESA);
+
+    /* Chiamate. */
+    ph_srv_chiamate_osserva(S, true);
+    CONTROLLA(aspetta(chi_stato, &ok, 3000));
+    const PhSrvChiamate *ch = ph_srv_chiamate(S);
+    CONTROLLA(ch->n == 6 && ch->v[0].tipo == PH_SRV_CHIAMATA_PERSA && strcmp(ch->v[0].nome, "Alex Sample") == 0);
+    CONTROLLA(strcmp(ch->v[0].numero, "+00 000 000 0001") == 0 && ch->v[0].ora_ms > ch->v[1].ora_ms);
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_CHIAMATE, PH_FINTO_MODO_ERRORE);
+    CONTROLLA(aspetta(chi_stato, &neg, 3000));
+    CONTROLLA(ph_srv_chiamate(S)->n == 0);
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_CHIAMATE, PH_FINTO_MODO_NON_DISPONIBILE);
+    CONTROLLA(aspetta(chi_stato, &nd, 3000));
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_CHIAMATE, PH_FINTO_MODO_NORMALE);
+    CONTROLLA(aspetta(chi_stato, &ok, 3000));
+    /* Smesso di osservare: il cambio di modo non e' piu' pubblicato. */
+    ph_srv_chiamate_osserva(S, false);
+    barriera();
+    int c1 = CONTA[PH_SRV_EV_CHIAMATE];
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_CHIAMATE, PH_FINTO_MODO_ERRORE);
+    barriera();
+    CONTROLLA(CONTA[PH_SRV_EV_CHIAMATE] == c1);
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_CHIAMATE, PH_FINTO_MODO_NORMALE);
+    barriera();
+
+    /* Rete. */
+    ph_srv_rete_osserva(S, true);
+    CONTROLLA(aspetta(rete_stato, &ok, 3000));
+    const PhSrvReteDettaglio *r = ph_srv_rete(S);
+    CONTROLLA(r->wifi == PH_SRV_WIFI_CONNESSO && r->wifi_livello == 3 && strcmp(r->wifi_nome, "SampleNet") == 0);
+    CONTROLLA(r->mobile == PH_SRV_MOBILE_IN_SERVIZIO && r->generazione == 4 && r->dati_mobili == PH_SRV_TRI_SI && r->aereo == PH_SRV_TRI_NO);
+    CONTROLLA(strcmp(r->operatore, "Sample Mobile") == 0);
+    bool si = true;
+    ph_finto_rete_aereo(f, true);
+    CONTROLLA(aspetta(rete_aereo_on, &si, 3000));
+    CONTROLLA(ph_srv_rete(S)->wifi == PH_SRV_WIFI_SPENTO && ph_srv_rete(S)->mobile == PH_SRV_MOBILE_ASSENTE);
+    ph_finto_rete_aereo(f, false);
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_RETE, PH_FINTO_MODO_ERRORE);
+    CONTROLLA(aspetta(rete_stato, &neg, 3000));
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_RETE, PH_FINTO_MODO_NORMALE);
+    CONTROLLA(aspetta(rete_stato, &ok, 3000));
+    ph_srv_rete_osserva(S, false);
+
+    /* Media: stato e comandi che cambiano il finto. */
+    ph_srv_media_osserva(S, true);
+    CONTROLLA(aspetta(media_stato_l, &ok, 3000));
+    const PhSrvMedia *m = ph_srv_media(S);
+    CONTROLLA(m->stato == PH_SRV_MEDIA_RIPRODUZIONE && strcmp(m->titolo, "Sample Song") == 0);
+    CONTROLLA(strcmp(m->artista, "Sample Artist") == 0 && m->comandi == 7 && m->pacchetto[0] != '\0');
+    ph_srv_media_comando(S, 0);  /* fuori elenco: ignorato */
+    ph_srv_media_comando(S, 4);
+    barriera();
+    CONTROLLA(ph_finto_media_comandi(f) == 0);
+    int pausa = PH_SRV_MEDIA_PAUSA;
+    ph_srv_media_comando(S, PH_SRV_MEDIA_CMD_PLAY_PAUSA);
+    CONTROLLA(aspetta(media_stato_riprod, &pausa, 3000));
+    CONTROLLA(ph_finto_media_ultimo_comando(f) == 1);
+    ph_srv_media_comando(S, PH_SRV_MEDIA_CMD_AVANTI);
+    CONTROLLA(aspetta(media_titolo, (void *)"Another Sample Song", 3000));
+    ph_srv_media_comando(S, PH_SRV_MEDIA_CMD_INDIETRO);
+    CONTROLLA(aspetta(media_titolo, (void *)"Sample Song", 3000));
+    ph_finto_media_assente(f, true);
+    int nessuna = PH_SRV_MEDIA_NESSUNA;
+    CONTROLLA(aspetta(media_stato_riprod, &nessuna, 3000));
+    CONTROLLA(ph_srv_media(S)->comandi == 0 && ph_srv_media(S)->titolo[0] == '\0');
+    unsigned n = ph_finto_media_comandi(f);
+    ph_srv_media_comando(S, PH_SRV_MEDIA_CMD_AVANTI); /* nessun lettore: il telefono non lo riceve */
+    barriera();
+    CONTROLLA(ph_finto_media_comandi(f) == n);
+    ph_finto_media_assente(f, false);
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_MEDIA, PH_FINTO_MODO_ERRORE);
+    CONTROLLA(aspetta(media_stato_l, &neg, 3000));
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_MEDIA, PH_FINTO_MODO_NON_DISPONIBILE);
+    CONTROLLA(aspetta(media_stato_l, &nd, 3000));
+    ph_finto_voce_modo(f, PH_FINTO_VOCE_MEDIA, PH_FINTO_MODO_NORMALE);
+    CONTROLLA(aspetta(media_stato_l, &ok, 3000));
+
+    /* Nessuna sessione: tutto «non disponibile», poi il ritorno rilegge. */
+    ph_srv_chiamate_osserva(S, true);
+    ph_srv_rete_osserva(S, true);
+    ph_finto_perdi(f, 1);
+    CONTROLLA(aspetta(perso, NULL, 2000));
+    CONTROLLA(aspetta(media_stato_l, &nd, 3000));
+    CONTROLLA(aspetta(chi_stato, &nd, 3000) && aspetta(rete_stato, &nd, 3000));
+    CONTROLLA(aspetta(collegato, NULL, 4000));
+    CONTROLLA(aspetta(media_stato_l, &ok, 3000));
+    CONTROLLA(aspetta(chi_stato, &ok, 3000) && aspetta(rete_stato, &ok, 3000));
+    ph_srv_chiamate_osserva(S, false);
+    ph_srv_rete_osserva(S, false);
+    ph_srv_media_osserva(S, false);
+    barriera();
+}
+
+/* ---- Pulizia di cio' che arriva dal backend e scarto delle pubblicazioni tardive -------- */
+static bool ev_oltre(void *d)
+{
+    const int *v = d; /* {evento, valore da superare} */
+    return CONTA[v[0]] > v[1];
+}
+
+static void riempi(char *b, size_t n) { memset(b, 'A', n); } /* nessun terminatore */
+
+static void prova_pulizia(PhFinto *f)
+{
+    PhSrvLettura ok = PH_SRV_LET_OK;
+    ph_srv_chiamate_osserva(S, true);
+    ph_srv_rete_osserva(S, true);
+    ph_srv_media_osserva(S, true);
+    CONTROLLA(aspetta(chi_stato, &ok, 3000) && aspetta(rete_stato, &ok, 3000) && aspetta(media_stato_l, &ok, 3000));
+    barriera();
+
+    /* Chiamate: n > 20, tipo fuori elenco, stringhe senza terminatore e con UTF-8 rotto. */
+    PhSrvChiamate *c = g_new0(PhSrvChiamate, 1);
+    c->stato = PH_SRV_LET_OK;
+    c->n = 99;
+    for (size_t i = 0; i < PH_SRV_CHIAMATE_MAX; i++) {
+        c->v[i].tipo = 9;
+        riempi(c->v[i].nome, sizeof c->v[i].nome);
+        riempi(c->v[i].numero, sizeof c->v[i].numero);
+    }
+    memcpy(c->v[1].numero, "ab\xff\xfe", 4);
+    memset(c->v[1].numero + 4, 0, sizeof c->v[1].numero - 4);
+    int ev[2] = {PH_SRV_EV_CHIAMATE, CONTA[PH_SRV_EV_CHIAMATE]};
+    ph_servizi_pubblica_chiamate(S, c);
+    CONTROLLA(aspetta(ev_oltre, ev, 3000));
+    const PhSrvChiamate *ch = ph_srv_chiamate(S);
+    CONTROLLA(ch->n == PH_SRV_CHIAMATE_MAX && ch->v[0].tipo == PH_SRV_CHIAMATA_ALTRO);
+    CONTROLLA(strlen(ch->v[0].nome) < sizeof ch->v[0].nome && strlen(ch->v[0].numero) < sizeof ch->v[0].numero);
+    CONTROLLA(strcmp(ch->v[1].numero, "ab") == 0);
+    c->stato = (PhSrvLettura)9; /* fuori elenco: non disponibile, nessuna riga */
+    ev[1] = CONTA[PH_SRV_EV_CHIAMATE];
+    ph_servizi_pubblica_chiamate(S, c);
+    CONTROLLA(aspetta(ev_oltre, ev, 3000));
+    CONTROLLA(ph_srv_chiamate(S)->stato == PH_SRV_LET_NON_DISPONIBILE && ph_srv_chiamate(S)->n == 0);
+    g_free(c);
+
+    /* Rete: ogni campo fuori elenco; dati_mobili e aereo = 7 diventano «ignoto», mai si o no. */
+    PhSrvReteDettaglio r;
+    memset(&r, 0, sizeof r);
+    r.stato = PH_SRV_LET_OK;
+    r.wifi = 9;
+    r.wifi_livello = 9;
+    r.mobile = 9;
+    r.mobile_livello = 9;
+    r.generazione = 7;
+    r.dati_mobili = 7;
+    r.aereo = 7;
+    riempi(r.wifi_nome, sizeof r.wifi_nome);
+    riempi(r.operatore, sizeof r.operatore);
+    ev[0] = PH_SRV_EV_RETE;
+    ev[1] = CONTA[PH_SRV_EV_RETE];
+    ph_servizi_pubblica_rete(S, &r);
+    CONTROLLA(aspetta(ev_oltre, ev, 3000));
+    const PhSrvReteDettaglio *rr = ph_srv_rete(S);
+    CONTROLLA(rr->wifi == PH_SRV_WIFI_SPENTO && rr->mobile == PH_SRV_MOBILE_ASSENTE);
+    CONTROLLA(rr->wifi_livello == 4 && rr->mobile_livello == 4 && rr->generazione == 0);
+    CONTROLLA(rr->dati_mobili == PH_SRV_TRI_IGNOTO && rr->aereo == PH_SRV_TRI_IGNOTO);
+    CONTROLLA(strlen(rr->wifi_nome) < sizeof rr->wifi_nome && strlen(rr->operatore) < sizeof rr->operatore);
+    r.stato = (PhSrvLettura)9;
+    ev[1] = CONTA[PH_SRV_EV_RETE];
+    ph_servizi_pubblica_rete(S, &r);
+    CONTROLLA(aspetta(ev_oltre, ev, 3000));
+    CONTROLLA(ph_srv_rete(S)->stato == PH_SRV_LET_NON_DISPONIBILE);
+
+    /* Media: stato fuori elenco, maschera dei comandi, stringhe rotte. */
+    PhSrvMedia m;
+    memset(&m, 0, sizeof m);
+    m.stato_lettura = PH_SRV_LET_OK;
+    m.stato = 9;
+    m.comandi = 0xff;
+    riempi(m.titolo, sizeof m.titolo);
+    riempi(m.artista, sizeof m.artista);
+    riempi(m.pacchetto, sizeof m.pacchetto);
+    memcpy(m.artista, "ok\xc3", 3);
+    memset(m.artista + 3, 0, sizeof m.artista - 3);
+    ev[0] = PH_SRV_EV_MEDIA;
+    ev[1] = CONTA[PH_SRV_EV_MEDIA];
+    ph_servizi_pubblica_media(S, &m);
+    CONTROLLA(aspetta(ev_oltre, ev, 3000));
+    const PhSrvMedia *mm = ph_srv_media(S);
+    CONTROLLA(mm->stato == PH_SRV_MEDIA_NESSUNA && mm->comandi == 7);
+    CONTROLLA(strlen(mm->titolo) < sizeof mm->titolo && strlen(mm->pacchetto) < sizeof mm->pacchetto);
+    CONTROLLA(strcmp(mm->artista, "ok") == 0);
+
+    /* Pubblicazione tardiva: dopo osserva(false) non arriva nessun evento. L'ordine delle consegne
+     * e' quello d'invio: la rete (osservata) pubblicata DOPO e' il segnale che la tardiva e' passata. */
+    ph_srv_chiamate_osserva(S, false);
+    int chi0 = CONTA[PH_SRV_EV_CHIAMATE];
+    PhSrvChiamate tardiva;
+    memset(&tardiva, 0, sizeof tardiva);
+    tardiva.stato = PH_SRV_LET_OK;
+    ph_servizi_pubblica_chiamate(S, &tardiva);
+    ev[0] = PH_SRV_EV_RETE;
+    ev[1] = CONTA[PH_SRV_EV_RETE];
+    r.stato = PH_SRV_LET_OK;
+    ph_servizi_pubblica_rete(S, &r);
+    CONTROLLA(aspetta(ev_oltre, ev, 3000));
+    CONTROLLA(CONTA[PH_SRV_EV_CHIAMATE] == chi0);
+    ph_srv_rete_osserva(S, false);
+    ph_srv_media_osserva(S, false);
+    ph_finto_media_assente(f, false);
+    barriera();
+}
+
 /* ---- Meteo: collegamento, citta' a mano, ricerca dei luoghi ------------------- */
 static bool met_fonte_pronto(void *d)
 {
@@ -2039,6 +2261,8 @@ int main(int argc, char **argv)
     CONTROLLA(aspetta(generazione, NULL, 4000));
 
     prova_widget(f, conta);
+    prova_nuovi(f, conta);
+    prova_pulizia(f);
     prova_meteo(f, conta);
     prova_meteo_citta(f, conta);
     prova_meteo_comune();

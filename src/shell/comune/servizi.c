@@ -76,6 +76,11 @@ struct PhServizi {
     PhSrvMeteo meteo;
     int osservatori_meteo;
     PhSrvMeteoFonte meteo_fonte; /* (23 nov notte) */
+    /* Chiamate, rete, media (27 nov, thread GTK). */
+    PhSrvChiamate chiamate;
+    PhSrvReteDettaglio rete;
+    PhSrvMedia media;
+    int osservatori_chi, osservatori_rete, osservatori_media;
 };
 
 static void recenti_svuota(PhServizi *s);
@@ -256,6 +261,9 @@ typedef enum {
     PUB_CONTROLLI,
     PUB_METEO,
     PUB_DECODIFICA,
+    PUB_CHIAMATE,
+    PUB_RETE,
+    PUB_MEDIA,
 } PubTipo;
 
 typedef struct {
@@ -275,6 +283,7 @@ typedef struct {
     PhSrvMeteo *meteo;
     bool forza;       /* meteo: consegnare anche senza osservatori (spegnimento) */
     PhSrvMeteoFonte fonte; /* meteo */
+    void *dat;        /* chiamate, rete, media: copia ripulita (g_free) */
 } Pub;
 
 static void flush_profilo(PhServizi *s);
@@ -376,6 +385,24 @@ static void pub_applica(void *p)
     case PUB_DECODIFICA:
         emetti(s, PH_SRV_EV_DECODIFICA, NULL);
         break;
+    case PUB_CHIAMATE:
+        if (s->osservatori_chi == 0)
+            break; /* arrivata dopo lo spegnimento: si scarta */
+        s->chiamate = *(PhSrvChiamate *)u->dat;
+        emetti(s, PH_SRV_EV_CHIAMATE, NULL);
+        break;
+    case PUB_RETE:
+        if (s->osservatori_rete == 0)
+            break;
+        s->rete = *(PhSrvReteDettaglio *)u->dat;
+        emetti(s, PH_SRV_EV_RETE, NULL);
+        break;
+    case PUB_MEDIA:
+        if (s->osservatori_media == 0)
+            break;
+        s->media = *(PhSrvMedia *)u->dat;
+        emetti(s, PH_SRV_EV_MEDIA, NULL);
+        break;
     case PUB_METEO:
         if (s->osservatori_meteo == 0 && !u->forza)
             break; /* arrivata dopo lo spegnimento: si scarta */
@@ -407,6 +434,7 @@ static void pub_libera(void *p)
     }
     free(u->testo);
     g_free(u->meteo);
+    g_free(u->dat);
     if (u->t != NULL)
         g_object_unref(u->t);
     rif_lascia(u->s);
@@ -2633,4 +2661,154 @@ void ph_servizi_lavoro_luoghi(PhSrvLavoro *l, PhSrvEsito esito, const char *fras
         }
     }
     ris_manda(r, true);
+}
+
+/* ---- Chiamate recenti, rete, in riproduzione (27 nov) ------------------- */
+/* Stringa che arriva dal telefono: sempre terminata e UTF-8 valido (tagliata
+ * al primo byte non valido). */
+static void str_pulita(char *b, size_t cap)
+{
+    b[cap - 1] = '\0';
+    const char *fine = NULL;
+    if (!g_utf8_validate(b, -1, &fine))
+        b[fine - b] = '\0';
+}
+
+static PhSrvLettura let_valida(PhSrvLettura l)
+{
+    return (unsigned)l <= PH_SRV_LET_NEGATO ? l : PH_SRV_LET_NON_DISPONIBILE;
+}
+
+void ph_servizi_pubblica_chiamate(PhServizi *s, const PhSrvChiamate *c)
+{
+    if (c == NULL)
+        return;
+    Pub *u = pub_nuova(s, PUB_CHIAMATE);
+    PhSrvChiamate *d = g_new(PhSrvChiamate, 1);
+    *d = *c;
+    d->stato = let_valida(d->stato);
+    if (d->n > PH_SRV_CHIAMATE_MAX)
+        d->n = PH_SRV_CHIAMATE_MAX;
+    if (d->stato != PH_SRV_LET_OK)
+        d->n = 0;
+    for (size_t i = 0; i < d->n; i++) {
+        if (d->v[i].tipo > PH_SRV_CHIAMATA_RIFIUTATA)
+            d->v[i].tipo = PH_SRV_CHIAMATA_ALTRO;
+        str_pulita(d->v[i].nome, sizeof d->v[i].nome);
+        str_pulita(d->v[i].numero, sizeof d->v[i].numero);
+    }
+    u->dat = d;
+    pub_manda(u);
+}
+
+void ph_servizi_pubblica_rete(PhServizi *s, const PhSrvReteDettaglio *r)
+{
+    if (r == NULL)
+        return;
+    Pub *u = pub_nuova(s, PUB_RETE);
+    PhSrvReteDettaglio *d = g_new(PhSrvReteDettaglio, 1);
+    *d = *r;
+    d->stato = let_valida(d->stato);
+    if (d->wifi > PH_SRV_WIFI_CONNESSO)
+        d->wifi = PH_SRV_WIFI_SPENTO;
+    if (d->mobile > PH_SRV_MOBILE_IN_SERVIZIO)
+        d->mobile = PH_SRV_MOBILE_ASSENTE;
+    if (d->wifi_livello > 4)
+        d->wifi_livello = 4;
+    if (d->mobile_livello > 4)
+        d->mobile_livello = 4;
+    if (d->generazione != 2 && d->generazione != 3 && d->generazione != 4 && d->generazione != 5)
+        d->generazione = 0;
+    if (d->dati_mobili > PH_SRV_TRI_IGNOTO)
+        d->dati_mobili = PH_SRV_TRI_IGNOTO;
+    if (d->aereo > PH_SRV_TRI_IGNOTO)
+        d->aereo = PH_SRV_TRI_IGNOTO;
+    str_pulita(d->wifi_nome, sizeof d->wifi_nome);
+    str_pulita(d->operatore, sizeof d->operatore);
+    u->dat = d;
+    pub_manda(u);
+}
+
+void ph_servizi_pubblica_media(PhServizi *s, const PhSrvMedia *m)
+{
+    if (m == NULL)
+        return;
+    Pub *u = pub_nuova(s, PUB_MEDIA);
+    PhSrvMedia *d = g_new(PhSrvMedia, 1);
+    *d = *m;
+    d->stato_lettura = let_valida(d->stato_lettura);
+    if (d->stato > PH_SRV_MEDIA_RIPRODUZIONE)
+        d->stato = PH_SRV_MEDIA_NESSUNA;
+    d->comandi &= PH_SRV_MEDIA_PUO_PLAY_PAUSA | PH_SRV_MEDIA_PUO_AVANTI | PH_SRV_MEDIA_PUO_INDIETRO;
+    str_pulita(d->titolo, sizeof d->titolo);
+    str_pulita(d->artista, sizeof d->artista);
+    str_pulita(d->pacchetto, sizeof d->pacchetto);
+    u->dat = d;
+    pub_manda(u);
+}
+
+const PhSrvChiamate *ph_srv_chiamate(PhServizi *s) { return &s->chiamate; }
+const PhSrvReteDettaglio *ph_srv_rete(PhServizi *s) { return &s->rete; }
+const PhSrvMedia *ph_srv_media(PhServizi *s) { return &s->media; }
+
+/* Contatore comune alle tre voci. Al primo osservatore lo stato torna «in
+ * attesa» (senza evento: chi aggiunge il widget legge lo stato) e, se il
+ * backend non sa leggere, si pubblica subito «non disponibile». */
+static void osserva_voce(PhServizi *s, bool osserva, int *cont, void (*vt)(void *, bool),
+                         void (*azzera)(PhServizi *), void (*non_disp)(PhServizi *))
+{
+    if (osserva) {
+        if ((*cont)++ > 0)
+            return;
+        azzera(s);
+        if (vt != NULL)
+            vt(s->b, true);
+        else
+            non_disp(s);
+    } else if (*cont > 0) {
+        if (--(*cont) == 0 && vt != NULL)
+            vt(s->b, false);
+    }
+}
+
+static void chi_azzera(PhServizi *s) { s->chiamate = (PhSrvChiamate){.stato = PH_SRV_LET_ATTESA}; }
+static void rete_azzera(PhServizi *s) { s->rete = (PhSrvReteDettaglio){.stato = PH_SRV_LET_ATTESA}; }
+static void media_azzera(PhServizi *s) { s->media = (PhSrvMedia){.stato_lettura = PH_SRV_LET_ATTESA}; }
+static void chi_non_disp(PhServizi *s)
+{
+    PhSrvChiamate c = {.stato = PH_SRV_LET_NON_DISPONIBILE};
+    ph_servizi_pubblica_chiamate(s, &c);
+}
+static void rete_non_disp(PhServizi *s)
+{
+    PhSrvReteDettaglio r = {.stato = PH_SRV_LET_NON_DISPONIBILE};
+    ph_servizi_pubblica_rete(s, &r);
+}
+static void media_non_disp(PhServizi *s)
+{
+    PhSrvMedia m = {.stato_lettura = PH_SRV_LET_NON_DISPONIBILE};
+    ph_servizi_pubblica_media(s, &m);
+}
+
+void ph_srv_chiamate_osserva(PhServizi *s, bool osserva)
+{
+    osserva_voce(s, osserva, &s->osservatori_chi, s->vt.chiamate_osserva, chi_azzera, chi_non_disp);
+}
+
+void ph_srv_rete_osserva(PhServizi *s, bool osserva)
+{
+    osserva_voce(s, osserva, &s->osservatori_rete, s->vt.rete_osserva, rete_azzera, rete_non_disp);
+}
+
+void ph_srv_media_osserva(PhServizi *s, bool osserva)
+{
+    osserva_voce(s, osserva, &s->osservatori_media, s->vt.media_osserva, media_azzera, media_non_disp);
+}
+
+void ph_srv_media_comando(PhServizi *s, int comando)
+{
+    if (comando < PH_SRV_MEDIA_CMD_PLAY_PAUSA || comando > PH_SRV_MEDIA_CMD_INDIETRO || chiusi(s))
+        return;
+    if (s->vt.media_comando != NULL)
+        s->vt.media_comando(s->b, comando);
 }

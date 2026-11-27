@@ -28,6 +28,42 @@ const PhShellIcona PH_DSK_ICONA_TROVA = {
     "M5.5 3h5a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z M2.3 5a4.5 4.5 0 0 0 0 6 M13.7 5a4.5 4.5 0 0 1 0 6",
     NULL, 16, 16, 1.4f, 18, 18, false};
 
+/* ---- Icone di «Chiamate recenti», «Rete» e «In riproduzione» ---------------------------------------- */
+/* Tipo di chiamata (indice = PH_SRV_CHIAMATA_*; 0 = altro, mai disegnata): freccia entrante,
+ * uscente, persa (freccia in su a sinistra) e rifiutata (cerchio barrato). */
+const PhShellIcona PH_DSK_ICONA_CHIAMATA[5] = {
+    {"M3 8h10", NULL, 16, 16, 1.5f, 20, 20, false},
+    {"M11.5 4.5 4.5 11.5 M4.5 6.5v5h5", NULL, 16, 16, 1.6f, 20, 20, false},
+    {"M4.5 11.5 11.5 4.5 M6.5 4.5h5v5", NULL, 16, 16, 1.6f, 20, 20, false},
+    {"M11.5 11.5 4.5 4.5 M4.5 9.5v-5h5", NULL, 16, 16, 1.6f, 20, 20, false},
+    {"M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z M4.1 11.9 11.9 4.1", NULL, 16, 16, 1.5f, 20, 20, false},
+};
+/* Wi-Fi a livelli 0-4: il puntino e poi un arco in piu' a ogni livello. */
+#define WIFI_PUNTO "M8 12.5a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8z"
+const PhShellIcona PH_DSK_ICONA_WIFI[5] = {
+    {NULL, WIFI_PUNTO, 16, 16, 1.5f, 22, 22, false},
+    {"M5.9 11.4A3 3 0 0 1 10.1 11.4", WIFI_PUNTO, 16, 16, 1.5f, 22, 22, false},
+    {"M5.9 11.4A3 3 0 0 1 10.1 11.4 M4.3 9.8A5.2 5.2 0 0 1 11.7 9.8", WIFI_PUNTO, 16, 16, 1.5f, 22, 22, false},
+    {"M5.9 11.4A3 3 0 0 1 10.1 11.4 M4.3 9.8A5.2 5.2 0 0 1 11.7 9.8 M2.8 8.3A7.4 7.4 0 0 1 13.2 8.3", WIFI_PUNTO,
+     16, 16, 1.5f, 22, 22, false},
+    {"M5.9 11.4A3 3 0 0 1 10.1 11.4 M4.3 9.8A5.2 5.2 0 0 1 11.7 9.8 M2.8 8.3A7.4 7.4 0 0 1 13.2 8.3 "
+     "M1.2 6.7A9.6 9.6 0 0 1 14.8 6.7",
+     WIFI_PUNTO, 16, 16, 1.5f, 22, 22, false},
+};
+/* Rete mobile a livelli 0-4: la base e poi una barra in piu' a ogni livello. */
+const PhShellIcona PH_DSK_ICONA_MOBILE[5] = {
+    {"M2.5 13.5h11", NULL, 16, 16, 1.5f, 22, 22, false},
+    {"M2.5 13.5h11 M3.5 13V11", NULL, 16, 16, 1.7f, 22, 22, false},
+    {"M2.5 13.5h11 M3.5 13V11 M6.5 13V8.5", NULL, 16, 16, 1.7f, 22, 22, false},
+    {"M2.5 13.5h11 M3.5 13V11 M6.5 13V8.5 M9.5 13V6", NULL, 16, 16, 1.7f, 22, 22, false},
+    {"M2.5 13.5h11 M3.5 13V11 M6.5 13V8.5 M9.5 13V6 M12.5 13V3.5", NULL, 16, 16, 1.7f, 22, 22, false},
+};
+/* Pulsanti del lettore: indietro, avanti, play (pieni) e pausa. */
+const PhShellIcona PH_DSK_ICONA_MEDIA_INDIETRO = {NULL, "M12 3.5v9L6.5 8z M3.8 3.5h1.8v9H3.8z", 16, 16, 1, 16, 16, false};
+const PhShellIcona PH_DSK_ICONA_MEDIA_AVANTI = {NULL, "M4 3.5v9L9.5 8z M10.4 3.5h1.8v9h-1.8z", 16, 16, 1, 16, 16, false};
+const PhShellIcona PH_DSK_ICONA_MEDIA_PLAY = {NULL, "M5 3v10l8-5z", 16, 16, 1, 18, 18, false};
+const PhShellIcona PH_DSK_ICONA_MEDIA_PAUSA = {NULL, "M4.5 3h2.6v10H4.5z M8.9 3h2.6v10H8.9z", 16, 16, 1, 18, 18, false};
+
 /* ---- Tabella dei tipi ----------------------------------------------------------------------------- */
 const PhDskWxVt *ph_dsk_wx_vt(PhCfgWidgetTipo tipo)
 {
@@ -41,6 +77,9 @@ const PhDskWxVt *ph_dsk_wx_vt(PhCfgWidgetTipo tipo)
     case PH_CFG_WIDGET_APP_FREQUENTI: return &PH_DSK_WX_APP_FREQUENTI;
     case PH_CFG_WIDGET_TRASFERIMENTI: return &PH_DSK_WX_TRASFERIMENTI;
     case PH_CFG_WIDGET_NOTE: return &PH_DSK_WX_NOTE;
+    case PH_CFG_WIDGET_CHIAMATE: return &PH_DSK_WX_CHIAMATE;
+    case PH_CFG_WIDGET_RETE: return &PH_DSK_WX_RETE;
+    case PH_CFG_WIDGET_RIPRODUZIONE: return &PH_DSK_WX_MEDIA;
     default: return NULL;
     }
 }

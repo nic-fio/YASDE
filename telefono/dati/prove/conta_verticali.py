@@ -64,7 +64,7 @@ def conta():
         threading.Thread(target=lambda: [None for _ in p.stdout], daemon=True).start()
         s = socket.create_connection(("127.0.0.1", PORTA), timeout=15)
         s.sendall(b"comandi\n")
-        chiedi(s, 1, struct.pack(">H", 2))
+        chiedi(s, 1, struct.pack(">H", 3))
         t, b = chiedi(s, 0x70)
         if t != 2:
             raise SystemExit("APP_ELENCO non OK")

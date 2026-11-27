@@ -21,9 +21,9 @@ S1 = p("YASDE is a single file for Linux PCs with an x86-64 processor. There is 
          "distribution, so a system older than the one described may need more.", "Other systems.")
 
 S2 = steps([
-    "Download " + c("YASDE-2.2-x86_64.AppImage") + " and put it in any folder you like.",
+    "Download " + c("YASDE-2.3-x86_64.AppImage") + " and put it in any folder you like.",
     "Make it executable: in your file manager open the file's properties and allow running it as a program, or type "
-    + c("chmod +x YASDE-2.2-x86_64.AppImage") + " in a terminal.",
+    + c("chmod +x YASDE-2.3-x86_64.AppImage") + " in a terminal.",
     "Double-click the file, or run it from a terminal. A single YASDE window opens.",
     "At the first start the window shows " + ui("Connect your phone") + ": go on with " + rif("The Connect your phone screen") + ".",
 ]) + tip("the window can be switched to full screen with the " + ui("Full screen") + " button in its title bar or with the "

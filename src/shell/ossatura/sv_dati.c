@@ -209,7 +209,7 @@ static void app_lavoro(Sv *sv, void *dati)
     int r = ph_dati_app_elenco(s->d, &app, &n, &e);
     sv_sessione_lascia(s);
     if (r != 0) {
-        fprintf(stderr, "YASDE 2.2: elenco delle app non letto\n");
+        fprintf(stderr, "YASDE 2.3: elenco delle app non letto\n");
         return;
     }
     PhSrvApp *v = n > 0 ? calloc(n, sizeof *v) : NULL;

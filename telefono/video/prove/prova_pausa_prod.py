@@ -30,7 +30,7 @@ def prova():
     p, _ = P.lancia()
     P.adb("forward", "tcp:%d" % P.PORTA, "localabstract:yasde")
     c = P.Comandi()
-    c.chiedi(1, struct.pack(">H", 2))
+    c.chiedi(1, struct.pack(">H", 3))
     ID = struct.pack(">I", 1)
 
     # --- app che si muove: Orologio, cronometro avviato

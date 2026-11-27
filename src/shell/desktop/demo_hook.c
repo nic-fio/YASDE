@@ -20,6 +20,7 @@ void ph_demo_finto_comando(const char *c);   /* demo.c */
 static void stress_avvia(PhShell *sh);
 void ph_demo_controlli(PhShell *sh, const char *cosa); /* agente D: demo_controlli.c */
 void ph_demo_note(PhShell *sh, const char *cosa);      /* Note rapide: demo_note.c */
+void ph_demo_nuovi(PhShell *sh, const char *cosa);     /* chiamate, rete, lettore: demo_nuovi.c */
 void ph_demo_senzafondo(PhShell *sh, const char *cosa); /* stile «Senza fondo»: demo_senzafondo.c */
 /* agente A: inizio */
 static void vecchi_avvia(PhShell *sh, PhDesktop *d, PhCfgTelefono *p); /* in fondo al file */
@@ -783,6 +784,11 @@ void ph_demo_mostra(PhShell *sh, const char *cosa)
     /* Note rapide: prova a schermo (demo_note.c) */
     if (cosa != NULL && strncmp(cosa, "note-", 5) == 0) {
         ph_demo_note(sh, cosa);
+        return;
+    }
+    /* Chiamate recenti, Rete, In riproduzione (demo_nuovi.c) */
+    if (cosa != NULL && strncmp(cosa, "nuovi-", 6) == 0) {
+        ph_demo_nuovi(sh, cosa);
         return;
     }
     /* Stile «Senza fondo» di orologio e meteo (demo_senzafondo.c) */
@@ -2407,6 +2413,50 @@ static void vecchi_impostazioni(PhDesktop *d)
     ph_dsk_widget_aggiorna_tutti(d);
 }
 
+/* Il gesto di clic PRIMARIO della scheda (c'e' anche quello secondario del menu). */
+static GtkGesture *vecchi_clic_primario(GtkWidget *scheda)
+{
+    GListModel *m = gtk_widget_observe_controllers(scheda);
+    GtkGesture *trovato = NULL;
+    for (guint i = 0; i < g_list_model_get_n_items(m) && trovato == NULL; i++) {
+        GObject *c = g_list_model_get_item(m, i);
+        if (GTK_IS_GESTURE_CLICK(c) &&
+            gtk_gesture_single_get_button(GTK_GESTURE_SINGLE(c)) == GDK_BUTTON_PRIMARY)
+            trovato = GTK_GESTURE(c);
+        g_object_unref(c);
+    }
+    g_object_unref(m);
+    return trovato;
+}
+
+/* Il clic di «Stato del telefono»: come la memoria (gesto sulla scheda), ma pagina nessuna. */
+static void vecchi_impostazioni_stato(PhDesktop *d)
+{
+    PhDskWidget *w = vecchi_widget(d, PH_CFG_WIDGET_STATO);
+    GtkGesture *cl = vecchi_clic_primario(w->scheda);
+    if (cl == NULL)
+        g_error("vecchi: stato: nessun controllo del clic");
+    vecchi_aperta[0] = '\0';
+    g_signal_emit_by_name(cl, "released", 1, 5.0, 5.0);
+    if (vecchi_aperta[0] != '\0')
+        g_error("vecchi: stato: Impostazioni non c'e' sul telefono ma il clic ha aperto %s", vecchi_aperta);
+    if (gtk_widget_get_cursor(w->scheda) != NULL)
+        g_error("vecchi: stato: il cursore e' una mano senza nessuna app da aprire");
+    ph_dsk_impostazioni_pacchetto_prova("it.finto.impostazioni");
+    ph_dsk_widget_aggiorna_tutti(d);
+    w = vecchi_widget(d, PH_CFG_WIDGET_STATO);
+    cl = vecchi_clic_primario(w->scheda);
+    g_signal_emit_by_name(cl, "released", 1, 5.0, 5.0);
+    if (strcmp(vecchi_aperta, "it.finto.impostazioni") != 0)
+        g_error("vecchi: stato: il clic non ha aperto Impostazioni (aperto \"%s\")", vecchi_aperta);
+    if (vecchi_pagina != PH_SHELL_PAGINA_NESSUNA)
+        g_error("vecchi: stato: il clic ha chiesto la pagina %d invece di nessuna", (int)vecchi_pagina);
+    if (gtk_widget_get_cursor(w->scheda) == NULL)
+        g_error("vecchi: stato: con Impostazioni il cursore dovrebbe essere una mano");
+    ph_dsk_impostazioni_pacchetto_prova(NULL);
+    ph_dsk_widget_aggiorna_tutti(d);
+}
+
 /* Senza l'app del calendario (non nota) gli impegni si vedono ma non sono pulsanti e non prendono i
  * clic: il trascinamento del widget passa. */
 static void vecchi_senza_app_calendario(PhDesktop *d)
@@ -2567,6 +2617,7 @@ static gboolean vecchi_tick(gpointer dati)
     case 0:
         vecchi_controlla(d, NOMI[0]);
         vecchi_impostazioni(d);
+        vecchi_impostazioni_stato(d);
         break;
     case 1:
         vecchi_controlla(d, "maniglia, prima");

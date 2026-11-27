@@ -278,3 +278,33 @@
 "{giorno} · {fra}" = "{giorno} · {fra}"
 # Note rapide
 "Un foglietto per scrivere al volo sul desktop. Il testo resta sul PC, nel profilo del telefono." = "A notepad for jotting things down on the desktop. The text stays on the PC, in the phone's profile."
+
+# ---- Menu del campo delle Note rapide (PIANO.md 9) ----
+"Taglia" = "Cut"
+"Copia" = "Copy"
+"Incolla" = "Paste"
+"Seleziona tutto" = "Select all"
+
+# ---- Chiamate recenti, Rete, In riproduzione (PIANO.md 9) ----
+"Chiamate recenti" = "Recent calls"
+"Le ultime chiamate del telefono: chi, di che tipo e quando." = "The phone's latest calls: who, what kind and when."
+"Nessuna chiamata recente" = "No recent calls"
+"Entrante" = "Incoming"
+"Uscente" = "Outgoing"
+"Persa" = "Missed"
+"Rifiutata" = "Declined"
+"Numero nascosto" = "Hidden number"
+"Wi-Fi e rete mobile del telefono: segnale e stato." = "The phone's Wi-Fi and mobile network: signal and status."
+"Mobile" = "Mobile"
+"Non connesso" = "Not connected"
+"Connesso" = "Connected"
+"Nessun servizio" = "No service"
+"Nessuna SIM" = "No SIM"
+"Dati mobili spenti" = "Mobile data off"
+"Modalità aereo" = "Airplane mode"
+"Il brano che suona sul telefono, con i pulsanti per cambiarlo." = "The track playing on the phone, with buttons to change it."
+"Niente in riproduzione" = "Nothing playing"
+"Senza titolo" = "Untitled"
+"Brano precedente" = "Previous track"
+"Riproduci o metti in pausa" = "Play or pause"
+"Brano successivo" = "Next track"

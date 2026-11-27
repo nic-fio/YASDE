@@ -25,6 +25,7 @@ void sv_rif_lascia(Sv *sv)
     g_mutex_clear(&sv->ctl_m);
     g_mutex_clear(&sv->abb_m);
     sv_meteo_libera(sv);
+    sv_sond_libera(sv);
     g_async_queue_unref(sv->coda);
     if (sv->flussi != NULL)
         g_ptr_array_free(sv->flussi, TRUE);
@@ -70,7 +71,7 @@ void sv_lavoro(Sv *sv, GThreadPool *pool, SvFn fn, void *dati)
         if (t != NULL)
             g_thread_unref(t);
         else
-            fprintf(stderr, "YASDE 2.2: lavoro perso: memoria o thread finiti\n");
+            fprintf(stderr, "YASDE 2.3: lavoro perso: memoria o thread finiti\n");
     }
 }
 
@@ -147,6 +148,7 @@ static void col_in_perdita(void *utente)
         g_mutex_unlock(&s->m);
     }
     atomic_store(&sv->sess_id, 0);
+    sv_sond_sveglia(sv);
     g_mutex_unlock(&sv->m);
     sv_manager_invia(sv, SV_MG_PERDITA);
 }
@@ -174,7 +176,7 @@ static void salva_profilo_lavoro(Sv *sv, void *dati)
     SalvaProfilo *j = dati;
     PhErrore e = {{0}};
     if (ph_cfg_telefono_salva(j->seriale, j->copia, &e) != 0)
-        fprintf(stderr, "YASDE 2.2: profilo del telefono non salvato\n");
+        fprintf(stderr, "YASDE 2.3: profilo del telefono non salvato\n");
     ph_cfg_telefono_libera(j->copia);
     g_free(j);
 }
@@ -200,7 +202,7 @@ static void salva_pref_lavoro(Sv *sv, void *dati)
     PhCfgPreferenze *p = dati;
     PhErrore e = {{0}};
     if (ph_cfg_preferenze_salva(p, &e) != 0)
-        fprintf(stderr, "YASDE 2.2: preferenze non salvate\n");
+        fprintf(stderr, "YASDE 2.3: preferenze non salvate\n");
     free(p);
 }
 
@@ -253,7 +255,7 @@ static void profilo_carica(Sv *sv, const char *seriale)
         if (r == -1)
             ph_cfg_telefono_predefinito(prof); /* e per questa sessione mai salvare */
         if (r != 0)
-            fprintf(stderr, "YASDE 2.2: profilo del telefono %s\n",
+            fprintf(stderr, "YASDE 2.3: profilo del telefono %s\n",
                     r == 1 ? "illeggibile, messo da parte" : "non letto, uso i valori predefiniti");
     }
     int volume = prof->volume;
@@ -290,6 +292,7 @@ static void sessione_smonta(Sv *sv, bool solo_se_morta)
         g_mutex_unlock(&s->m);
     }
     atomic_store(&sv->sess_id, 0);
+    sv_sond_sveglia(sv);
     g_mutex_unlock(&sv->m);
     if (s == NULL)
         return;
@@ -373,6 +376,7 @@ static void sessione_nuova(Sv *sv)
         g_mutex_unlock(&s->m);
         sv->sess = s;
         atomic_store(&sv->sess_id, s->id);
+        sv_sond_sveglia(sv);
     }
     g_mutex_unlock(&sv->m);
     if (!pubblicata) { /* caduta durante la preparazione: si restituisce subito */
@@ -442,6 +446,7 @@ static void sv_chiudi(void *b)
     /* Il meteo per primo: ferma timer e richieste e chiude PhMeteo, cosi' nessuna
      * sua callback puo' arrivare mentre il resto si chiude. */
     sv_meteo_chiudi(sv);
+    sv_sond_chiudi(sv); /* anche il thread delle letture si ferma prima del collegamento */
     sv_abbina_chiudi(sv); /* un abbinamento in corso si chiude: nulla resta appeso */
     /* Nessuna nuova ph_col_presta del gestore, e aspettiamo quelle in corso:
      * poi il collegamento si puo' chiudere senza che nessuno lo usi. */
@@ -455,7 +460,7 @@ static void sv_chiudi(void *b)
          * restituisce il prestito mentre ph_col_chiudi lo aspetta. */
         int r = ph_col_chiudi(col);
         if (r == 1)
-            fprintf(stderr, "YASDE 2.2: un prestito non e' tornato in tempo alla chiusura\n");
+            fprintf(stderr, "YASDE 2.3: un prestito non e' tornato in tempo alla chiusura\n");
         g_mutex_lock(&sv->m);
         sv->col = NULL;
         g_mutex_unlock(&sv->m);
@@ -522,6 +527,7 @@ PhServizi *ph_ossatura_servizi_veri(const PhCfgPreferenze *pref, bool pref_salva
     g_mutex_init(&sv->am);
     g_mutex_init(&sv->ctl_m);
     sv_meteo_inizia(sv);
+    sv_sond_inizia(sv);
     sv->coda = g_async_queue_new();
     sv->flussi = g_ptr_array_new();
     sv->pref_ok = pref_salvabile;
@@ -586,6 +592,10 @@ PhServizi *ph_ossatura_servizi_veri(const PhCfgPreferenze *pref, bool pref_salva
         .meteo_osserva = sv_meteo_osserva,
         .meteo_localita = sv_meteo_localita,
         .meteo_cerca = sv_meteo_cerca,
+        .chiamate_osserva = sv_chiamate_osserva,
+        .rete_osserva = sv_rete_osserva,
+        .media_osserva = sv_media_osserva,
+        .media_comando = sv_media_comando,
     };
     sv->serv = ph_servizi_nuovi(&t, sv);
     if (sv->serv == NULL) {

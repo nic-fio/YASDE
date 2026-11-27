@@ -87,7 +87,7 @@ public class ProvaProtocollo {
         verifica(Protocollo.SALUTO == 1 && Protocollo.OK == 2 && Protocollo.ERRORE == 3
             && Protocollo.CHIUDI == 4 && Protocollo.VIDEO_APRI == 0x40 && Protocollo.VIDEO_EVENTO == 0x48
             && Protocollo.TOCCO == 0x50 && Protocollo.INDIETRO == 0x54, "costanti");
-        verifica(Protocollo.VERSIONE == 2 && Protocollo.VIDEO_PAGINA == 0x46, "versione 2 e VIDEO_PAGINA");
+        verifica(Protocollo.VERSIONE == 3 && Protocollo.VIDEO_PAGINA == 0x46, "versione 3 e VIDEO_PAGINA");
 
         System.out.println(errori == 0 ? "ProvaProtocollo: tutto ok" : "ProvaProtocollo: " + errori + " errori");
         System.exit(errori == 0 ? 0 : 1);

@@ -121,6 +121,7 @@ struct PhDesktop {
     /* Note rapide (wx_note.c): un solo testo per telefono, nel buffer condiviso da tutti i widget
      * Note; a ogni modifica dell'utente si chiede ph_dsk_salva (il rinvio lo fa il servizio). */
     GtkTextBuffer *note_testo;
+    GtkTextView *note_menu_vista; /* campo che ha aperto il menu del testo (puntatore debole) */
     bool note_mio; /* il buffer lo sta cambiando il programma (allineamento al profilo): non e' una battuta */
 };
 
@@ -148,6 +149,8 @@ void ph_dsk_misura_fisica(PhDesktop *d, uint32_t *W, uint32_t *H);
 void ph_dsk_menu_desktop(PhDesktop *d, double x, double y);
 void ph_dsk_menu_icona(PhDesktop *d, const char *app, double x, double y);
 void ph_dsk_menu_widget(PhDesktop *d, unsigned id, double x, double y);
+/* Menu del campo delle Note rapide: Taglia, Copia, Incolla, Seleziona tutto e Rimuovi widget. */
+void ph_dsk_menu_note(PhDesktop *d, unsigned id, GtkWidget *vista, double x, double y);
 /* Un tasto "Menu" o Maiusc+F10 su un controllo: apre il suo menu accanto al controllo. */
 void ph_dsk_tasto_menu_aggancia(GtkWidget *w, GCallback aperto, gpointer dati);
 
@@ -232,7 +235,7 @@ void ph_dsk_wx_annulla(GCancellable **c);
 void ph_dsk_wx_svuota(GtkWidget *box);
 /* Le tabelle dei tipi. */
 extern const PhDskWxVt PH_DSK_WX_METEO, PH_DSK_WX_CALENDARIO_MESE, PH_DSK_WX_SVEGLIA, PH_DSK_WX_BATTERIA,
-    PH_DSK_WX_INTERRUTTORI, PH_DSK_WX_TROVA, PH_DSK_WX_APP_FREQUENTI, PH_DSK_WX_TRASFERIMENTI, PH_DSK_WX_NOTE;
+    PH_DSK_WX_INTERRUTTORI, PH_DSK_WX_TROVA, PH_DSK_WX_APP_FREQUENTI, PH_DSK_WX_TRASFERIMENTI, PH_DSK_WX_NOTE, PH_DSK_WX_CHIAMATE, PH_DSK_WX_RETE, PH_DSK_WX_MEDIA;
 
 /* Note rapide (wx_note.c). Thread GTK.
  * (Un altro telefono: i widget si ricostruiscono e ogni campo nuovo si allinea al profilo, senza
@@ -372,6 +375,13 @@ void ph_dsk_riga_imposta(GtkWidget *r, const char *sigla, PhDskAccento acc, bool
  * Passare di nuovo la stessa icona gia' messa non fa nulla. */
 void ph_dsk_riga_icona(GtkWidget *r, GtkWidget *icona);
 
+/* Icone di chiamate, rete e lettore (wx.c): per tipo di chiamata e per livello 0-4. */
+extern const PhShellIcona PH_DSK_ICONA_CHIAMATA[5], PH_DSK_ICONA_WIFI[5], PH_DSK_ICONA_MOBILE[5],
+    PH_DSK_ICONA_MEDIA_INDIETRO, PH_DSK_ICONA_MEDIA_AVANTI, PH_DSK_ICONA_MEDIA_PLAY, PH_DSK_ICONA_MEDIA_PAUSA;
+/* Pacchetto dell'app Telefono che il telefono ha davvero (NULL = nessuno: il clic non fa nulla). */
+const char *ph_dsk_telefono_pacchetto(PhDesktop *d);
+/* Solo per le prove del demo: un altro pacchetto al posto dei noti (NULL = no). */
+void ph_dsk_telefono_pacchetto_prova(const char *pacchetto);
 /* Icone nuove dei widget (wx.c). */
 extern const PhShellIcona PH_DSK_ICONA_PREC, PH_DSK_ICONA_SUCC, PH_DSK_ICONA_SUONA, PH_DSK_ICONA_VIBRA,
     PH_DSK_ICONA_SILENZIOSO, PH_DSK_ICONA_LUNA, PH_DSK_ICONA_TORCIA, PH_DSK_ICONA_TROVA;

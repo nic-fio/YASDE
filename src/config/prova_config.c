@@ -463,10 +463,10 @@ static void prova_andata_ritorno(void)
                 ph_cfg_telefono_libera(x);
                 ph_cfg_telefono_libera(y);
             }
-    for (int ti = 0; ti <= PH_CFG_WIDGET_TRASFERIMENTI; ti++)
+    for (int ti = 0; ti <= PH_CFG_WIDGET_RETE; ti++)
         for (int di = 0; di < 3; di++) {
             PhCfgTelefono *x = ph_cfg_telefono_nuovo(), *y = ph_cfg_telefono_nuovo();
-            x->widget[0] = (PhCfgWidget){.tipo = (PhCfgWidgetTipo)ti, .destra = 8 * ti, .alto = 8 * di, .dimensione = (PhCfgWidgetDim)di, .stile = ti, .opzione = 30 * di};
+            x->widget[0] = (PhCfgWidget){.tipo = (PhCfgWidgetTipo)ti, .destra = 8 * ti, .alto = 8 * di, .dimensione = (PhCfgWidgetDim)di, .stile = ti % 16, .opzione = 30 * di};
             x->n_widget = 1;
             ph_buffer_svuota(&b);
             CONTROLLA(ph_cfg_telefono_in_testo(x, &b) == 0);
@@ -1571,18 +1571,19 @@ static void prova_aperture(void)
 
     /* i valori dei tipi esistenti non cambiano; i nuovi sono in coda */
     CONTROLLA(PH_CFG_WIDGET_OROLOGIO == 0 && PH_CFG_WIDGET_RIPRODUZIONE == 7 && PH_CFG_WIDGET_CALENDARIO_MESE == 8 &&
-              PH_CFG_WIDGET_TRASFERIMENTI == 14);
+              PH_CFG_WIDGET_TRASFERIMENTI == 14 && PH_CFG_WIDGET_CHIAMATE == 15 && PH_CFG_WIDGET_RETE == 16);
     {
-        const char *nomi[] = {"calendario-mese", "sveglia", "batteria", "interruttori", "trova", "app-frequenti", "trasferimenti"};
+        const char *nomi[] = {"calendario-mese", "sveglia", "batteria", "interruttori", "trova", "app-frequenti", "trasferimenti",
+                              "chiamate", "rete"};
         PhBuffer l = PH_BUFFER_VUOTO;
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 9; i++) {
             ph_buffer_aggiungi(&l, "[[widget]]\ntipo = \"", 19);
             ph_buffer_aggiungi(&l, nomi[i], strlen(nomi[i]));
             ph_buffer_aggiungi(&l, "\"\n", 2);
         }
         ph_buffer_aggiungi(&l, "[[widget]]\ntipo = \"inesistente\"\n", strlen("[[widget]]\ntipo = \"inesistente\"\n"));
-        CONTROLLA(leggi_tel((char *)l.dati, l.lunghezza, r, &e) == 0 && r->n_widget == 7);
-        for (int i = 0; i < 7 && r->n_widget == 7; i++)
+        CONTROLLA(leggi_tel((char *)l.dati, l.lunghezza, r, &e) == 0 && r->n_widget == 9);
+        for (int i = 0; i < 9 && r->n_widget == 9; i++)
             CONTROLLA((int)r->widget[i].tipo == (int)PH_CFG_WIDGET_CALENDARIO_MESE + i);
         ph_buffer_libera(&l);
     }

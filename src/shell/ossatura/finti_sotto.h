@@ -79,6 +79,14 @@ typedef struct {
     atomic_bool m_chiedi_gate, m_chiedi_in_corso; /* ph_meteo_chiedi aspetta all'ingresso / e' fermo li' */
     atomic_bool altro_seriale;             /* il prossimo prestito e' di un altro telefono (valori finti) */
     char m_cerca_testo[80];                /* solo prova: ultimo testo cercato */
+    /* Chiamate, rete, media (27 nov): letture e comandi. *_esito: 0 ok, 1 non disponibile, 2 permesso
+     * negato, 3 la lettura fallisce (-1). *_marca finisce nei dati finti: cambiarla cambia il valore
+     * letto (durata della prima chiamata, livello del Wi-Fi, titolo del brano). */
+    atomic_int chi_n, chi_esito, chi_marca;
+    atomic_int rete_n, rete_esito, rete_marca;
+    atomic_int media_n, media_esito, media_marca;
+    atomic_int media_cmd_n, media_cmd_ultimo;
+    atomic_bool media_cmd_rifiuta;
     int adb, comp, dati;         /* oggetti finti: solo gli indirizzi */
 } FintiSotto;
 

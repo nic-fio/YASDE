@@ -965,6 +965,75 @@ void finti_apri_cancello_posizione(void)
     g_mutex_unlock(&pos_m);
 }
 
+int ph_dati_chiamate(PhDati *d, PhDatiChiamate *out, PhErrore *e)
+{
+    tocca(d);
+    atomic_fetch_add(&finti.chi_n, 1);
+    memset(out, 0, sizeof *out);
+    int es = atomic_load(&finti.chi_esito);
+    if (es == 3)
+        return ph_errore(e, "lettura non riuscita");
+    out->esito = (uint8_t)es;
+    if (es == 0) {
+        out->n = 2;
+        out->v[0] = (PhDatiChiamata){.tipo = 3, .ora_ms = 1700000000000u, .durata_s = (uint32_t)atomic_load(&finti.chi_marca)};
+        g_strlcpy(out->v[0].nome, "Alex Sample", sizeof out->v[0].nome);
+        g_strlcpy(out->v[0].numero, "+00 000 000 0001", sizeof out->v[0].numero);
+        out->v[1] = (PhDatiChiamata){.tipo = 2, .ora_ms = 1699999000000u, .durata_s = 30};
+        g_strlcpy(out->v[1].numero, "+00 000 000 0002", sizeof out->v[1].numero);
+    }
+    return 0;
+}
+
+int ph_dati_rete(PhDati *d, PhDatiRete *out, PhErrore *e)
+{
+    tocca(d);
+    atomic_fetch_add(&finti.rete_n, 1);
+    memset(out, 0, sizeof *out);
+    int es = atomic_load(&finti.rete_esito);
+    if (es == 3)
+        return ph_errore(e, "lettura non riuscita");
+    out->esito = (uint8_t)es;
+    if (es == 0) {
+        out->wifi = 2;
+        out->wifi_livello = (uint8_t)atomic_load(&finti.rete_marca);
+        g_strlcpy(out->wifi_nome, "SampleNet", sizeof out->wifi_nome);
+        out->mobile = 2;
+        out->mobile_livello = 2;
+        out->generazione = 4;
+        g_strlcpy(out->operatore, "Sample Mobile", sizeof out->operatore);
+        out->dati_mobili = 1;
+    }
+    return 0;
+}
+
+int ph_dati_media(PhDati *d, PhDatiMedia *out, PhErrore *e)
+{
+    tocca(d);
+    atomic_fetch_add(&finti.media_n, 1);
+    memset(out, 0, sizeof *out);
+    int es = atomic_load(&finti.media_esito);
+    if (es == 3)
+        return ph_errore(e, "lettura non riuscita");
+    out->esito = (uint8_t)es;
+    if (es == 0) {
+        out->stato = 2;
+        snprintf(out->titolo, sizeof out->titolo, "Sample Song %d", atomic_load(&finti.media_marca));
+        g_strlcpy(out->artista, "Sample Artist", sizeof out->artista);
+        g_strlcpy(out->pacchetto, "org.sample.player", sizeof out->pacchetto);
+        out->comandi = 7;
+    }
+    return 0;
+}
+
+int ph_dati_media_comando(PhDati *d, uint8_t comando, PhErrore *e)
+{
+    tocca(d);
+    atomic_store(&finti.media_cmd_ultimo, comando);
+    atomic_fetch_add(&finti.media_cmd_n, 1);
+    return atomic_load(&finti.media_cmd_rifiuta) ? ph_errore(e, "comando non permesso") : 0;
+}
+
 int ph_dati_posizione(PhDati *d, bool richiesta_permessa, PhDatiPosizione *out, PhErrore *e)
 {
     tocca(d);

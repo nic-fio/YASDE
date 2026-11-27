@@ -1,4 +1,4 @@
-# Contratti della shell (YASDE 2.2)
+# Contratti della shell (YASDE 2.3)
 
 Questo documento, gli header di contratto e il proprio `COMPITO.md` bastano a chi scrive un pezzo della shell. Fonte di verità per funzioni, aspetto e misure: `yasde-specification.md` (capitoli 4, 5, 6.2, 8) e `mockup/project/Main.dc.html`. Niente funzioni oltre a quelle. Architettura decisa: `PIANO.md`, «Proposta di architettura della shell» (GTK4 in C, disegno Vulkan, video senza copie, un thread per flusso, un solo thread grafico).
 

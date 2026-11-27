@@ -305,6 +305,68 @@ static void azione_rimuovi_widget(GtkButton *b, gpointer dati)
     ph_dsk_widget_rimuovi(a->d, a->id);
 }
 
+/* ---- Voci di testo del menu delle Note rapide ---------------------------------------------------
+ * Agiscono sul buffer del campo che ha aperto il menu (d->note_menu_vista, puntatore debole: se
+ * il campo e' morto nel frattempo la voce non fa nulla). Incolla passa dal buffer, quindi dal
+ * filtro e dal limite di wx_note.c. */
+static GtkTextView *nota_vista(Azione *a)
+{
+    return a->d->note_menu_vista;
+}
+
+static void azione_nota_taglia(GtkButton *b, gpointer dati)
+{
+    (void)b;
+    Azione *a = dati;
+    GtkTextView *v = nota_vista(a);
+    ph_shell_popup_chiudi(a->d->sh);
+    if (v == NULL)
+        return;
+    gtk_text_buffer_cut_clipboard(gtk_text_view_get_buffer(v), gtk_widget_get_clipboard(GTK_WIDGET(v)),
+                                  gtk_text_view_get_editable(v));
+    gtk_widget_grab_focus(GTK_WIDGET(v));
+}
+
+static void azione_nota_copia(GtkButton *b, gpointer dati)
+{
+    (void)b;
+    Azione *a = dati;
+    GtkTextView *v = nota_vista(a);
+    ph_shell_popup_chiudi(a->d->sh);
+    if (v == NULL)
+        return;
+    gtk_text_buffer_copy_clipboard(gtk_text_view_get_buffer(v), gtk_widget_get_clipboard(GTK_WIDGET(v)));
+    gtk_widget_grab_focus(GTK_WIDGET(v));
+}
+
+static void azione_nota_incolla(GtkButton *b, gpointer dati)
+{
+    (void)b;
+    Azione *a = dati;
+    GtkTextView *v = nota_vista(a);
+    ph_shell_popup_chiudi(a->d->sh);
+    if (v == NULL)
+        return;
+    gtk_text_buffer_paste_clipboard(gtk_text_view_get_buffer(v), gtk_widget_get_clipboard(GTK_WIDGET(v)), NULL,
+                                    gtk_text_view_get_editable(v));
+    gtk_widget_grab_focus(GTK_WIDGET(v));
+}
+
+static void azione_nota_tutto(GtkButton *b, gpointer dati)
+{
+    (void)b;
+    Azione *a = dati;
+    GtkTextView *v = nota_vista(a);
+    ph_shell_popup_chiudi(a->d->sh);
+    if (v == NULL)
+        return;
+    GtkTextBuffer *buf = gtk_text_view_get_buffer(v);
+    GtkTextIter i, f;
+    gtk_text_buffer_get_bounds(buf, &i, &f);
+    gtk_text_buffer_select_range(buf, &i, &f);
+    gtk_widget_grab_focus(GTK_WIDGET(v));
+}
+
 static void azione_libera(gpointer dati, GClosure *c)
 {
     (void)c;
@@ -444,6 +506,36 @@ void ph_dsk_menu_widget(PhDesktop *d, unsigned id, double x, double y)
     altezza += 9;
     menu_voce(d, ph_t("Rimuovi widget"), -1, G_CALLBACK(azione_rimuovi_widget), NULL, id);
     menu_mostra(d, x, y, PH_DSK_MENU_WIDGET_L, altezza);
+}
+
+/* Menu del clic destro sul campo delle Note rapide: le voci di testo, poi «Rimuovi widget».
+ * Taglia e Copia sono spente senza selezione; Incolla e Taglia anche se il campo non e'
+ * modificabile (senza profilo). */
+void ph_dsk_menu_note(PhDesktop *d, unsigned id, GtkWidget *vista, double x, double y)
+{
+    unsigned stile, citta;
+    PhCfgWidgetTipo tipo;
+    if (!GTK_IS_TEXT_VIEW(vista) || !ph_dsk_widget_stile_di(d, id, &tipo, &stile, &citta))
+        return;
+    if (d->note_menu_vista != NULL)
+        g_object_remove_weak_pointer(G_OBJECT(d->note_menu_vista), (gpointer *)&d->note_menu_vista);
+    d->note_menu_vista = GTK_TEXT_VIEW(vista);
+    g_object_add_weak_pointer(G_OBJECT(vista), (gpointer *)&d->note_menu_vista);
+    bool modificabile = gtk_text_view_get_editable(GTK_TEXT_VIEW(vista));
+    bool selezione = gtk_text_buffer_get_has_selection(gtk_text_view_get_buffer(GTK_TEXT_VIEW(vista)));
+    menu_svuota(d);
+    GtkWidget *b = menu_voce(d, ph_t("Taglia"), -1, G_CALLBACK(azione_nota_taglia), NULL, id);
+    gtk_widget_set_sensitive(b, selezione && modificabile);
+    b = menu_voce(d, ph_t("Copia"), -1, G_CALLBACK(azione_nota_copia), NULL, id);
+    gtk_widget_set_sensitive(b, selezione);
+    b = menu_voce(d, ph_t("Incolla"), -1, G_CALLBACK(azione_nota_incolla), NULL, id);
+    gtk_widget_set_sensitive(b, modificabile);
+    menu_voce(d, ph_t("Seleziona tutto"), -1, G_CALLBACK(azione_nota_tutto), NULL, id);
+    GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_widget_add_css_class(sep, "ph-desktop-menu-sep");
+    gtk_box_append(GTK_BOX(d->menu_voci), sep);
+    menu_voce(d, ph_t("Rimuovi widget"), -1, G_CALLBACK(azione_rimuovi_widget), NULL, id);
+    menu_mostra(d, x, y, PH_DSK_MENU_WIDGET_L, PH_DSK_MENU_WIDGET_A + 4 * 34 + 9);
 }
 
 /* Tasto "Menu" o Maiusc+F10 su un controllo: stesso menu del clic destro. */
@@ -622,6 +714,9 @@ static void avviso_servizi(PhServizi *s, PhSrvEvento ev, const char *argomento, 
     case PH_SRV_EV_CONTROLLI:
     case PH_SRV_EV_TRASFERIMENTI:
     case PH_SRV_EV_METEO:
+    case PH_SRV_EV_CHIAMATE:
+    case PH_SRV_EV_RETE:
+    case PH_SRV_EV_MEDIA:
         ph_dsk_widget_evento(d, (int)ev);
         break;
     default:
@@ -633,7 +728,8 @@ static const PhSrvEvento EVENTI_ASCOLTATI[] = {PH_SRV_EV_PROFILO,  PH_SRV_EV_ICO
                                                PH_SRV_EV_APP,      PH_SRV_EV_COLLEGAMENTO,
                                                PH_SRV_EV_TELEFONO, PH_SRV_EV_NOTIFICHE,
                                                PH_SRV_EV_CONTROLLI, PH_SRV_EV_TRASFERIMENTI,
-                                               PH_SRV_EV_METEO};
+                                               PH_SRV_EV_METEO,    PH_SRV_EV_CHIAMATE,
+                                               PH_SRV_EV_RETE,     PH_SRV_EV_MEDIA};
 
 /* La radice e' distrutta (da ph_shell_libera o con la finestra): i widget stanno
  * morendo con lei. Si staccano gli ascolti, si annullano le richieste in volo e

@@ -119,7 +119,7 @@ static gboolean su_chiusura_finestra(GtkWindow *w, gpointer dati)
  * telefono torna com'era subito (i guardiani restano la rete di sicurezza). */
 static gboolean su_segnale(gpointer app)
 {
-    fprintf(stderr, "YASDE 2.2: segnale di chiusura ricevuto\n");
+    fprintf(stderr, "YASDE 2.3: segnale di chiusura ricevuto\n");
     g_application_quit(G_APPLICATION(app));
     return G_SOURCE_REMOVE;
 }
@@ -134,9 +134,9 @@ static void su_avvio(GApplication *a, gpointer dati)
     (void)ph_cfg_pulisci_temporanei(3600, NULL);
     int r = ph_cfg_pulisci_sfondi(NULL);
     if (r == -2)
-        fprintf(stderr, "YASDE 2.2: un profilo illeggibile: nessuna immagine di sfondo tolta\n");
+        fprintf(stderr, "YASDE 2.3: un profilo illeggibile: nessuna immagine di sfondo tolta\n");
     else if (r < 0)
-        fprintf(stderr, "YASDE 2.2: pulizia delle immagini di sfondo non riuscita\n");
+        fprintf(stderr, "YASDE 2.3: pulizia delle immagini di sfondo non riuscita\n");
 }
 
 static void su_attiva(GApplication *a, gpointer dati)
@@ -153,7 +153,7 @@ static void su_attiva(GApplication *a, gpointer dati)
     o->servizi = ph_ossatura_servizi_veri(&o->pref, o->pref_salvabile, &e);
     if (o->servizi == NULL) {
         /* Il dettaglio puo' contenere percorsi della cartella personale: non si stampa. */
-        fprintf(stderr, "YASDE 2.2: i servizi non si sono avviati\n");
+        fprintf(stderr, "YASDE 2.3: i servizi non si sono avviati\n");
         o->uscita = 1;
         g_application_quit(a);
         return;
@@ -186,9 +186,9 @@ int ph_ossatura_esegui(int argc, char **argv)
     int r = ph_cfg_preferenze_carica(&o.pref, &e);
     o.pref_salvabile = r != -1;
     if (r == 1)
-        fprintf(stderr, "YASDE 2.2: preferenze illeggibili messe da parte, uso i valori predefiniti\n");
+        fprintf(stderr, "YASDE 2.3: preferenze illeggibili messe da parte, uso i valori predefiniti\n");
     else if (r == -1)
-        fprintf(stderr, "YASDE 2.2: preferenze non lette, uso i valori predefiniti e non li salvo\n");
+        fprintf(stderr, "YASDE 2.3: preferenze non lette, uso i valori predefiniti e non li salvo\n");
     if (r == -1)
         ph_cfg_preferenze_predefinite(&o.pref);
     ph_lingua_inizializza(o.pref.lingua);
@@ -207,6 +207,6 @@ int ph_ossatura_esegui(int argc, char **argv)
     int stato = g_application_run(G_APPLICATION(o.app), argc, argv);
     chiudi_tutto(&o);
     g_object_unref(o.app);
-    fprintf(stderr, "YASDE 2.2: chiusura pulita\n");
+    fprintf(stderr, "YASDE 2.3: chiusura pulita\n");
     return stato != 0 ? stato : o.uscita;
 }

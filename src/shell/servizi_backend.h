@@ -163,6 +163,17 @@ typedef struct {
     void (*controllo_imposta)(void *b, PhSrvLavoro *l, PhSrvControllo controllo, int valore);
     void (*trova_avvia)(void *b, PhSrvLavoro *l, int secondi);
     void (*trova_ferma)(void *b);
+    /* Chiamate recenti, rete, media (27 nov; tutte facoltative: NULL = il
+     * pezzo comune pubblica NON_DISPONIBILE appena osservati). *_osserva come
+     * controlli_osserva: true = comincia a leggere (subito, poi ogni 60 s /
+     * 15 s / 3 s) e a pubblicare con ph_servizi_pubblica_chiamate / _rete /
+     * _media; false = smetti. Solo ai passaggi 0 -> 1 e 1 -> 0 del contatore.
+     * Le letture MAI sul thread GTK. media_comando: argomento gia' controllato
+     * (1-3); non blocca; dopo, rilegge subito il media. */
+    void (*chiamate_osserva)(void *b, bool osserva);
+    void (*rete_osserva)(void *b, bool osserva);
+    void (*media_osserva)(void *b, bool osserva);
+    void (*media_comando)(void *b, int comando);
     /* Pizzico (facoltativa: NULL = scartato). Argomenti gia' controllati:
      * coordinate dentro il video, fase 0-3, passo -1200..1200. Non blocca
      * (come flusso_input). */
@@ -287,6 +298,13 @@ void ph_servizi_lavoro_luoghi(PhSrvLavoro *l, PhSrvEsito esito, const char *fras
                               size_t n);
 /* Fotografia dei controlli (qualunque thread). */
 void ph_servizi_pubblica_controlli(PhServizi *s, const PhSrvControlli *c);
+/* Chiamate, rete, media (qualunque thread; copiate e ripulite: stringhe tagliate
+ * e con UTF-8 valido, valori fuori elenco ricondotti a valori ammessi; arrivano
+ * come evento solo se qualcuno osserva). Mai chiamarle con un lock che chi
+ * ascolta potrebbe prendere (la consegna e' comunque differita). */
+void ph_servizi_pubblica_chiamate(PhServizi *s, const PhSrvChiamate *c);
+void ph_servizi_pubblica_rete(PhServizi *s, const PhSrvReteDettaglio *r);
+void ph_servizi_pubblica_media(PhServizi *s, const PhSrvMedia *m);
 /* Da QUALUNQUE thread (anche quello di lettura di un flusso): un decodificatore
  * video e' passato al processore (nessuna via hardware, GTK ha rifiutato il
  * DMA-BUF o la via hardware ha rinunciato). Arriva sul thread GTK come

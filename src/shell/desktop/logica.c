@@ -277,6 +277,9 @@ static Equivalenti equivalenti(PhCfgWidgetTipo tipo, unsigned stile)
     case PH_CFG_WIDGET_INTERRUTTORI: return (Equivalenti){{{200, 72}, {250, 112}, {320, 112}}}; /* agente D: alti quanto basta per il nome su due righe */
     /* Note rapide: il minimo tiene il titolo e un campo di tre righe; poi piu' righe. */
     case PH_CFG_WIDGET_NOTE: return (Equivalenti){{{200, 130}, {250, 180}, {320, 260}}};
+    case PH_CFG_WIDGET_CHIAMATE: return (Equivalenti){{{200, 110}, {250, 206}, {320, 296}}};
+    case PH_CFG_WIDGET_RETE: return (Equivalenti){{{200, 160}, {250, 170}, {320, 190}}};
+    case PH_CFG_WIDGET_RIPRODUZIONE: return (Equivalenti){{{200, 150}, {250, 170}, {320, 200}}};
     case PH_CFG_WIDGET_TROVA: return (Equivalenti){{{200, 96}, {250, 120}, {320, 140}}};
     case PH_CFG_WIDGET_APP_FREQUENTI: return (Equivalenti){{{200, 168}, {250, 180}, {320, 260}}};
     case PH_CFG_WIDGET_TRASFERIMENTI: return (Equivalenti){{{200, 146}, {250, 206}, {320, 296}}};

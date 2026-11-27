@@ -80,6 +80,21 @@ typedef struct {
     GSource *sonda;            /* controlla se chi ha chiesto ha rinunciato */
 } SvMeteo;
 
+/* Chiamate, rete, media (sv_sondaggi.c): un thread, letture periodiche solo per le voci osservate. */
+enum { SD_CHI = 0, SD_RETE, SD_MEDIA, SD_N };
+#define SD_CMD_MAX 8
+typedef struct {
+    GMutex m;                  /* bandiere e tempi; mai tenuto durante una lettura o una pubblicazione */
+    GCond cv;
+    GThread *th;               /* creato alla prima osservazione, unito da sv_sond_chiudi */
+    atomic_bool stop;
+    bool osserva[SD_N];
+    bool rifai[SD_N];          /* osservata da poco: rileggere subito e pubblicare comunque */
+    gint64 prossima_us[SD_N];
+    int cmd[SD_CMD_MAX];       /* comandi al lettore in coda (1-3) */
+    int n_cmd;
+} SvSond;
+
 typedef struct SvSessione SvSessione;
 typedef struct SvFlusso SvFlusso;
 
@@ -169,6 +184,7 @@ struct Sv {
     atomic_int_least64_t pannello_non_prima_us; /* dopo un rifiuto (chiamata in corso) si riprova piu' tardi */
     atomic_uint cache_n;
     SvMeteo met;
+    SvSond sond;
 };
 
 /* ---- sv_core.c ------------------------------------------------------------ */
@@ -332,6 +348,21 @@ extern Sv *sv_prova_sv;
 int sv_prova_meteo_vecchie(Sv *sv);
 bool sv_prova_meteo_in_giro(Sv *sv);
 bool sv_prova_meteo_azzerato(Sv *sv);
+
+/* ---- sv_sondaggi.c: chiamate recenti, rete, in riproduzione ----------------------------- */
+void sv_sond_inizia(Sv *sv);
+void sv_chiamate_osserva(void *b, bool osserva);
+void sv_rete_osserva(void *b, bool osserva);
+void sv_media_osserva(void *b, bool osserva);
+void sv_media_comando(void *b, int comando);
+/* Primo passo della chiusura (PRIMA di chiudere il collegamento): ferma il thread e lo aspetta. */
+void sv_sond_chiudi(Sv *sv);
+/* Dopo l'ultimo riferimento. */
+void sv_sond_libera(Sv *sv);
+/* La sessione e' cambiata (sess_id): il thread rilegge subito. Foglia: si puo' chiamare con sv->m preso. */
+void sv_sond_sveglia(Sv *sv);
+/* Solo per le prove: periodo delle letture in ms per tutte e tre le voci (0 = ritmi del contratto). */
+extern atomic_int sv_prova_sond_periodo_ms;
 
 /* ---- sv_audio.c: volume e canale audio ----------------------------------------- */
 void sv_volume(void *b, int volume);

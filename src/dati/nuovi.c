@@ -487,3 +487,205 @@ int ph_dati_posizione(PhDati *d, bool richiesta_permessa, PhDatiPosizione *out, 
     ph_dati_esci(d);
     return r;
 }
+
+/* ---- Chiamate (0x91), rete (0x92), media (0x93), comando media (0x94) -----------------
+ * Protocollo 3. Ogni risposta si legge per intero: campo fuori elenco, stringa non
+ * UTF-8 o oltre il massimo, corpo troncato o con coda = errore (messaggio fisso).
+ * RISERVATEZZA: nomi, numeri, reti, titoli restano in *out, mai in un messaggio d'errore. */
+
+/* Legge una stringa del protocollo (u16 + byte) nel vettore dst di `cap` byte: al massimo
+ * cap-1 byte utili, UTF-8 valido, controlli ripuliti. dst e' gia' azzerato. 0 / -1 / -2 (memoria). */
+static int leggi_campo(PhLettore *l, char *dst, size_t cap)
+{
+    const uint8_t *s = NULL;
+    size_t n = 0;
+    ph_dati_leggi_str(l, &s, &n);
+    if (l->rotto || n > cap - 1 || !ph_dati_utf8_valido(s, n))
+        return -1;
+    if (n == 0)
+        return 0;
+    char *pulita = ph_dati_pulisci(s, n, cap - 1, PH_PUL_RIGA);
+    if (pulita == NULL)
+        return -2;
+    memcpy(dst, pulita, strlen(pulita)); /* mai piu' lunga di n byte: il resto e' zero */
+    free(pulita);
+    return 0;
+}
+
+/* Esito del telefono: 0 ok, 1 non disponibile, 2 permesso negato. */
+#define PH_DT_ESITO_MAX 2
+
+static int chiamate_i(PhDati *d, uint8_t massimo, PhDatiChiamate *out, PhErrore *e)
+{
+    PhBuffer m = PH_BUFFER_VUOTO;
+    if (ph_msg_inizia(&m, 0) != 0 || ph_msg_u8(&m, massimo) != 0) {
+        ph_buffer_libera(&m);
+        return ph_errore(e, "memoria finita");
+    }
+    PhBuffer r = PH_BUFFER_VUOTO;
+    int q = ph_dati_chiedi(d, PH_DT_CHIAMATE, &m, &r, e);
+    ph_buffer_libera(&m);
+    if (q != 0) {
+        ph_buffer_libera(&r);
+        return -1;
+    }
+    PhLettore l = {r.dati, r.lunghezza, 0, false};
+    uint8_t esito = ph_leggi_u8(&l);
+    uint8_t n = ph_leggi_u8(&l);
+    /* Con esito diverso da 0 la lista e' vuota; n mai oltre il massimo chiesto. */
+    bool buona = !l.rotto && esito <= PH_DT_ESITO_MAX && n <= massimo && n <= PH_DATI_MAX_CHIAMATE &&
+                 (esito == 0 || n == 0);
+    int memoria = 0;
+    PhDatiChiamate tmp;
+    memset(&tmp, 0, sizeof tmp);
+    tmp.esito = esito;
+    for (size_t i = 0; buona && i < n; i++) {
+        PhDatiChiamata *c = &tmp.v[i];
+        c->tipo = ph_leggi_u8(&l);
+        uint32_t alto = ph_leggi_u32(&l);
+        uint32_t basso = ph_leggi_u32(&l);
+        c->ora_ms = ((uint64_t)alto << 32) | basso;
+        c->durata_s = ph_leggi_u32(&l);
+        int a = leggi_campo(&l, c->nome, sizeof c->nome);
+        int b = a == 0 ? leggi_campo(&l, c->numero, sizeof c->numero) : a;
+        if (b == -2)
+            memoria = 1;
+        buona = !l.rotto && b == 0 && c->tipo <= 4;
+    }
+    buona = buona && !l.rotto && l.posizione == l.lunghezza;
+    ph_buffer_libera(&r);
+    if (memoria)
+        return ph_errore(e, "memoria finita");
+    if (!buona)
+        return ph_errore(e, "risposta sulle chiamate non valida");
+    tmp.n = n;
+    *out = tmp;
+    return 0;
+}
+
+int ph_dati_chiamate(PhDati *d, PhDatiChiamate *out, PhErrore *e)
+{
+    if (out == NULL)
+        return ph_errore(e, "chiamate: parametri mancanti");
+    memset(out, 0, sizeof *out);
+    if (ph_dati_entra(d, e) != 0)
+        return -1;
+    /* Si chiede sempre il massimo: chi chiama ne mostra quante vuole. */
+    int r = chiamate_i(d, PH_DATI_MAX_CHIAMATE, out, e);
+    ph_dati_esci(d);
+    return r;
+}
+
+static int rete_i(PhDati *d, PhDatiRete *out, PhErrore *e)
+{
+    PhBuffer r = PH_BUFFER_VUOTO;
+    if (ph_dati_chiedi(d, PH_DT_RETE, NULL, &r, e) != 0) {
+        ph_buffer_libera(&r);
+        return -1;
+    }
+    PhLettore l = {r.dati, r.lunghezza, 0, false};
+    PhDatiRete t;
+    memset(&t, 0, sizeof t);
+    t.esito = ph_leggi_u8(&l);
+    t.wifi = ph_leggi_u8(&l);
+    t.wifi_livello = ph_leggi_u8(&l);
+    int a = leggi_campo(&l, t.wifi_nome, sizeof t.wifi_nome);
+    t.mobile = a == 0 ? ph_leggi_u8(&l) : 0;
+    t.mobile_livello = ph_leggi_u8(&l);
+    t.generazione = ph_leggi_u8(&l);
+    int b = a == 0 ? leggi_campo(&l, t.operatore, sizeof t.operatore) : a;
+    uint8_t dm = ph_leggi_u8(&l);
+    uint8_t ae = ph_leggi_u8(&l);
+    bool buona = !l.rotto && a == 0 && b == 0 && l.posizione == l.lunghezza &&
+                 t.esito <= PH_DT_ESITO_MAX && t.wifi <= 2 && t.wifi_livello <= 4 &&
+                 t.mobile <= 2 && t.mobile_livello <= 4 &&
+                 (t.generazione == 0 || (t.generazione >= 2 && t.generazione <= 5)) &&
+                 dm <= 2 && ae <= 2;
+    ph_buffer_libera(&r);
+    if (a == -2 || b == -2)
+        return ph_errore(e, "memoria finita");
+    if (!buona)
+        return ph_errore(e, "risposta sulla rete non valida");
+    t.dati_mobili = dm;
+    t.aereo = ae;
+    if (t.esito != 0) {
+        /* Senza esito buono il resto e' zero: valori diversi = risposta non valida. */
+        PhDatiRete z;
+        memset(&z, 0, sizeof z);
+        z.esito = t.esito;
+        if (memcmp(&z, &t, sizeof z) != 0)
+            return ph_errore(e, "risposta sulla rete non valida");
+    }
+    *out = t;
+    return 0;
+}
+
+int ph_dati_rete(PhDati *d, PhDatiRete *out, PhErrore *e)
+{
+    if (out == NULL)
+        return ph_errore(e, "rete: parametri mancanti");
+    memset(out, 0, sizeof *out);
+    if (ph_dati_entra(d, e) != 0)
+        return -1;
+    int r = rete_i(d, out, e);
+    ph_dati_esci(d);
+    return r;
+}
+
+static int media_i(PhDati *d, PhDatiMedia *out, PhErrore *e)
+{
+    PhBuffer r = PH_BUFFER_VUOTO;
+    if (ph_dati_chiedi(d, PH_DT_MEDIA, NULL, &r, e) != 0) {
+        ph_buffer_libera(&r);
+        return -1;
+    }
+    PhLettore l = {r.dati, r.lunghezza, 0, false};
+    PhDatiMedia t;
+    memset(&t, 0, sizeof t);
+    t.esito = ph_leggi_u8(&l);
+    t.stato = ph_leggi_u8(&l);
+    int a = leggi_campo(&l, t.titolo, sizeof t.titolo);
+    int b = a == 0 ? leggi_campo(&l, t.artista, sizeof t.artista) : a;
+    int c = b == 0 ? leggi_campo(&l, t.pacchetto, sizeof t.pacchetto) : b;
+    t.comandi = ph_leggi_u8(&l);
+    bool buona = !l.rotto && c == 0 && l.posizione == l.lunghezza &&
+                 t.esito <= PH_DT_ESITO_MAX && t.stato <= 2 && t.comandi <= 7;
+    ph_buffer_libera(&r);
+    if (c == -2)
+        return ph_errore(e, "memoria finita");
+    if (!buona)
+        return ph_errore(e, "risposta sui media non valida");
+    if (t.esito != 0 || t.stato == 0) {
+        /* Senza esito buono o senza sessione il resto e' zero. */
+        PhDatiMedia z;
+        memset(&z, 0, sizeof z);
+        z.esito = t.esito;
+        if (memcmp(&z, &t, sizeof z) != 0)
+            return ph_errore(e, "risposta sui media non valida");
+    }
+    *out = t;
+    return 0;
+}
+
+int ph_dati_media(PhDati *d, PhDatiMedia *out, PhErrore *e)
+{
+    if (out == NULL)
+        return ph_errore(e, "media: parametri mancanti");
+    memset(out, 0, sizeof *out);
+    if (ph_dati_entra(d, e) != 0)
+        return -1;
+    int r = media_i(d, out, e);
+    ph_dati_esci(d);
+    return r;
+}
+
+int ph_dati_media_comando(PhDati *d, uint8_t comando, PhErrore *e)
+{
+    if (comando < 1 || comando > 3)
+        return ph_errore(e, "comando media non valido");
+    if (ph_dati_entra(d, e) != 0)
+        return -1;
+    int r = manda_u8(d, PH_DT_MEDIA_COMANDO, comando, e);
+    ph_dati_esci(d);
+    return r;
+}

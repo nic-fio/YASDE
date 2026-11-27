@@ -41,7 +41,7 @@
 #define PH_METEO_PERCORSO "/v1/forecast"
 #define PH_METEO_SITO "https://open-meteo.com/"
 #define PH_METEO_ATTRIBUZIONE "Dati meteo di Open-Meteo.com"
-#define PH_METEO_USER_AGENT "YASDE/2.2"
+#define PH_METEO_USER_AGENT "YASDE/2.3"
 #define PH_METEO_LIMITE_S 15
 #define PH_METEO_INTERVALLO_S (30 * 60)
 #define PH_METEO_RISPOSTA_MAX (512u * 1024u)

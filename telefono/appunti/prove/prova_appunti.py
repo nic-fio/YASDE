@@ -303,7 +303,7 @@ def main_turno():
 
 def prova(p, orig, solo_incolla=False):
     c0 = apri(b"comandi\n")
-    r = comando(c0, 1, struct.pack(">H", 2))
+    r = comando(c0, 1, struct.pack(">H", 3))
     controlla(r and r[0] == 2, "SALUTO -> OK")
 
     # --- canale appunti: PC -> telefono ---

@@ -6,7 +6,7 @@ S1 = p("The PC side of the Weather widget is the only place where the YASDE prog
     "There is no separate consent dialog: adding the widget is the choice.",
     "<b>Whom.</b> " + c("api.open-meteo.com") + " for forecasts and " + c("geocoding-api.open-meteo.com") + " for the search of a place written by the user. Both are served over HTTPS on port 443.",
     "<b>What leaves the PC.</b> The latitude and longitude of the phone rounded to 0.005° (about 500 m), or those of the city the user chose by hand, or the text the user typed in the place search together with " + c("language=en") + " (the language of the shell), "
-    "plus the fixed parameters of the request. No identifier, no cookie, a generic " + c("User-Agent") + ": " + c("YASDE/2.2") + ". The servers see the PC's IP address, as with any connection.",
+    "plus the fixed parameters of the request. No identifier, no cookie, a generic " + c("User-Agent") + ": " + c("YASDE/2.3") + ". The servers see the PC's IP address, as with any connection.",
     "<b>Where the rounding happens.</b> On the phone, before anything else: the precise position never leaves the phone. The place name is produced by Android's geocoder on the phone, from the already rounded coordinates; the geocoder may itself use a network service of the phone. On the wire and in " + c("PhDatiPosizione") + " and " + c("ph_meteo_chiedi") + " coordinates "
     "are in thousandths of a degree, always multiples of 5; the city chosen by hand stays in hundredths in " + c("PhMeteoLuogo") + " and in the profile, and is passed to " + c("ph_meteo_chiedi") + " multiplied by 10. "
     "The shell never receives the phone's coordinates: only the forecast and, if the phone knows it, the place name.",
@@ -53,7 +53,7 @@ S3 = p("The piece is written from scratch on top of OpenSSL (already a dependenc
      "Name resolution with " + c("getaddrinfo_a") + " (cancellable, with a deadline), non-blocking connect with " + c("poll") + "."],
     ["Certificate authorities", c("src/meteo/tls.c"), "The system's: OpenSSL default paths and, if they are not enough, the first existing of " + c("/etc/ssl/certs/ca-certificates.crt") + ", " + c("/etc/pki/tls/certs/ca-bundle.crt")
      + ", " + c("/etc/ssl/ca-bundle.pem"), ],
-    ["HTTP/1.1", c("src/meteo/http.c"), c("GET <path> HTTP/1.1") + ", " + c("Host") + ", " + c("User-Agent: YASDE/2.2") + ", " + c("Accept: application/json") + ", " + c("Connection: close") + ". The status line must be 200; headers up to 16 KiB; the body with "
+    ["HTTP/1.1", c("src/meteo/http.c"), c("GET <path> HTTP/1.1") + ", " + c("Host") + ", " + c("User-Agent: YASDE/2.3") + ", " + c("Accept: application/json") + ", " + c("Connection: close") + ". The status line must be 200; headers up to 16 KiB; the body with "
      + c("Content-Length") + " or " + c("Transfer-Encoding: chunked") + " (chunks checked; both together is refused as ambiguous). No redirects, no compression, no connection reuse."],
     ["JSON", c("src/meteo/analisi.c"), c("ph_meteo_analizza") + ": a streaming reader with limited depth (16), checked lengths, numbers read independent of the system language. It takes only " + c("utc_offset_seconds") + ", " + c("current")
      + ", " + c("hourly") + " and " + c("daily") + "; a missing, " + c("null") + " or wrong-typed field means \"not known\", not an error; hours from now on, at most " + c("PH_METEO_ORE_MAX") + " (48); days at most " + c("PH_METEO_GIORNI_MAX") + " (7)."],

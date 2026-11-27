@@ -690,3 +690,47 @@ button.ph-desktop-giorno-impegno:focus-visible {
 .ph-desktop-tel-sotto { font-size: 12px; color: var(--ph-testo-2); }
 .ph-desktop-tel-assente { font-size: 16px; font-weight: 600; }
 /* ---- fine agente B ---- */
+
+/* ---- Chiamate recenti, Rete, In riproduzione (PIANO.md 9) ---- */
+.ph-desktop-chiamata-icona { color: var(--ph-testo-2); }
+.ph-desktop-chiamata-persa { color: var(--ph-desktop-corallo); }
+.ph-desktop-chiamata-rifiutata { color: var(--ph-desktop-ambra); }
+.ph-desktop-rete-blocco { padding: 4px 0; }
+.ph-desktop-rete-nome { font-size: 11px; color: var(--ph-testo-2); }
+.ph-desktop-rete-riga { font-size: 13px; font-weight: 600; }
+.ph-desktop-rete-nota { font-size: 11px; color: var(--ph-testo-2); }
+button.ph-desktop-media-titolo-btn {
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: var(--ph-testo);
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+}
+button.ph-desktop-media-titolo-btn:hover { background-color: var(--ph-sopra-riga); }
+button.ph-desktop-media-titolo-btn:focus-visible { outline: 2px solid var(--ph-fuoco); outline-offset: 1px; }
+.ph-desktop-media-titolo { font-size: 14px; font-weight: 600; }
+.ph-desktop-media-artista { font-size: 12px; color: var(--ph-testo-2); }
+.ph-desktop-media-app { font-size: 11px; color: var(--ph-testo-3); margin-top: 2px; }
+button.ph-desktop-media-tasto {
+  border: 1px solid var(--ph-bordo);
+  background: var(--ph-voce);
+  box-shadow: none;
+  color: var(--ph-testo);
+  padding: 0;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 9999px;
+}
+button.ph-desktop-media-tasto:hover:not(:disabled) { background-color: var(--ph-sopra-ghost); }
+button.ph-desktop-media-tasto:disabled { opacity: 0.4; }
+button.ph-desktop-media-tasto:focus-visible { outline: 2px solid var(--ph-fuoco); outline-offset: 2px; }
+button.ph-desktop-media-tasto-centro {
+  background: var(--ph-accento);
+  border-color: var(--ph-accento);
+  color: var(--ph-su-accento);
+  min-width: 40px;
+  min-height: 40px;
+}
+button.ph-desktop-media-tasto-centro:hover:not(:disabled) { background-color: var(--ph-accento); }

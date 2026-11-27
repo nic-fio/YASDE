@@ -2644,6 +2644,371 @@ static void prova_posizione_chiusura(void)
     CHECK(a.esito == 0 && b.esito == 0 && finto_violazioni() == 0);
 }
 
+/* ---- Chiamate, rete, media (0x91-0x94, protocollo 3) -----------------------------------*/
+static void chiamata(PhBuffer *b, unsigned tipo, uint64_t ora, uint32_t dur, const char *nome, const char *num)
+{
+    p8(b, tipo);
+    p64(b, ora);
+    p32(b, dur);
+    pstr(b, nome);
+    pstr(b, num);
+}
+
+static void prova_chiamate(void)
+{
+    PhDati *d = apri_dati();
+    PhBuffer r = PH_BUFFER_VUOTO;
+    PhDatiChiamate c;
+    p8(&r, 0);
+    p8(&r, 2);
+    chiamata(&r, 3, 1700000000123ull, 0, "Mario Rossi", "+390000000000");
+    chiamata(&r, 1, 1699999990000ull, 125, "", "000");
+    finto_risposta(0x91, r.dati, r.lunghezza);
+    CHECK(ph_dati_chiamate(d, &c, &err) == 0);
+    uint8_t got[4];
+    CHECK(finto_ultimo_tipo() == 0x91 && finto_ultimo_corpo(got, sizeof got) == 1 && got[0] == 20);
+    CHECK(c.esito == 0 && c.n == 2 && c.v[0].tipo == 3 && c.v[0].ora_ms == 1700000000123ull && c.v[0].durata_s == 0);
+    CHECK(strcmp(c.v[0].nome, "Mario Rossi") == 0 && strcmp(c.v[0].numero, "+390000000000") == 0);
+    CHECK(c.v[1].tipo == 1 && c.v[1].durata_s == 125 && c.v[1].nome[0] == '\0' && strcmp(c.v[1].numero, "000") == 0);
+#define TIPO_ 0x91
+    PROVA_TRONCATE(r, ph_dati_chiamate(d, &c, &err));
+#undef TIPO_
+    /* A errore *out e' azzerato e il messaggio non contiene dati. */
+    for (size_t k = 0; k < r.lunghezza; k++) {
+        finto_risposta(0x91, r.dati, k);
+        memset(&c, 0xaa, sizeof c);
+        CHECK(ph_dati_chiamate(d, &c, &err) != 0 && c.esito == 0 && c.n == 0 && c.v[0].nome[0] == '\0');
+        CHECK(strstr(err.testo, "Rossi") == NULL && strstr(err.testo, "3900") == NULL);
+    }
+    /* esito 1 e 2: lista vuota; con elementi o n != 0 e' una bugia. */
+    for (unsigned es = 0; es < 5; es++) {
+        ph_buffer_svuota(&r);
+        p8(&r, es);
+        p8(&r, 0);
+        finto_risposta(0x91, r.dati, r.lunghezza);
+        CHECK((ph_dati_chiamate(d, &c, &err) == 0) == (es <= 2));
+        CHECK(es > 2 || c.esito == es);
+    }
+    ph_buffer_svuota(&r);
+    p8(&r, 2);
+    p8(&r, 1);
+    chiamata(&r, 1, 1, 1, "", "1");
+    finto_risposta(0x91, r.dati, r.lunghezza);
+    CHECK(ph_dati_chiamate(d, &c, &err) != 0);
+    /* Tipo fuori elenco (5), n oltre 20 (anche con i dati presenti), n dichiarato oltre i byte. */
+    for (unsigned tp = 0; tp < 8; tp++) {
+        ph_buffer_svuota(&r);
+        p8(&r, 0);
+        p8(&r, 1);
+        chiamata(&r, tp, 5, 5, "a", "b");
+        finto_risposta(0x91, r.dati, r.lunghezza);
+        CHECK((ph_dati_chiamate(d, &c, &err) == 0) == (tp <= 4));
+    }
+    ph_buffer_svuota(&r);
+    p8(&r, 0);
+    p8(&r, 21);
+    for (int i = 0; i < 21; i++)
+        chiamata(&r, 1, 1, 1, "", "1");
+    finto_risposta(0x91, r.dati, r.lunghezza);
+    CHECK(ph_dati_chiamate(d, &c, &err) != 0 && c.n == 0);
+    ph_buffer_svuota(&r);
+    p8(&r, 0);
+    p8(&r, 20);
+    for (int i = 0; i < 20; i++)
+        chiamata(&r, 2, 1, 1, "", "1");
+    finto_risposta(0x91, r.dati, r.lunghezza);
+    CHECK(ph_dati_chiamate(d, &c, &err) == 0 && c.n == 20);
+    ph_buffer_svuota(&r);
+    p8(&r, 0);
+    p8(&r, 3);
+    chiamata(&r, 1, 1, 1, "", "1");
+    finto_risposta(0x91, r.dati, r.lunghezza);
+    CHECK(ph_dati_chiamate(d, &c, &err) != 0);
+    /* Stringhe: 127 e 47 byte vanno, 128 e 48 no; UTF-8 non valido no. */
+    char lungo[200];
+    memset(lungo, 'n', sizeof lungo - 1);
+    lungo[sizeof lungo - 1] = '\0';
+    size_t nome_n[4] = {127, 128, 5, 5}, num_n[4] = {1, 1, 47, 48};
+    for (int i = 0; i < 4; i++) {
+        ph_buffer_svuota(&r);
+        p8(&r, 0);
+        p8(&r, 1);
+        p8(&r, 1);
+        p64(&r, 1);
+        p32(&r, 1);
+        p16(&r, (unsigned)nome_n[i]);
+        pbytes(&r, lungo, nome_n[i]);
+        p16(&r, (unsigned)num_n[i]);
+        pbytes(&r, lungo, num_n[i]);
+        finto_risposta(0x91, r.dati, r.lunghezza);
+        CHECK((ph_dati_chiamate(d, &c, &err) == 0) == (i == 0 || i == 2));
+    }
+    ph_buffer_svuota(&r);
+    p8(&r, 0);
+    p8(&r, 1);
+    chiamata(&r, 1, 1, 1, "a\xff" "b", "1");
+    finto_risposta(0x91, r.dati, r.lunghezza);
+    CHECK(ph_dati_chiamate(d, &c, &err) != 0);
+    finto_risposta_errore(0x91, "registro non leggibile");
+    CHECK(ph_dati_chiamate(d, &c, &err) != 0 && strcmp(err.testo, "registro non leggibile") == 0);
+    CHECK(ph_dati_chiamate(d, NULL, &err) != 0);
+    ph_buffer_libera(&r);
+    CHECK(ph_dati_chiudi(d, NULL) == 0);
+}
+
+static void rete(PhBuffer *b, unsigned esito, unsigned wifi, unsigned wl, const char *nome, unsigned mob, unsigned ml,
+                 unsigned gen, const char *op, unsigned dm, unsigned ae)
+{
+    p8(b, esito);
+    p8(b, wifi);
+    p8(b, wl);
+    pstr(b, nome);
+    p8(b, mob);
+    p8(b, ml);
+    p8(b, gen);
+    pstr(b, op);
+    p8(b, dm);
+    p8(b, ae);
+}
+
+static int rete_con(PhDati *d, const PhBuffer *r, PhDatiRete *t)
+{
+    finto_risposta(0x92, r->dati, r->lunghezza);
+    return ph_dati_rete(d, t, &err);
+}
+
+static void prova_rete(void)
+{
+    PhDati *d = apri_dati();
+    PhBuffer r = PH_BUFFER_VUOTO;
+    PhDatiRete t;
+    rete(&r, 0, 2, 3, "Casa-segreta", 2, 4, 5, "Operatore", 1, 0);
+    CHECK(rete_con(d, &r, &t) == 0);
+    uint8_t got[2];
+    CHECK(finto_ultimo_tipo() == 0x92 && finto_ultimo_corpo(got, sizeof got) == 0);
+    CHECK(t.esito == 0 && t.wifi == 2 && t.wifi_livello == 3 && strcmp(t.wifi_nome, "Casa-segreta") == 0);
+    CHECK(t.mobile == 2 && t.mobile_livello == 4 && t.generazione == 5 && strcmp(t.operatore, "Operatore") == 0);
+    CHECK(t.dati_mobili == 1 && t.aereo == 0);
+#define TIPO_ 0x92
+    PROVA_TRONCATE(r, ph_dati_rete(d, &t, &err));
+#undef TIPO_
+    for (size_t k = 0; k < r.lunghezza; k++) {
+        finto_risposta(0x92, r.dati, k);
+        memset(&t, 0xaa, sizeof t);
+        CHECK(ph_dati_rete(d, &t, &err) != 0 && t.esito == 0 && t.wifi_nome[0] == '\0' && t.operatore[0] == '\0');
+        CHECK(strstr(err.testo, "segreta") == NULL);
+    }
+    /* Ogni campo fuori elenco, uno alla volta. */
+    struct { unsigned es, w, wl, m, ml, g, dm, ae; int ok; } c[] = {
+        {0, 0, 0, 0, 0, 0, 0, 0, 1}, {1, 0, 0, 0, 0, 0, 0, 0, 1}, {2, 0, 0, 0, 0, 0, 0, 0, 1},
+        {3, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 3, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 5, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 3, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 5, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 1, 0, 0, 0},
+        {0, 0, 0, 0, 0, 6, 0, 0, 0}, {0, 0, 0, 0, 0, 2, 0, 0, 1}, {0, 0, 0, 0, 0, 0, 2, 0, 1}, {0, 0, 0, 0, 0, 0, 3, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 2, 1}, {0, 0, 0, 0, 0, 0, 0, 3, 0}, {0, 0, 0, 0, 0, 0, 2, 2, 1}, {0, 0, 0, 0, 0, 3, 1, 1, 1},
+        {1, 1, 0, 0, 0, 0, 0, 0, 0}, {2, 0, 0, 0, 0, 0, 0, 1, 0}, /* esito != 0: il resto dev'essere zero */
+    };
+    for (size_t i = 0; i < sizeof c / sizeof c[0]; i++) {
+        ph_buffer_svuota(&r);
+        rete(&r, c[i].es, c[i].w, c[i].wl, "", c[i].m, c[i].ml, c[i].g, "", c[i].dm, c[i].ae);
+        CHECK((rete_con(d, &r, &t) == 0) == (c[i].ok != 0));
+    }
+    /* Stringhe: 99 e 63 byte vanno, 100 e 64 no; non UTF-8 no. */
+    char lungo[200];
+    memset(lungo, 'r', sizeof lungo - 1);
+    lungo[sizeof lungo - 1] = '\0';
+    size_t rn[4] = {99, 100, 1, 1}, on[4] = {1, 1, 63, 64};
+    for (int i = 0; i < 4; i++) {
+        ph_buffer_svuota(&r);
+        p8(&r, 0);
+        p8(&r, 2);
+        p8(&r, 1);
+        p16(&r, (unsigned)rn[i]);
+        pbytes(&r, lungo, rn[i]);
+        p8(&r, 2);
+        p8(&r, 1);
+        p8(&r, 4);
+        p16(&r, (unsigned)on[i]);
+        pbytes(&r, lungo, on[i]);
+        p8(&r, 0);
+        p8(&r, 0);
+        CHECK((rete_con(d, &r, &t) == 0) == (i == 0 || i == 2));
+    }
+    ph_buffer_svuota(&r);
+    rete(&r, 0, 2, 1, "a\xc0", 0, 0, 0, "", 0, 0);
+    CHECK(rete_con(d, &r, &t) != 0);
+    finto_risposta_errore(0x92, "rete non disponibile");
+    CHECK(ph_dati_rete(d, &t, &err) != 0 && strcmp(err.testo, "rete non disponibile") == 0);
+    CHECK(ph_dati_rete(d, NULL, &err) != 0);
+    ph_buffer_libera(&r);
+    CHECK(ph_dati_chiudi(d, NULL) == 0);
+}
+
+static void media(PhBuffer *b, unsigned esito, unsigned stato, const char *tit, const char *art, const char *pac, unsigned cmd)
+{
+    p8(b, esito);
+    p8(b, stato);
+    pstr(b, tit);
+    pstr(b, art);
+    pstr(b, pac);
+    p8(b, cmd);
+}
+
+static int media_con(PhDati *d, const PhBuffer *r, PhDatiMedia *m)
+{
+    finto_risposta(0x93, r->dati, r->lunghezza);
+    return ph_dati_media(d, m, &err);
+}
+
+static void prova_media(void)
+{
+    PhDati *d = apri_dati();
+    PhBuffer r = PH_BUFFER_VUOTO;
+    PhDatiMedia m;
+    media(&r, 0, 2, "Titolo-segreto", "Artista", "com.finto.musica", 7);
+    CHECK(media_con(d, &r, &m) == 0);
+    uint8_t got[2];
+    CHECK(finto_ultimo_tipo() == 0x93 && finto_ultimo_corpo(got, sizeof got) == 0);
+    CHECK(m.esito == 0 && m.stato == 2 && strcmp(m.titolo, "Titolo-segreto") == 0 && strcmp(m.artista, "Artista") == 0);
+    CHECK(strcmp(m.pacchetto, "com.finto.musica") == 0 && m.comandi == 7);
+#define TIPO_ 0x93
+    PROVA_TRONCATE(r, ph_dati_media(d, &m, &err));
+#undef TIPO_
+    for (size_t k = 0; k < r.lunghezza; k++) {
+        finto_risposta(0x93, r.dati, k);
+        memset(&m, 0xaa, sizeof m);
+        CHECK(ph_dati_media(d, &m, &err) != 0 && m.esito == 0 && m.titolo[0] == '\0' && m.comandi == 0);
+        CHECK(strstr(err.testo, "segreto") == NULL);
+    }
+    struct { unsigned es, st, cmd; const char *tit; int ok; } c[] = {
+        {0, 0, 0, "", 1}, {0, 1, 3, "t", 1}, {1, 0, 0, "", 1}, {2, 0, 0, "", 1}, {3, 0, 0, "", 0},
+        {0, 3, 0, "", 0}, {0, 1, 8, "t", 0}, {0, 1, 255, "t", 0},
+        {0, 0, 1, "", 0}, {0, 0, 0, "t", 0},   /* nessuna sessione: tutto a zero */
+        {1, 1, 0, "", 0}, {2, 0, 1, "", 0},    /* esito != 0: il resto e' zero */
+    };
+    for (size_t i = 0; i < sizeof c / sizeof c[0]; i++) {
+        ph_buffer_svuota(&r);
+        media(&r, c[i].es, c[i].st, c[i].tit, "", "", c[i].cmd);
+        CHECK((media_con(d, &r, &m) == 0) == (c[i].ok != 0));
+    }
+    /* Stringhe: titolo 159, artista 127, pacchetto 255 vanno; un byte in piu' no. */
+    char lungo[400];
+    memset(lungo, 'm', sizeof lungo - 1);
+    lungo[sizeof lungo - 1] = '\0';
+    size_t tn[7] = {159, 160, 1, 1, 1, 1, 1}, an[7] = {1, 1, 127, 128, 1, 1, 1}, pn[7] = {1, 1, 1, 1, 255, 256, 1};
+    for (int i = 0; i < 6; i++) {
+        ph_buffer_svuota(&r);
+        p8(&r, 0);
+        p8(&r, 1);
+        p16(&r, (unsigned)tn[i]);
+        pbytes(&r, lungo, tn[i]);
+        p16(&r, (unsigned)an[i]);
+        pbytes(&r, lungo, an[i]);
+        p16(&r, (unsigned)pn[i]);
+        pbytes(&r, lungo, pn[i]);
+        p8(&r, 0);
+        CHECK((media_con(d, &r, &m) == 0) == (i % 2 == 0));
+    }
+    ph_buffer_svuota(&r);
+    media(&r, 0, 1, "\xf0\x28", "", "", 0);
+    CHECK(media_con(d, &r, &m) != 0);
+    finto_risposta_errore(0x93, "media non disponibili");
+    CHECK(ph_dati_media(d, &m, &err) != 0 && strcmp(err.testo, "media non disponibili") == 0);
+    CHECK(ph_dati_media(d, NULL, &err) != 0);
+    ph_buffer_libera(&r);
+    CHECK(ph_dati_chiudi(d, NULL) == 0);
+}
+
+static void prova_media_comando(void)
+{
+    PhDati *d = apri_dati();
+    uint8_t got[4];
+    finto_risposta(0x94, NULL, 0);
+    for (unsigned cmd = 1; cmd <= 3; cmd++) {
+        CHECK(ph_dati_media_comando(d, (uint8_t)cmd, &err) == 0);
+        CHECK(finto_ultimo_tipo() == 0x94 && finto_ultimo_corpo(got, sizeof got) == 1 && got[0] == cmd);
+    }
+    /* Fuori elenco: errore senza mandare nulla. */
+    int prima = finto_richieste();
+    CHECK(ph_dati_media_comando(d, 0, &err) != 0);
+    CHECK(ph_dati_media_comando(d, 4, &err) != 0);
+    CHECK(ph_dati_media_comando(d, 255, &err) != 0);
+    CHECK(finto_richieste() == prima);
+    finto_risposta_errore(0x94, "nessuna sessione multimediale");
+    CHECK(ph_dati_media_comando(d, 1, &err) != 0 && strcmp(err.testo, "nessuna sessione multimediale") == 0);
+    CHECK(ph_dati_chiudi(d, NULL) == 0);
+}
+
+static void *giro_chiamate(void *a)
+{
+    Giro *g = a;
+    PhDatiChiamate c;
+    g->esito = ph_dati_chiamate(g->d, &c, NULL);
+    atomic_store(&g->fatto, true);
+    return NULL;
+}
+
+static void *giro_rete(void *a)
+{
+    Giro *g = a;
+    PhDatiRete t;
+    g->esito = ph_dati_rete(g->d, &t, NULL);
+    atomic_store(&g->fatto, true);
+    return NULL;
+}
+
+static void *giro_media(void *a)
+{
+    Giro *g = a;
+    PhDatiMedia m;
+    g->esito = ph_dati_media(g->d, &m, NULL);
+    atomic_store(&g->fatto, true);
+    return NULL;
+}
+
+static void *giro_media_comando(void *a)
+{
+    Giro *g = a;
+    g->esito = ph_dati_media_comando(g->d, 1, NULL);
+    atomic_store(&g->fatto, true);
+    return NULL;
+}
+
+/* Chiusura in parallelo: la lettura ferma nel finto fa aspettare la chiusura, che non torna prima. */
+static void chiusura_con(uint8_t tipo, const void *corpo, size_t n, void *(*giro)(void *))
+{
+    PhDati *d = apri_dati();
+    finto_risposta(tipo, corpo, n);
+    finto_cancello(true);
+    Giro a = {d, -9, false}, b = {d, -9, false};
+    pthread_t ta, tb;
+    CHECK(pthread_create(&ta, NULL, giro, &a) == 0);
+    ATTENDI(finto_cancello_attese() == 1, 3000);
+    CHECK(pthread_create(&tb, NULL, giro_chiudi, &b) == 0);
+    ATTENDI(chiudendo(d), 3000);
+    ASSENZA_FINO_A(finto_violazioni() > 0 || atomic_load(&b.fatto), 150);
+    CHECK(finto_violazioni() == 0 && !atomic_load(&b.fatto));
+    finto_cancello(false);
+    pthread_join(ta, NULL);
+    pthread_join(tb, NULL);
+    CHECK(a.esito == 0 && b.esito == 0 && finto_violazioni() == 0);
+}
+
+static void prova_telefonia_chiusura(void)
+{
+    PhBuffer r = PH_BUFFER_VUOTO;
+    p8(&r, 0);
+    p8(&r, 0);
+    chiusura_con(0x91, r.dati, r.lunghezza, giro_chiamate);
+    ph_buffer_svuota(&r);
+    rete(&r, 0, 0, 0, "", 0, 0, 0, "", 0, 0);
+    chiusura_con(0x92, r.dati, r.lunghezza, giro_rete);
+    ph_buffer_svuota(&r);
+    media(&r, 0, 0, "", "", "", 0);
+    chiusura_con(0x93, r.dati, r.lunghezza, giro_media);
+    chiusura_con(0x94, NULL, 0, giro_media_comando);
+    ph_buffer_libera(&r);
+}
+
 int main(int argc, char **argv)
 {
     bool solo_concorrenza = argc > 1 && strcmp(argv[1], "concorrenza") == 0;
@@ -2662,7 +3027,12 @@ int main(int argc, char **argv)
         prova_sveglia_batteria();
         prova_controlli();
         prova_posizione();
+        prova_chiamate();
+        prova_rete();
+        prova_media();
+        prova_media_comando();
     }
+    prova_telefonia_chiusura();
     prova_autochiusura();
     prova_chiudi_con_chiamata_in_corso();
     prova_controlli_ascolto();

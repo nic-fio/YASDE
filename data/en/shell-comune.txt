@@ -199,7 +199,7 @@
 "In riproduzione" = "Now playing"
 "Brano in corso e avanzamento; l'audio resta quello di YASDE." = "Current track and progress; the audio stays YASDE's."
 "Memoria del telefono" = "Phone storage"
-"Spazio usato e suddivisione per tipo di contenuto." = "Free space and breakdown by content type."
+"Spazio libero e suddivisione per tipo di contenuto." = "Free space and breakdown by content type."
 "Rete" = "Network"
 "Schermo" = "Screen"
 "bloccato" = "locked"

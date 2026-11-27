@@ -22,7 +22,7 @@ const PhDskCatalogoVoce PH_DSK_CATALOGO[] = {
     {PH_CFG_WIDGET_NOTIFICHE, PH_T_("Notifiche recenti"),
      PH_T_("Le ultime notifiche del telefono, senza aprire il pannello.")},
     {PH_CFG_WIDGET_MEMORIA, PH_T_("Memoria del telefono"),
-     PH_T_("Spazio usato e suddivisione per tipo di contenuto.")},
+     PH_T_("Spazio libero e suddivisione per tipo di contenuto.")},
     {PH_CFG_WIDGET_METEO, PH_T_("Meteo"),
      PH_T_("Il tempo di adesso e le previsioni, in vari stili. Dati da Open-Meteo.com.")},
     {PH_CFG_WIDGET_CALENDARIO_MESE, PH_T_("Calendario del mese"),
@@ -37,6 +37,11 @@ const PhDskCatalogoVoce PH_DSK_CATALOGO[] = {
     {PH_CFG_WIDGET_APP_FREQUENTI, PH_T_("App frequenti"), PH_T_("Le app che apri più spesso, a portata di clic.")},
     {PH_CFG_WIDGET_TRASFERIMENTI, PH_T_("Trasferimenti recenti"),
      PH_T_("Gli ultimi file inviati o ricevuti in questa sessione.")},
+    {PH_CFG_WIDGET_CHIAMATE, PH_T_("Chiamate recenti"),
+     PH_T_("Le ultime chiamate del telefono: chi, di che tipo e quando.")},
+    {PH_CFG_WIDGET_RETE, PH_T_("Rete"), PH_T_("Wi-Fi e rete mobile del telefono: segnale e stato.")},
+    {PH_CFG_WIDGET_RIPRODUZIONE, PH_T_("In riproduzione"),
+     PH_T_("Il brano che suona sul telefono, con i pulsanti per cambiarlo.")},
     {PH_CFG_WIDGET_NOTE, PH_T_("Note rapide"),
      PH_T_("Un foglietto per scrivere al volo sul desktop. Il testo resta sul PC, nel profilo del telefono.")},
 };
@@ -574,6 +579,8 @@ static void widget_aggiorna(PhDskWidget *w)
         size_t max = ph_dsk_stato_righe(w->larghezza, w->altezza);
         if (v.n_righe > max)
             v.n_righe = max;
+        /* Il clic apre le Impostazioni (se il telefono ce l'ha): il cursore lo dice. */
+        gtk_widget_set_cursor_from_name(w->scheda, impostazioni_nota(d) != NULL ? "pointer" : NULL);
         break;
     }
     case PH_CFG_WIDGET_NOTIFICHE:
@@ -737,7 +744,7 @@ static bool ridim_calcola(PhDskWidget *w, PhDskMisura base, int destra_base, dou
     widget_colloca(w);
     /* agente A: questi contenuti dipendono dalla misura vera, non solo dal livello: si rifanno. */
     if (w->tipo == PH_CFG_WIDGET_MEMORIA || w->tipo == PH_CFG_WIDGET_NOTIFICHE ||
-        w->tipo == PH_CFG_WIDGET_CALENDARIO || w->tipo == PH_CFG_WIDGET_STATO)
+        w->tipo == PH_CFG_WIDGET_CALENDARIO || w->tipo == PH_CFG_WIDGET_STATO || w->tipo == PH_CFG_WIDGET_CHIAMATE)
         widget_aggiorna(w);
     return true;
 }
@@ -984,6 +991,14 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
         gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(cl), GDK_BUTTON_PRIMARY);
         g_signal_connect(cl, "released", G_CALLBACK(memoria_clic), w);
         gtk_widget_add_controller(w->corpo, GTK_EVENT_CONTROLLER(cl));
+    }
+    if (w->tipo == PH_CFG_WIDGET_STATO) {
+        /* «Stato del telefono»: un clic sulla scheda apre le Impostazioni (pagina nessuna), con lo
+         * stesso controllo «l'app c'e'» della memoria. Il trascinamento passa come sempre. */
+        GtkGesture *cl = gtk_gesture_click_new();
+        gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(cl), GDK_BUTTON_PRIMARY);
+        g_signal_connect(cl, "released", G_CALLBACK(memoria_clic), w);
+        gtk_widget_add_controller(w->scheda, GTK_EVENT_CONTROLLER(cl));
     }
     gtk_box_append(GTK_BOX(w->interno), w->corpo);
     gtk_box_append(GTK_BOX(w->interno), w->testa);
@@ -1443,10 +1458,10 @@ void ph_dsk_widget_evento(PhDesktop *d, int ev)
         PhDskWidget *w = g_ptr_array_index(d->widget, i);
         if (ph_dsk_wx_vt(w->tipo) != NULL)
             ph_dsk_wx_evento(w, ev);
-        /* agente A: icone e nomi delle app arrivano dopo: le notifiche (icona vera) e la memoria
+        /* agente A: icone e nomi delle app arrivano dopo: le notifiche (icona vera) la memoria e lo stato
          * (l'app Impostazioni c'e' o no) si rifanno. */
         else if ((w->tipo == PH_CFG_WIDGET_NOTIFICHE && (ev == PH_SRV_EV_ICONA || ev == PH_SRV_EV_APP)) ||
-                 (w->tipo == PH_CFG_WIDGET_MEMORIA && ev == PH_SRV_EV_APP))
+                 ((w->tipo == PH_CFG_WIDGET_MEMORIA || w->tipo == PH_CFG_WIDGET_STATO) && ev == PH_SRV_EV_APP))
             widget_aggiorna(w);
     }
 }

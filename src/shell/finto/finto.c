@@ -120,6 +120,9 @@ static int ritardo(PhFinto *f)
 }
 
 /* ---- Pubblicazioni (thread di lavoro) ------------------------------------- */
+static void pubblica_nuovi(PhFinto *f);
+static bool collegato(PhFinto *f);
+
 static void pubblica_collegamento(PhFinto *f)
 {
     PhSrvCollegamento c = {0};
@@ -144,6 +147,7 @@ static void pubblica_collegamento(PhFinto *f)
     c.telefoni_noti = f->noti;
     c.telefoni_trovati = f->trovati;
     ph_servizi_pubblica_collegamento(f->s, &c);
+    pubblica_nuovi(f); /* senza sessione i tre widget nuovi diventano «non disponibili» */
 }
 
 static void pubblica_telefono(PhFinto *f)
@@ -228,6 +232,127 @@ static void pubblica_controlli(PhFinto *f)
     c.puo_torcia = !manca && !f->torcia_manca;
     ph_servizi_pubblica_controlli(f->s, &c);
 }
+
+/* ---- Chiamate recenti, rete, in riproduzione (27 nov): dati inventati ----------- */
+static const struct { const char *titolo, *artista; } BRANI[] = {
+    {"Sample Song", "Sample Artist"}, {"Another Sample Song", "Sample Band"}, {"Third Sample", "Sample Artist"}};
+#define N_BRANI ((int)G_N_ELEMENTS(BRANI))
+
+/* Stato di lettura di una voce: NON_DISPONIBILE senza sessione o con la funzione assente,
+ * NEGATO con ERRORE. */
+static PhSrvLettura lettura_voce(PhFinto *f, PhFintoVoce v)
+{
+    if (!collegato(f) || f->modo[v] == PH_FINTO_MODO_NON_DISPONIBILE)
+        return PH_SRV_LET_NON_DISPONIBILE;
+    return f->modo[v] == PH_FINTO_MODO_ERRORE ? PH_SRV_LET_NEGATO : PH_SRV_LET_OK;
+}
+
+static void pubblica_chiamate(PhFinto *f)
+{
+    if (!f->osserva_chi)
+        return;
+    PhSrvChiamate c = {.stato = lettura_voce(f, PH_FINTO_VOCE_CHIAMATE)};
+    if (c.stato == PH_SRV_LET_OK) {
+        static const struct { uint8_t tipo; uint32_t durata; const char *nome, *numero; int min; } R[] = {
+            {PH_SRV_CHIAMATA_PERSA, 0, "Alex Sample", "+00 000 000 0001", 12},
+            {PH_SRV_CHIAMATA_ENTRANTE, 185, "Sam Example", "+00 000 000 0002", 95},
+            {PH_SRV_CHIAMATA_USCENTE, 42, "", "+00 000 000 0003", 300},
+            {PH_SRV_CHIAMATA_RIFIUTATA, 0, "", "+00 000 000 0004", 1500},
+            {PH_SRV_CHIAMATA_ENTRANTE, 610, "Alex Sample", "+00 000 000 0001", 3000},
+            {PH_SRV_CHIAMATA_USCENTE, 73, "Sam Example", "+00 000 000 0002", 4400},
+        };
+        uint64_t ora = (uint64_t)(g_get_real_time() / 1000);
+        c.n = G_N_ELEMENTS(R);
+        for (size_t i = 0; i < c.n; i++) {
+            c.v[i].tipo = R[i].tipo;
+            c.v[i].durata_s = R[i].durata;
+            c.v[i].ora_ms = ora - (uint64_t)R[i].min * 60000u;
+            g_strlcpy(c.v[i].nome, R[i].nome, sizeof c.v[i].nome);
+            g_strlcpy(c.v[i].numero, R[i].numero, sizeof c.v[i].numero);
+        }
+    }
+    ph_servizi_pubblica_chiamate(f->s, &c);
+}
+
+static void pubblica_rete(PhFinto *f)
+{
+    if (!f->osserva_rete)
+        return;
+    PhSrvReteDettaglio r = {.stato = lettura_voce(f, PH_FINTO_VOCE_RETE)};
+    if (r.stato == PH_SRV_LET_OK) {
+        r.aereo = f->rete_aereo ? PH_SRV_TRI_SI : PH_SRV_TRI_NO;
+        r.dati_mobili = f->rete_aereo ? PH_SRV_TRI_NO : PH_SRV_TRI_SI;
+        if (!f->rete_aereo) {
+            r.wifi = PH_SRV_WIFI_CONNESSO;
+            r.wifi_livello = 3;
+            g_strlcpy(r.wifi_nome, "SampleNet", sizeof r.wifi_nome);
+            r.mobile = PH_SRV_MOBILE_IN_SERVIZIO;
+            r.mobile_livello = 2;
+            r.generazione = 4;
+            g_strlcpy(r.operatore, "Sample Mobile", sizeof r.operatore);
+        }
+    }
+    ph_servizi_pubblica_rete(f->s, &r);
+}
+
+static void pubblica_media(PhFinto *f)
+{
+    if (!f->osserva_media)
+        return;
+    PhSrvMedia m = {.stato_lettura = lettura_voce(f, PH_FINTO_VOCE_MEDIA)};
+    if (m.stato_lettura == PH_SRV_LET_OK && !f->media_assente) {
+        m.stato = (uint8_t)f->media_stato;
+        g_strlcpy(m.titolo, BRANI[f->media_brano].titolo, sizeof m.titolo);
+        g_strlcpy(m.artista, BRANI[f->media_brano].artista, sizeof m.artista);
+        g_strlcpy(m.pacchetto, "org.sample.player", sizeof m.pacchetto);
+        m.comandi = PH_SRV_MEDIA_PUO_PLAY_PAUSA | PH_SRV_MEDIA_PUO_AVANTI | PH_SRV_MEDIA_PUO_INDIETRO;
+    }
+    ph_servizi_pubblica_media(f->s, &m);
+}
+
+static void pubblica_nuovi(PhFinto *f)
+{
+    pubblica_chiamate(f);
+    pubblica_rete(f);
+    pubblica_media(f);
+}
+
+static void fai_osserva_chi(PhFinto *f, void *d) { f->osserva_chi = GPOINTER_TO_INT(d) != 0; pubblica_chiamate(f); }
+static void fai_osserva_rete(PhFinto *f, void *d) { f->osserva_rete = GPOINTER_TO_INT(d) != 0; pubblica_rete(f); }
+static void fai_osserva_media(PhFinto *f, void *d) { f->osserva_media = GPOINTER_TO_INT(d) != 0; pubblica_media(f); }
+static void finto_chiamate_osserva(void *b, bool o) { finto_lavora(b, 0, fai_osserva_chi, GINT_TO_POINTER(o), NULL); }
+static void finto_rete_osserva(void *b, bool o) { finto_lavora(b, 0, fai_osserva_rete, GINT_TO_POINTER(o), NULL); }
+static void finto_media_osserva(void *b, bool o) { finto_lavora(b, 0, fai_osserva_media, GINT_TO_POINTER(o), NULL); }
+
+/* Il comando cambia lo stato del finto (come farebbe il lettore) e rilegge subito. */
+static void fai_media_comando(PhFinto *f, void *d)
+{
+    int c = GPOINTER_TO_INT(d);
+    if (f->media_assente || lettura_voce(f, PH_FINTO_VOCE_MEDIA) != PH_SRV_LET_OK)
+        return; /* il telefono non ha nessuno a cui darlo */
+    atomic_store(&f->media_ultimo_cmd, c);
+    atomic_fetch_add(&f->media_comandi_n, 1);
+    switch (c) {
+    case PH_SRV_MEDIA_CMD_PLAY_PAUSA:
+        f->media_stato = f->media_stato == PH_SRV_MEDIA_RIPRODUZIONE ? PH_SRV_MEDIA_PAUSA : PH_SRV_MEDIA_RIPRODUZIONE;
+        break;
+    case PH_SRV_MEDIA_CMD_AVANTI:
+        f->media_brano = (f->media_brano + 1) % N_BRANI;
+        break;
+    case PH_SRV_MEDIA_CMD_INDIETRO:
+        f->media_brano = (f->media_brano + N_BRANI - 1) % N_BRANI;
+        break;
+    }
+    pubblica_media(f);
+}
+static void finto_media_comando(void *b, int c) { finto_lavora(b, 0, fai_media_comando, GINT_TO_POINTER(c), NULL); }
+
+static void fai_rete_aereo(PhFinto *f, void *d) { f->rete_aereo = GPOINTER_TO_INT(d) != 0; pubblica_rete(f); }
+static void fai_media_assente(PhFinto *f, void *d) { f->media_assente = GPOINTER_TO_INT(d) != 0; pubblica_media(f); }
+void ph_finto_rete_aereo(PhFinto *f, bool si) { finto_lavora(f, 0, fai_rete_aereo, GINT_TO_POINTER(si), NULL); }
+void ph_finto_media_assente(PhFinto *f, bool si) { finto_lavora(f, 0, fai_media_assente, GINT_TO_POINTER(si), NULL); }
+int ph_finto_media_ultimo_comando(PhFinto *f) { return atomic_load(&f->media_ultimo_cmd); }
+unsigned ph_finto_media_comandi(PhFinto *f) { return atomic_load(&f->media_comandi_n); }
 
 static void notifiche_dopo(PhFinto *f, void *dati)
 {
@@ -1810,6 +1935,7 @@ static void fai_voce_modo(PhFinto *f, void *dati)
     f->modo[v / 4] = (PhFintoModo)(v % 4);
     if (v / 4 == PH_FINTO_VOCE_CONTROLLI)
         pubblica_controlli(f);
+    pubblica_nuovi(f); /* ripubblica solo ciò che è osservato */
 }
 
 static void fai_sveglia_assente(PhFinto *f, void *dati) { f->sveglia_assente = GPOINTER_TO_INT(dati) != 0; }
@@ -2395,6 +2521,10 @@ static const PhServiziBackend TABELLA = {
     .controllo_imposta = finto_controllo_imposta,
     .trova_avvia = finto_trova_avvia,
     .trova_ferma = finto_trova_ferma,
+    .chiamate_osserva = finto_chiamate_osserva,
+    .rete_osserva = finto_rete_osserva,
+    .media_osserva = finto_media_osserva,
+    .media_comando = finto_media_comando,
     .meteo_osserva = finto_meteo_osserva,
     .meteo_localita = finto_meteo_localita,
     .meteo_cerca = finto_meteo_cerca,
@@ -2403,6 +2533,7 @@ static const PhServiziBackend TABELLA = {
 PhFinto *ph_finto_nuovo(const PhFintoOpzioni *opzioni)
 {
     PhFinto *f = g_new0(PhFinto, 1);
+    f->media_stato = PH_SRV_MEDIA_RIPRODUZIONE;
     if (opzioni != NULL)
         f->o = *opzioni;
     g_mutex_init(&f->m);

@@ -63,12 +63,12 @@ typedef enum {
     PH_DATI_RETE_NESSUNA = 0,
     PH_DATI_RETE_WIFI = 1,
     PH_DATI_RETE_CELLULARE = 2,
-} PhDatiRete;
+} PhDatiTipoRete; /* (era PhDatiRete: il nome serve alla lettura 0x92) */
 
 typedef struct {
     uint8_t batteria;  /* 0-100 */
     bool in_carica;
-    PhDatiRete rete;
+    PhDatiTipoRete rete;
     uint8_t segnale;   /* 0-4 */
     bool bloccato;     /* schermo bloccato */
 } PhDatiStato;
@@ -324,6 +324,28 @@ typedef struct {
  * coordinate e localita' arrivano a zero (valori diversi = -1). A errore
  * *out e' SCONOSCIUTA con tutto a zero. Nessun dato di posizione nei log. */
 int ph_dati_posizione(PhDati *d, bool richiesta_permessa, PhDatiPosizione *out, PhErrore *e);
+
+/* ---- Chiamate, rete, media (0x91-0x94, docs/protocollo.md §2.12; protocollo 3) ----
+ * Stesse regole di concorrenza e di ostilita' delle altre letture: non da
+ * dentro un avviso, sicure con ph_dati_chiudi in parallelo, attesa con limite.
+ * Campo fuori elenco, stringa non UTF-8 o troppo lunga, corpo di lunghezza
+ * sbagliata, n > max: -1 (messaggio fisso, senza dati). A errore *out e' azzerato.
+ * esito: 0 ok, 1 non disponibile, 2 permesso negato (con esito != 0 il resto e' zero).
+ * PRIVACY: nomi, numeri, titoli e reti mai nei log ne' nei messaggi d'errore,
+ * mai su disco. */
+#define PH_DATI_MAX_CHIAMATE 20
+typedef struct { uint8_t tipo; uint64_t ora_ms; uint32_t durata_s; char nome[128]; char numero[48]; } PhDatiChiamata;
+typedef struct { uint8_t esito; size_t n; PhDatiChiamata v[PH_DATI_MAX_CHIAMATE]; } PhDatiChiamate;
+int ph_dati_chiamate(PhDati *d, PhDatiChiamate *out, PhErrore *e);
+typedef struct { uint8_t esito; uint8_t wifi; uint8_t wifi_livello; char wifi_nome[100]; uint8_t mobile; uint8_t mobile_livello; uint8_t generazione; char operatore[64]; uint8_t dati_mobili; uint8_t aereo; } PhDatiRete;
+/* dati_mobili e aereo: 0 no, 1 si', 2 ignoto (il telefono non inventa un valore); fuori elenco = lettura fallita. */
+int ph_dati_rete(PhDati *d, PhDatiRete *out, PhErrore *e);
+typedef struct { uint8_t esito; uint8_t stato; char titolo[160]; char artista[128]; char pacchetto[256]; uint8_t comandi; } PhDatiMedia;
+int ph_dati_media(PhDati *d, PhDatiMedia *out, PhErrore *e);
+/* comando: 1 play/pausa, 2 avanti, 3 indietro (fuori elenco: -1 senza mandare nulla).
+ * ERRORE del telefono (nessuna sessione, comando non permesso): -1 con la sua frase;
+ * nulla e' stato toccato. */
+int ph_dati_media_comando(PhDati *d, uint8_t comando, PhErrore *e);
 
 /* ---- Ricerca (canale "cerca", 0x78-0x7a) --------------------------------------
  * ph_dati_cerca_avvia torna subito: un thread interno apre il canale, manda la

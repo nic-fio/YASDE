@@ -101,5 +101,5 @@ static void installa(PhShell *sh, PhFinto *f, void *u)
 
 int main(int argc, char **argv)
 {
-    return ph_finto_demo(argc, argv, "YASDE 2.2 - demo trasferimento", installa, NULL);
+    return ph_finto_demo(argc, argv, "YASDE 2.3 - demo trasferimento", installa, NULL);
 }

@@ -37,6 +37,7 @@ S3 = p("The only connection to the Internet is the weather widget, and only whil
 
 S4 = ul([
     "The pairing code is never saved. The phone's last address is saved in " + c("telefoni.toml") + " to reconnect, and is never written in logs.",
+    "The call log, the names of Wi-Fi networks and operators, and the titles of the tracks are shown by the Recent calls, Network and Now playing widgets. YASDE reads them from the phone only while such a widget is on the desktop, keeps them only in memory, and never writes them on disk or in the logs.",
     "YASDE keeps notification titles and texts, and copied text, only in memory. With the default setting, though, a new notification is also handed to the PC's own notification system when YASDE is not in front, and that system may keep a history of it.",
     "Copies marked sensitive by a password manager are never passed between PC and phone.",
     "On the PC disk YASDE keeps the phone's serial number (in a file name and in " + c("telefoni.toml") + "), its name, its last address, your wallpaper picture and your layout.",

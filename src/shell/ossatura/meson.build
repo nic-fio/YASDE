@@ -28,7 +28,7 @@ endforeach
 ossatura_args = ['-DPH_OSSATURA_SERVIZI_VERI=' + (ossatura_veri ? '1' : '0')]
 
 shell_ossatura_lib = static_library('shell_ossatura', ['ossatura.c', 'logica.c', 'velo.c', 'finestra.c', 'appunti.c', 'servizi_veri.c',
-   'sv_dati.c', 'sv_file.c', 'sv_tr.c', 'sv_flussi.c', 'sv_audio.c', 'sv_extra.c', 'sv_abbina.c', 'sv_meteo.c'],
+   'sv_dati.c', 'sv_file.c', 'sv_tr.c', 'sv_flussi.c', 'sv_audio.c', 'sv_extra.c', 'sv_abbina.c', 'sv_meteo.c', 'sv_sondaggi.c'],
   objects: risorse_ossatura_lib.extract_all_objects(recursive: false),
   c_args: ossatura_args,
   include_directories: [inc, shell_presenti_inc],
@@ -59,7 +59,7 @@ test('shell-ossatura-schermo', demo_ossatura, args: ['--prova', '3000'],
 if ossatura_veri
   test('shell-ossatura-servizi-veri', executable('prova_servizi_veri',
     ['prova_servizi_veri.c', 'finti_sotto.c', 'servizi_veri.c', 'sv_dati.c', 'sv_file.c', 'sv_tr.c',
-     'sv_flussi.c', 'sv_audio.c', 'sv_extra.c', 'sv_abbina.c', 'sv_meteo.c', 'logica.c'],
+     'sv_flussi.c', 'sv_audio.c', 'sv_extra.c', 'sv_abbina.c', 'sv_meteo.c', 'sv_sondaggi.c', 'logica.c'],
     c_args: ossatura_args, include_directories: [inc, shell_presenti_inc],
     dependencies: [shell_comune_dep]), env: shell_ambiente_logica, suite: 'shell', timeout: 120)
 endif
@@ -68,7 +68,7 @@ endif
 if ossatura_veri
   test('shell-ossatura-meteo-veri', executable('prova_meteo_veri',
     ['prova_meteo_veri.c', 'finti_sotto.c', 'servizi_veri.c', 'sv_dati.c', 'sv_file.c', 'sv_tr.c',
-     'sv_flussi.c', 'sv_audio.c', 'sv_extra.c', 'sv_abbina.c', 'sv_meteo.c', 'logica.c'],
+     'sv_flussi.c', 'sv_audio.c', 'sv_extra.c', 'sv_abbina.c', 'sv_meteo.c', 'sv_sondaggi.c', 'logica.c'],
     c_args: ossatura_args, include_directories: [inc, shell_presenti_inc],
     dependencies: [shell_comune_dep]), env: shell_ambiente_logica, suite: 'shell', timeout: 120)
 endif
@@ -77,7 +77,16 @@ endif
 if ossatura_veri
   test('shell-ossatura-decodifica-avviso', executable('prova_decodifica_avviso',
     ['prova_decodifica_avviso.c', 'finti_sotto.c', 'servizi_veri.c', 'sv_dati.c', 'sv_file.c', 'sv_tr.c',
-     'sv_flussi.c', 'sv_audio.c', 'sv_extra.c', 'sv_abbina.c', 'sv_meteo.c', 'logica.c'],
+     'sv_flussi.c', 'sv_audio.c', 'sv_extra.c', 'sv_abbina.c', 'sv_meteo.c', 'sv_sondaggi.c', 'logica.c'],
+    c_args: ossatura_args, include_directories: [inc, shell_presenti_inc],
+    dependencies: [shell_comune_dep]), env: shell_ambiente_logica, suite: 'shell', timeout: 120)
+endif
+
+# Prova di chiamate recenti, rete e in riproduzione dei servizi veri (stessi pezzi sotto finti).
+if ossatura_veri
+  test('shell-ossatura-sondaggi-veri', executable('prova_sondaggi_veri',
+    ['prova_sondaggi_veri.c', 'finti_sotto.c', 'servizi_veri.c', 'sv_dati.c', 'sv_file.c', 'sv_tr.c',
+     'sv_flussi.c', 'sv_audio.c', 'sv_extra.c', 'sv_abbina.c', 'sv_meteo.c', 'sv_sondaggi.c', 'logica.c'],
     c_args: ossatura_args, include_directories: [inc, shell_presenti_inc],
     dependencies: [shell_comune_dep]), env: shell_ambiente_logica, suite: 'shell', timeout: 120)
 endif

@@ -39,7 +39,7 @@ S2 = p("Each PC piece depends only on the ones listed here. The shell is the onl
         ["Pairing", c("src/abbinamento"), "adb (key), common", "pairing with the six-digit code (" + rif("Pairing with the six-digit code") + ")"],
         ["Files", c("src/file"), "adb", "copy and listing through " + c("sync:") + " (" + rif("File transfer with sync") + ")"],
         ["Component", c("src/componente"), "adb, file", "starts the service, command channel, video sessions, input, presence (" + rif("Starting the component on the phone") + ")"],
-        ["Data", c("src/dati"), "component", "apps, icons, state, notifications, search, clipboard"],
+        ["Data", c("src/dati"), "component", "apps, icons, state, notifications, calls, network, media, search, clipboard"],
         ["Video", c("src/video"), "common, FFmpeg, Vulkan", "H.264 decoding, export to " + c("PhFotogramma") + ", PNG and MP4 capture (" + rif("Video: receiving and decoding") + "; the hardware path stage by stage: " + rif("Hardware acceleration end to end") + ")"],
         ["Audio", c("src/audio"), "adb, Opus, PipeWire", "decoding, jitter queue, playback, gain (" + rif("Audio: playback on the PC") + ")"],
         ["Link", c("src/collegamento"), "scoperta, adb, abbinamento, componente, dati, config", "the state machine that keeps one phone connected (" + rif("Link states and timings") + ")"],

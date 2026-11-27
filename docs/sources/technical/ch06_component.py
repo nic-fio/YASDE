@@ -18,7 +18,7 @@ START = seq([("PC", "ph_componente_avvia", "navy"), ("adbd", "ADB channels", "bl
     (2, 0, "stdout line: ready", True),
     (0, 1, "abstract socket, then the command line"),
     (0, 1, "abstract socket, then the input line"),
-    (0, 2, "SALUTO (version 2)"),
+    (0, 2, "SALUTO (version 3)"),
     (2, 0, "OK: version, API, screen, density, model", True),
 ], "«FIG» — Starting the service")
 
@@ -30,10 +30,10 @@ S2 = p(c("ph_componente_avvia(adb, jar, event_fn, user, info, timeout_ms, error)
         "<b>Wait for PRONTO</b>: the output is read line by line (lines of at most 160 characters are kept, a longer unterminated chunk beyond 4096 bytes is dropped); earlier log lines are discarded but the last one is remembered for the error message (“the service ended before PRONTO; last line: ...”).",
         "<b>Channels.</b> Each protocol channel is an ADB channel " + c("localabstract:yasde") + " followed by one ASCII line naming its type. The component opens " + c("comandi") + " and " + c("input") + " itself; the rest of the PC opens others through " + c("ph_componente_canale") + " (" + c("audio") + ", " + c("cerca") + ", " + c("appunti") + "), which refuses the three names owned by the component (" + c("comandi") + ", " + c("input") + ", " + c("video:") + "...) and any line longer than 60 characters.",
         "<b>Threads</b> are started: command reader and shell-log reader; then " + c("SALUTO") + " is sent; then the presence thread.",
-        "<b>Greeting.</b> " + c("SALUTO") + " carries the protocol version (2). The reply gives the version, the Android API level, the real screen size and density, and the model (" + c("PhTelefonoInfo") + "). A different version is an error.",
+        "<b>Greeting.</b> " + c("SALUTO") + " carries the protocol version (3). The reply gives the version, the Android API level, the real screen size and density, and the model (" + c("PhTelefonoInfo") + "). A different version is an error.",
     ]) + \
     table(["Constant", "Value", "Meaning"], [
-        [c("PH_PROTOCOLLO_VERSIONE"), "2", "protocol version"],
+        [c("PH_PROTOCOLLO_VERSIONE"), "3", "protocol version"],
         [c("PH_MSG_MAX_CORPO"), "1 MiB", "largest message body; a larger declared length ends the command thread"],
         [c("PH_VIDEO_MAX_PACCHETTO"), "8 MiB", "largest video packet"],
         [c("PH_FETTA_MS"), "50", "every blocking read is cut in slices of this size, so a close never waits long"],

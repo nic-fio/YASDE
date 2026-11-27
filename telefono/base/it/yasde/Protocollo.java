@@ -12,7 +12,7 @@ import java.nio.charset.Charset;
  * di messaggi e stringhe. Usa solo java.io, così si prova sulla JVM normale.
  */
 public final class Protocollo {
-    public static final int VERSIONE = 2;
+    public static final int VERSIONE = 3;
     /** Massimo del corpo di un messaggio. */
     public static final int MAX_CORPO = 1 << 20;
 

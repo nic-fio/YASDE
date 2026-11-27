@@ -5,7 +5,7 @@
 #   /telefono il lavoro di "strumenti/prova.sh telefono" (jar)
 set -eu
 
-VERSIONE=2.2
+VERSIONE=2.3
 NOME="YASDE-$VERSIONE-x86_64.AppImage"
 EXE=/veloce/build-veloce/src/shell/ossatura/yasde
 JAR=/telefono/telefono/yasde.jar

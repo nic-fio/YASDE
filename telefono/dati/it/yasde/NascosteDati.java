@@ -186,7 +186,7 @@ final class NascosteDati {
 
     // ---- Stato ----
 
-    private static <T> T servizio(String nome, Class<T> classe) {
+    static <T> T servizio(String nome, Class<T> classe) {
         Object s = contesto().getSystemService(nome);
         if (!classe.isInstance(s)) throw new IllegalStateException("servizio di sistema assente: " + nome);
         return classe.cast(s);
@@ -200,7 +200,7 @@ final class NascosteDati {
      * userebbe il pacchetto "android" e getNetworkCapabilities fallirebbe con "Package android does
      * not belong to 2000". Il costruttore e' nascosto.
      */
-    private static synchronized ConnectivityManager gestoreRete() {
+    static synchronized ConnectivityManager gestoreRete() {
         if (gestoreRete != null) return gestoreRete;
         try {
             Class<?> i = Class.forName("android.net.IConnectivityManager");
@@ -218,7 +218,7 @@ final class NascosteDati {
     }
 
     /** TelephonyManager sul contesto mascherato (stesso motivo; costruttore nascosto). */
-    private static synchronized android.telephony.TelephonyManager gestoreTelefonia() {
+    static synchronized android.telephony.TelephonyManager gestoreTelefonia() {
         if (gestoreTelefonia != null) return gestoreTelefonia;
         try {
             java.lang.reflect.Constructor<android.telephony.TelephonyManager> c =
@@ -248,7 +248,7 @@ final class NascosteDati {
 
     /** La rete di uscita: l'attiva, oppure (se e' una VPN) la prima sottostante con Internet. */
     @SuppressWarnings("deprecation")
-    private static NetworkCapabilities reteDiUscita(ConnectivityManager cm) {
+    static NetworkCapabilities reteDiUscita(ConnectivityManager cm) {
         Network attiva = cm.getActiveNetwork();
         if (attiva == null) return null;
         NetworkCapabilities nc = cm.getNetworkCapabilities(attiva);
@@ -263,7 +263,7 @@ final class NascosteDati {
         return nc;
     }
 
-    private static int segnaleCellulare() {
+    static int segnaleCellulare() {
         try {
             android.telephony.TelephonyManager tm = gestoreTelefonia();
             android.telephony.SignalStrength ss = tm.getSignalStrength();
@@ -274,7 +274,7 @@ final class NascosteDati {
     }
 
     @SuppressWarnings("deprecation")
-    private static int segnaleWifi(NetworkCapabilities nc) {
+    static int segnaleWifi(NetworkCapabilities nc) {
         int rssi = nc.getSignalStrength();
         if (rssi != NetworkCapabilities.SIGNAL_STRENGTH_UNSPECIFIED) return CampiDati.livelloWifi(rssi);
         try {
@@ -513,7 +513,7 @@ final class NascosteDati {
     private static final String PROVIDER_CALENDARIO = "com.android.calendar";
     private static final long SCADENZA_CALENDARIO_MS = 3000;
 
-    private static Method metodoIn(Class<?> c, String nome, int parametri) {
+    static Method metodoIn(Class<?> c, String nome, int parametri) {
         for (Method m : c.getMethods()) {
             if (m.getName().equals(nome) && m.getParameterTypes().length == parametri) return m;
         }

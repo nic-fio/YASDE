@@ -7,7 +7,7 @@ S1 = p("Only real problems, taken from the open points of the project plan and f
     ["Blur behind the glass surfaces costs drawing time; off unless the renderer is GL, NGL or Vulkan", "Known: with four video windows the median draw time goes from 5.1 to 7.1 ms with the blur on the windows only and to 8.5 ms with the launcher open above them (95th percentile 7.2 → 10.0 → 12.8 ms; measured once, CPU about +50%); with any other renderer (for example CPU drawing, " + c("GskCairoRenderer") + ") the surfaces have an almost opaque fill. Readability: over a very dark or very bright wallpaper the secondary text on the 58% veil loses contrast", c("src/shell/comune/vetro.c") + ", " + c("src/shell/finestra-app/finestra_app.c")],
     ["Relative " + c("XDG_CACHE_HOME") + " in the AppImage launcher", "Known, not blocking", c("pacchetto/AppRun")],
     ["In-memory cache on some systems", "Known: the wallpaper is lost at every reboot there", c("src/config/percorsi.c")],
-    ["Switched-off features: Find my phone, Quick notes, Now playing", "Deliberate", c("src/shell/desktop/widget.c")],
+    ["Switched-off feature: Find my phone", "Deliberate", c("src/shell/desktop/widget.c")],
     ["Restores lost when the wireless debugging restarts", "Open point, mitigated", c("telefono/base/")],
     ["Never tried live", "A list of things proven only by tests", "chapter 16"],
     ["Phone panel with no idle time; audio and video not in sync; Vulkan decoding copies frames", "Open: to decide", "Functions that are off"],
@@ -39,8 +39,6 @@ S4 = ul([
 
 S5 = p("Some functions exist in the code and are off.", lead=True) + table(["Function", "State", "Detail"], [
     ["Find my phone", "Not offered", "The widget is not in the catalog (" + c("PH_DSK_TROVA_OFFERTO") + " is 0); on the phone the command is switched off by a constant and touches nothing (message " + c("TROVA_AVVIA") + " answers an error). Measured reasons: an audio track cannot be created from the shell process, and the switch to \"ring\" raises Android's saved ringer volume from 0 to 1 with no return. A future evolution, to take up with a test phone that is not the user's."],
-    ["Quick notes", "Not offered", "The type " + c("note") + " is in the profile format but not in the catalog (it was left for after the app worked)."],
-    ["Now playing, recent calls, network", "Not made", "Now playing needs a test with a real playback; the other two were to be evaluated for feasibility with pure Android, without root."],
     ["Audio in a window recording", "Not wired", "Recordings hold only video. " + c("src/video/cattura.h") + " already accepts an Opus audio track, and the contract has the " + c("con_audio") + " option, but the real services accept it and ignore it (" + c("src/shell/ossatura/sv_flussi.c") + "): the step that brings the audio packets to the recording is missing."],
     ["Breaking away from FFmpeg", "To evaluate", "FFmpeg is confined to " + c("src/video/") + " precisely so it can be replaced later."],
     ["Idle time of the physical panel", "Missing", "The idle time foreseen by the specification (4.7) and by " + c("docs/protocollo.md") + " §2.9 does not exist in the code: the panel is turned off again only at the first input from the PC with the phone \"in hand\". Either the function is missing or the protocol must be corrected: the user's decision."],

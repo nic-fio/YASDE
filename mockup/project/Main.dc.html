@@ -43,7 +43,7 @@ input::placeholder{color:#9aa4b5}
 
     <div class="{{twrap.cls}}">
       <div onMouseDown="{{hostDragStart}}" style="height:36px;box-sizing:border-box;background:#2b3242;display:flex;align-items:center;padding:0 8px 0 14px;gap:8px;{{twrap.cursor}}">
-        <div style="flex:1;color:#e6eaf2;font-size:13px;font-weight:500;">YASDE 2.2</div>
+        <div style="flex:1;color:#e6eaf2;font-size:13px;font-weight:500;">YASDE 2.3</div>
         <button class="wc" aria-label="{{fullLabel}}" title="{{fullLabel}}" onMouseDown="{{stopDown}}" onClick="{{toggleFull}}">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6V3h3M10 3h3v3M13 10v3h-3M6 13H3v-3"></path></svg>
         </button>
@@ -277,9 +277,9 @@ input::placeholder{color:#9aa4b5}
       <sc-if value="{{volOpen}}" hint-placeholder-val="{{ false }}">
         <div style="position:absolute;right:135px;bottom:56px;width:250px;z-index:5000;background:rgba(20,27,38,.98);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:14px;color:#e6eaf2;box-shadow:0 18px 50px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:10px;">
           <div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:14px;font-weight:600;">Volume</span><span style="font-size:12px;color:#cbd5e1;">{{volText}}</span></div>
-          <input type="range" min="0" max="100" value="{{vol}}" aria-label="Volume di YASDE 2.2" onInput="{{onVol}}" onChange="{{onVol}}" style="width:100%;accent-color:{{accent}};">
+          <input type="range" min="0" max="100" value="{{vol}}" aria-label="Volume di YASDE 2.3" onInput="{{onVol}}" onChange="{{onVol}}" style="width:100%;accent-color:{{accent}};">
           <button class="pbtn" aria-pressed="{{volMuted}}" onClick="{{toggleMute}}"><span>Muto</span><span style="font-size:11px;font-weight:600;border-radius:10px;padding:2px 9px;{{mutePill}}">{{mutePillText}}</span></button>
-          <div style="font-size:11px;color:#9aa4b5;line-height:1.4;">Regola l'audio di YASDE 2.2 sul PC. Il volume del telefono non cambia.</div>
+          <div style="font-size:11px;color:#9aa4b5;line-height:1.4;">Regola l'audio di YASDE 2.3 sul PC. Il volume del telefono non cambia.</div>
         </div>
       </sc-if>
 
@@ -429,7 +429,7 @@ input::placeholder{color:#9aa4b5}
       <sc-if value="{{wdgDlg}}" hint-placeholder-val="{{ false }}">
         <div role="dialog" aria-label="Aggiungi widget" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:540px;max-width:calc(100% - 48px);max-height:calc(100% - 96px);overflow:hidden;z-index:5000;background:rgba(14,21,31,.98);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:20px;color:#e6eaf2;box-shadow:0 24px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:16px;font-weight:600;">Aggiungi widget</span><button class="ghost" onClick="{{closeWdgDlg}}">Fatto</button></div>
-          <div style="font-size:12px;color:#9aa4b5;line-height:1.4;">Widget del desktop: li disegna YASDE 2.2 sul PC, usando i dati del telefono. Dopo averlo aggiunto lo trascini dove vuoi; clic destro per cambiare dimensione o rimuoverlo.</div>
+          <div style="font-size:12px;color:#9aa4b5;line-height:1.4;">Widget del desktop: li disegna YASDE 2.3 sul PC, usando i dati del telefono. Dopo averlo aggiunto lo trascini dove vuoi; clic destro per cambiare dimensione o rimuoverlo.</div>
           <div style="overflow-y:auto;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
             <sc-for list="{{wdgCatalog}}" as="k" hint-placeholder-count="8">
               <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;">
@@ -525,14 +525,14 @@ input::placeholder{color:#9aa4b5}
   </div>
 
   <sc-if value="{{hostMin}}" hint-placeholder-val="{{ false }}">
-    <button onClick="{{restoreHost}}" style="position:absolute;left:50%;bottom:28px;transform:translateX(-50%);border:1px solid rgba(255,255,255,.2);background:#2b3242;color:#e6eaf2;border-radius:20px;padding:9px 18px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.45);">YASDE 2.2 (ridotta a icona): clic per ripristinare</button>
+    <button onClick="{{restoreHost}}" style="position:absolute;left:50%;bottom:28px;transform:translateX(-50%);border:1px solid rgba(255,255,255,.2);background:#2b3242;color:#e6eaf2;border-radius:20px;padding:9px 18px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.45);">YASDE 2.3 (ridotta a icona): clic per ripristinare</button>
   </sc-if>
 
   <sc-if value="{{hostClosed}}" hint-placeholder-val="{{ false }}">
     <div style="position:absolute;left:0;top:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#e6eaf2;">
-      <div style="font-size:16px;font-weight:500;">YASDE 2.2 è chiuso</div>
+      <div style="font-size:16px;font-weight:500;">YASDE 2.3 è chiuso</div>
       <div style="font-size:12px;color:#9aa4b5;">Le app aperte sul telefono vengono tolte dai recenti alla chiusura.</div>
-      <button onClick="{{reopenHost}}" style="border:0;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;color:#0b1220;{{accentBg}}">Riapri YASDE 2.2</button>
+      <button onClick="{{reopenHost}}" style="border:0;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;color:#0b1220;{{accentBg}}">Riapri YASDE 2.3</button>
     </div>
   </sc-if>
 </div>
@@ -549,7 +549,7 @@ class Component extends DCLogic {
       notifs: { name: 'Notifiche recenti', desc: 'Le ultime notifiche del telefono, senza aprire il pannello.' },
       notes: { name: 'Note rapide', desc: 'Le note più recenti, a colpo d\'occhio.' },
       weather: { name: 'Meteo', desc: 'Condizioni attuali e previsione dei prossimi giorni.' },
-      music: { name: 'In riproduzione', desc: 'Brano in corso e avanzamento; l\'audio resta quello di YASDE 2.2.' },
+      music: { name: 'In riproduzione', desc: 'Brano in corso e avanzamento; l\'audio resta quello di YASDE 2.3.' },
       storage: { name: 'Memoria del telefono', desc: 'Spazio usato e suddivisione per tipo di contenuto.' }
     };
     this.WORDER = ['clock', 'calendar', 'phone', 'notifs', 'notes', 'weather', 'music', 'storage'];

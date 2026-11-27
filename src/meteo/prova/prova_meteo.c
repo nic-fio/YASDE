@@ -816,7 +816,7 @@ static void prova_http(void)
     pthread_mutex_unlock(&S.mu);
     VERIFICA(strncmp(rich, "GET /v1/forecast?x=1 HTTP/1.1\r\n", 31) == 0);
     VERIFICA(strstr(rich, "\r\nHost: api.open-meteo.com\r\n") != NULL);
-    VERIFICA(strstr(rich, "\r\nUser-Agent: YASDE/2.2\r\n") != NULL);
+    VERIFICA(strstr(rich, "\r\nUser-Agent: YASDE/2.3\r\n") != NULL);
     VERIFICA(strstr(rich, "\r\nAccept: application/json\r\n") != NULL);
     VERIFICA(strstr(rich, "\r\nConnection: close\r\n\r\n") != NULL);
     VERIFICA(conta(rich, "\r\n") == 6); /* riga + 4 intestazioni + riga vuota: nient'altro */
@@ -2079,9 +2079,9 @@ static void prova_ricerca_base(void)
     memcpy(rich, S.ultima, sizeof rich);
     pthread_mutex_unlock(&S.mu);
     VERIFICA(strncmp(rich, "GET /v1/search?name=Milano&count=10&language=it&format=json HTTP/1.1\r\n"
-                           "Host: geocoding-api.open-meteo.com\r\nUser-Agent: YASDE/2.2\r\n",
+                           "Host: geocoding-api.open-meteo.com\r\nUser-Agent: YASDE/2.3\r\n",
                      strlen("GET /v1/search?name=Milano&count=10&language=it&format=json HTTP/1.1\r\n"
-                            "Host: geocoding-api.open-meteo.com\r\nUser-Agent: YASDE/2.2\r\n")) == 0);
+                            "Host: geocoding-api.open-meteo.com\r\nUser-Agent: YASDE/2.3\r\n")) == 0);
     VERIFICA(conta(rich, "\r\n") == 6);
     /* la stessa ricerca (anche con spazi ai lati) viene dalla memoria */
     VERIFICA(cerca_attendi(m, &x, "  Milano ", "it", 2) && x.n_ok == 2 && atomic_load(&S.conn) == 1);

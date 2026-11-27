@@ -170,7 +170,7 @@ static void prova_avvio_e_chiusura(void)
     VERIFICA(strcmp(finto_servizio_lanciato(bn.adb), atteso_lancio) == 0); /* stesso percorso copiato e lanciato */
     VERIFICA(ph_componente_vivo(bn.c));
     VERIFICA(canali_aperti(bn.adb, "comandi", 1) && canali_aperti(bn.adb, "input", 1));
-    comando_uguale(bn.adb, 0, PH_MSG_SALUTO, (const uint8_t[]){0, 2}, 2);
+    comando_uguale(bn.adb, 0, PH_MSG_SALUTO, (const uint8_t[]){0, 3}, 2);
     ph_componente_chiudi(bn.c);
     bn.c = NULL;
     VERIFICA(finto_ricevuto_chiudi(bn.adb));

@@ -362,6 +362,9 @@ int main(void)
     /* ---- 8b. La richiesta del telefono (Milano, in volo) e' sostituita da quella della citta' (telefono perso):
      * la callback della VECCHIA, consegnata dopo la nuova, non pubblica nulla e non viene attribuita alla nuova. */
     ch0 = atomic_load(&finti.m_chiedi_n);
+    /* Il passo 8 puo' avere ancora una pubblicazione in coda al ciclo GTK (la guarda solo m_chiedi_n):
+     * si svuota la coda PRIMA di leggere b, come al passo 7. */
+    while (g_main_context_iteration(NULL, FALSE)) {}
     b = n_pubs;
     telefono_parte();
     ASPETTA(atomic_load(&finti.m_chiedi_n) == ch0 + 1, 8000);

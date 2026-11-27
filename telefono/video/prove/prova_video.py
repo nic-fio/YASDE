@@ -217,15 +217,15 @@ def resti(pid):
     return [f for f in sh("ls /data/local/tmp").split() if f in (os.path.basename(JAR), nome)]
 
 
-def task_schermo0():
-    """Solo lettura: gli identificativi dei task dello schermo 0 (quello VERO) da `dumpsys activity activities`.
+def task_schermo0(did="0"):
+    """Solo lettura: gli identificativi dei task dello schermo `did` (0 = quello VERO) da `dumpsys activity activities`.
     Restano in memoria: non si scrivono su file."""
     ids, schermo = [], None
     for riga in sh("dumpsys activity activities").splitlines():
         r = riga.strip()
         if r.startswith("Display #"):
             schermo = r.split("#")[1].split()[0].rstrip(":")
-        elif schermo == "0" and (r.startswith("* Task{") or r.startswith("Task id #")):
+        elif schermo == did and (r.startswith("* Task{") or r.startswith("Task id #")):
             ids.append(r.split("#")[1].split()[0])
     return sorted(ids)
 
@@ -239,7 +239,15 @@ def evento_di(c, id, che, sec):
 def prova_pagine(c, dpi):
     """VIDEO_PAGINA e pagina in VIDEO_APRI (protocollo versione 2). Prova SCRITTA, non ancora eseguita sul telefono."""
     prima = task_schermo0()
+    schermi_prima = set(sh("dumpsys window displays | grep -E 'Display: mDisplayId' | sed 's/.*mDisplayId=//;s/ .*//'").split())
     t, b = apri_video(c, 20, 1280, 720, dpi, P1, pagina=1)
+    scad = time.time() + 5
+    nuovi = set()
+    while time.time() < scad and len(nuovi) != 1:
+        nuovi = set(sh("dumpsys window displays | grep -E 'Display: mDisplayId' | sed 's/.*mDisplayId=//;s/ .*//'").split()) - schermi_prima
+        if len(nuovi) != 1:
+            time.sleep(0.3)
+    did = nuovi.pop() if len(nuovi) == 1 else None
     controlla(t == 2, "VIDEO_APRI Impostazioni con pagina 1 (batteria)", b[2:].decode() if t == 3 else "")
     if t == 2:
         v = FlussoVideo(20, os.path.join(CACHE, "s20.h264"))
@@ -247,7 +255,21 @@ def prova_pagine(c, dpi):
         controlla(t == 2, "VIDEO_PAGINA 2 (memoria) con Impostazioni gia' aperte", b[2:].decode() if t == 3 else "")
         t, b = c.chiedi(0x43, struct.pack(">I", 20))
         controlla(t == 2, "sessione viva dopo VIDEO_PAGINA (VIDEO_CHIAVE OK)")
-        controlla(not evento_di(c, 20, 1, 3), "nessun VIDEO_EVENTO 1 (app chiusa) nei 3 s dopo la pagina")
+        # raccolta piena di 3 s (che=-1 non arriva mai, quindi non esce prima), poi filtro per id della sessione
+        c.attendi_evento(-1, 3)
+        controlla(not any(e[0] == 20 and e[1] == 1 for e in c.eventi),
+                  "nessun VIDEO_EVENTO 1 (app chiusa) della sessione 20 nei 3 s dopo la pagina")
+        if did is not None:
+            scad = time.time() + 5
+            n = None
+            while time.time() < scad:
+                n = len(task_schermo0(did))
+                if n == 1:
+                    break
+                time.sleep(0.3)
+            controlla(n == 1, "dopo VIDEO_PAGINA 2 lo schermo virtuale ha un solo task", "task: %s" % n)
+        else:
+            controlla(False, "schermo virtuale della sessione 20 individuato", str(nuovi))
         t, b = c.chiedi(0x46, struct.pack(">IB", 20, 0))
         controlla(t == 3, "VIDEO_PAGINA 0 -> ERRORE")
         t, b = c.chiedi(0x46, struct.pack(">IB", 20, 3))
@@ -279,8 +301,11 @@ def prova_pagine(c, dpi):
         t, b = c.chiedi(0x43, struct.pack(">I", 23))
         controlla(t == 2, "sessione intatta dopo l'errore")
         c.chiedi(0x41, struct.pack(">IB", 23, 1))
-    time.sleep(1)
+    scad = time.time() + 5
     dopo = task_schermo0()
+    while dopo != prima and time.time() < scad:
+        time.sleep(0.3)
+        dopo = task_schermo0()
     controlla(prima == dopo, "task dello schermo 0 identici prima e dopo", "prima %d, dopo %d" % (len(prima), len(dopo)))
 
 
@@ -292,9 +317,9 @@ def prova():
     adb("forward", "tcp:%d" % PORTA, "localabstract:yasde")
     c = Comandi()
     # SALUTO
-    t, b = c.chiedi(1, struct.pack(">H", 2))
+    t, b = c.chiedi(1, struct.pack(">H", 3))
     ver, api, w, h, dpi = struct.unpack(">5H", b[:10])
-    controlla(t == 2 and ver == 2, "SALUTO", "api %d, %dx%d, %d dpi" % (api, w, h, dpi))
+    controlla(t == 2 and ver == 3, "SALUTO", "api %d, %dx%d, %d dpi" % (api, w, h, dpi))
     # VIDEO_APRI
     t0 = time.time()
     t, b = apri_video(c, 1, 1280, 720, dpi, P1)
@@ -592,7 +617,7 @@ def prova():
     adb("push", CACHE + "/yasde.jar", JAR)
     p, righe = lancia()
     c = Comandi()
-    c.chiedi(1, struct.pack(">H", 2))
+    c.chiedi(1, struct.pack(">H", 3))
     t, b = apri_video(c, 5, 1280, 720, dpi, "com.sec.android.app.clockpackage")  # Impostazioni lascerebbe uno schermo nel gestore finestre
     time.sleep(1)
     n_prima = sh("dumpsys display | grep -c 'yasde-'").strip()

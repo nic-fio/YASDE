@@ -89,7 +89,7 @@ def versione():
     m = re.search(r"^project\([^)]*version:\s*'([^']+)'", f.read_text(encoding="utf-8"), re.M | re.S)
     if not m:
         fine("versione non trovata in " + str(f))
-    # meson dice 2.2.0; il prodotto e i nomi dei file usano «2.2»
+    # meson dice 2.3.0; il prodotto e i nomi dei file usano «2.3»
     return ".".join(m.group(1).split(".")[:2])
 
 

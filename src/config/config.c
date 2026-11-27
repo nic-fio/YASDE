@@ -141,7 +141,8 @@ static const char *const NOMI_ADATT[] = {"riempi", "adatta", "allunga", "centra"
 static const char *const NOMI_WIDGET[] = {"orologio", "stato",  "notifiche", "memoria",
                                           "calendario", "note", "meteo",     "riproduzione",
                                           "calendario-mese", "sveglia", "batteria", "interruttori",
-                                          "trova", "app-frequenti", "trasferimenti"};
+                                          "trova", "app-frequenti", "trasferimenti",
+                                          "chiamate", "rete"};
 static const char *const NOMI_DIM[] = {"piccolo", "medio", "grande"};
 #define N(a) (sizeof(a) / sizeof((a)[0]))
 

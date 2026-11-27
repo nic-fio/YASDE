@@ -130,6 +130,9 @@ typedef enum {
     PH_FINTO_VOCE_SVEGLIA,
     PH_FINTO_VOCE_BATTERIA,
     PH_FINTO_VOCE_CONTROLLI,
+    PH_FINTO_VOCE_CHIAMATE,   /* 27 nov: NON_DISPONIBILE = funzione assente, ERRORE = permesso negato */
+    PH_FINTO_VOCE_RETE,       /* idem */
+    PH_FINTO_VOCE_MEDIA,      /* idem */
     PH_FINTO_VOCE_NUMERO
 } PhFintoVoce;
 typedef enum { PH_FINTO_MODO_NORMALE = 0, PH_FINTO_MODO_NON_DISPONIBILE, PH_FINTO_MODO_ERRORE } PhFintoModo;
@@ -147,6 +150,17 @@ void ph_finto_torcia_disponibile(PhFinto *f, bool si);
 /* Cambio fatto dal telefono (per esempio qualcuno toglie il silenzioso):
  * aggiorna lo stato e lo pubblica, ma solo mentre i controlli sono osservati. */
 void ph_finto_controllo_dal_telefono(PhFinto *f, PhSrvControllo controllo, int valore);
+/* Chiamate, rete, media (27 nov; dati INVENTATI: «Alex Sample», «SampleNet», «Sample Song»).
+ * Si pubblica all'osservazione e a ogni cambio, a telefono collegato; a telefono non collegato
+ * (nessuna sessione) lo stato e' NON_DISPONIBILE. Permesso negato / funzione assente con
+ * ph_finto_voce_modo su PH_FINTO_VOCE_CHIAMATE / _RETE / _MEDIA. */
+/* true: modalita' aereo (Wi-Fi e mobile spenti nella lettura della rete). */
+void ph_finto_rete_aereo(PhFinto *f, bool si);
+/* true: nessuna sessione multimediale (stato NESSUNA, nessun comando). */
+void ph_finto_media_assente(PhFinto *f, bool si);
+/* Ultimo comando multimediale ricevuto (0 = nessuno) e quanti ne sono arrivati. Per le prove. */
+int ph_finto_media_ultimo_comando(PhFinto *f);
+unsigned ph_finto_media_comandi(PhFinto *f);
 /* Meteo (CONTRATTI.md §18): nessuna rete, nessuna coordinata. Dopo l'osservazione
  * (ph_srv_meteo_osserva) pubblica dopo 300 ms una previsione finta (localita'
  * «Citta' finta»), poi la ripubblica ogni 30 minuti; niente di tutto questo

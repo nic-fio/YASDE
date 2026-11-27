@@ -818,7 +818,10 @@ static void prova_catalogo(void)
         VERIFICA(voci == 1);
     }
     VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_METEO) != NULL); /* il meteo e' nel catalogo (§18) */
-    VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_RIPRODUZIONE) == NULL);
+    /* I tre widget del 27 nov (PIANO.md 9) sono nel catalogo. */
+    VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_RIPRODUZIONE) != NULL);
+    VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_CHIAMATE) != NULL);
+    VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_RETE) != NULL);
 }
 
 /* ---- Forma e misura libera (PIANO.md 8.1) ---- */
@@ -859,7 +862,7 @@ static void prova_forme(void)
         PH_CFG_WIDGET_CALENDARIO, PH_CFG_WIDGET_NOTE, PH_CFG_WIDGET_METEO, PH_CFG_WIDGET_RIPRODUZIONE,
         PH_CFG_WIDGET_CALENDARIO_MESE, PH_CFG_WIDGET_SVEGLIA, PH_CFG_WIDGET_BATTERIA,
         PH_CFG_WIDGET_INTERRUTTORI, PH_CFG_WIDGET_TROVA, PH_CFG_WIDGET_APP_FREQUENTI,
-        PH_CFG_WIDGET_TRASFERIMENTI};
+        PH_CFG_WIDGET_TRASFERIMENTI, PH_CFG_WIDGET_CHIAMATE, PH_CFG_WIDGET_RETE};
     for (size_t i = 0; i < sizeof tutti / sizeof tutti[0]; i++) {
         PhCfgWidgetTipo t = tutti[i];
         bool rotondo = t == PH_CFG_WIDGET_BATTERIA || t == PH_CFG_WIDGET_SVEGLIA ||

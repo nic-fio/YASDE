@@ -339,7 +339,9 @@ typedef enum {
     PH_CFG_WIDGET_INTERRUTTORI,    /* "interruttori" */
     PH_CFG_WIDGET_TROVA,           /* "trova" */
     PH_CFG_WIDGET_APP_FREQUENTI,   /* "app-frequenti" */
-    PH_CFG_WIDGET_TRASFERIMENTI    /* "trasferimenti" */
+    PH_CFG_WIDGET_TRASFERIMENTI,   /* "trasferimenti" */
+    PH_CFG_WIDGET_CHIAMATE,        /* "chiamate": chiamate recenti (2.3) */
+    PH_CFG_WIDGET_RETE             /* "rete": Wi-Fi e rete mobile (2.3) */
 } PhCfgWidgetTipo;
 typedef enum { PH_CFG_WIDGET_PICCOLO, PH_CFG_WIDGET_MEDIO, PH_CFG_WIDGET_GRANDE } PhCfgWidgetDim;
 
