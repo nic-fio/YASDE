@@ -235,3 +235,26 @@ Approvato dal committente dal vivo («È meraviglioso») e pubblicato come relea
 - Gli agenti lanciati con copia isolata dell'albero non possono scrivere nell'albero principale: o lavorano tutti nella copia e si unisce a mano, o tutti nell'albero con cartelle distinte.
 - Dopo un giro di mutazioni, prima di fotografare si rilancia `prova.sh` sul codice pulito: `foto-demo.sh` prende il demo dalla cartella di compilazione del pezzo.
 - Sul tablet non esiste più una configurazione di prova separata né `.nomi-vietati`: la prova dal vivo l'ha fatta il committente con la sua configurazione; la ricerca dei dati personali prima dei push è stata fatta a mano sulle righe aggiunte.
+
+## 9. YASDE 2.3: ciò che era rimasto fuori dalla 2.2 (27 nov 2026, chiesto dal committente)
+
+**Obiettivo:** i tre widget mancanti, i quattro limiti della 2.2 chiusi, sito aggiornato con immagini dei widget nuovi. Lavoro in parallelo, quattro programmatori.
+
+**Widget nuovi (dati dal telefono, senza root; protocollo versione 3)**
+- **Recent calls** (mattonella): ultime chiamate con tipo (entrante, uscente, persa, rifiutata), nome o numero, ora. Clic → app del telefono. Lettura: registro chiamate (max 20 righe per richiesta).
+- **Network** (mattonella): Wi-Fi (stato, livello 0–4, nome della rete) e rete mobile (stato, livello 0–4, generazione, operatore, dati mobili, modalità aereo). Solo lettura.
+- **Now playing** (mattonella): titolo, artista, app, stato; pulsanti indietro / play-pausa / avanti secondo ciò che la sessione permette. Clic sul titolo → app che suona. Comandi da un elenco fisso (1 play/pausa, 2 avanti, 3 indietro), mai altro.
+- Letture nuove nel pezzo `dati` (telefono-dati, `src/dati`), numeri di messaggio liberi nella fascia dei dati, scelti da chi scrive il protocollo. Ogni stringa che arriva dal telefono è dato ostile: lunghezze limitate, UTF-8 controllato. Nomi, numeri, titoli e nomi di reti MAI in un log o in un messaggio d'errore, mai su disco.
+- Permesso negato o funzione assente sul telefono → il widget lo dice («Not available on this phone»), non resta vuoto.
+
+**Limiti della 2.2 da chiudere**
+- Pagine che si accumulano: in `Sessione.pagina`, dopo un lancio riuscito, togliere i task precedenti dello SOLO schermo virtuale della sessione.
+- «Phone status»: il clic apre le Impostazioni (pagina nessuna).
+- Quick notes: menu del clic destro sul campo con Cut, Copy, Paste, Select all (menu della shell, non quello di GTK), più Remove widget.
+- `prova_meteo_veri.c` passo 8b; chiave italiana della descrizione di Memoria; `ossatura/COMPITO.md` (titolo senza numero).
+
+**Sito:** immagine nuova con i widget in vetro (dati finti), sezioni e testi aggiornati dai manuali, pubblicazione con `sito/pubblica.sh` (serve dal committente l'accesso al server web).
+
+**Rischi:** API di Android raggiungibili dal processo shell solo in parte (da provare sul telefono vero quando il committente non usa YASDE); il comando ai lettori musicali agisce sul telefono: è un'azione dell'utente, nessun ripristino; nessun suono avviato da una prova senza consenso.
+
+**Finito quando:** `tutto`, `veloce`, `telefono` puliti; revisori APPROVATO; manuali allineati; prova sul telefono vero; il committente la vede dal vivo; release 2.3 e sito pubblicati.
