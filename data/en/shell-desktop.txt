@@ -212,6 +212,7 @@
 "Cerca" = "Search"
 "Compatto" = "Compact"
 "Curva" = "Curve"
+"Senza fondo" = "No background"
 "Dati meteo di Open-Meteo.com" = "Weather data by Open-Meteo.com"
 "Granelli di neve" = "Snow grains"
 "Il telefono non dà la sua posizione" = "The phone is not giving its position"

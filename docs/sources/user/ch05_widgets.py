@@ -44,14 +44,18 @@ S3 = p("Styles change how a widget looks without changing the data. Choose one f
     [ui("Clock"), ui("Digital") + ", " + ui("Classic analog") + " (with a seconds hand), " + ui("Minimal analog") + ", "
      + ui("Flip tiles") + ", " + ui("In words") + " and " + ui("Dual time zone") + ". The last one adds a second city, chosen under "
      + ui("City") + ": " + ui("London") + ", " + ui("New York") + ", " + ui("Los Angeles") + ", " + ui("Moscow") + ", "
-     + ui("Dubai") + ", " + ui("Beijing") + ", " + ui("Tokyo") + " or " + ui("Sydney") + "."],
+     + ui("Dubai") + ", " + ui("Beijing") + ", " + ui("Tokyo") + " or " + ui("Sydney") + ". "
+     + ui("No background") + " is the last one: see below."],
     [ui("Month calendar"), ui("Month") + ", " + ui("Week") + ", " + ui("Agenda") + "."],
     [ui("Weather"), ui("Now") + " (icon, temperature, condition, high and low; it grows with the widget: see below), " + ui("Hours") + " (the next hours), "
      + ui("Week") + " (the next days), " + ui("Compact") + " (one line), " + ui("Today") + " (feels like, wind, rain, humidity) and "
-     + ui("Curve") + " (the temperature over the next hours)."],
+     + ui("Curve") + " (the temperature over the next hours) and " + ui("No background") + " (see below)."],
 ], "«TAB» — Widget styles") + p("The " + ui("Now") + " style of the weather grows with the widget. At the smallest size it shows the icon and the temperature. "
     "With more width it adds the place, the condition and the high and low. With more height it adds the curve of the temperature over the next hours, and with still more height the next days, each with a bar from the low to the high. "
-    "The line " + ui("Weather data by Open-Meteo.com") + " is always at the bottom, at every size.")
+    "The line " + ui("Weather data by Open-Meteo.com") + " is always at the bottom, at every size.") + \
+    p("The " + ui("No background") + " style, for the clock and for the weather, has no glass, no fill and no border: the content sits directly on the desktop, in white with a soft dark shadow so that it can be read on any wallpaper. "
+      "The clock shows the time in large digits, with the date under it except at the smallest sizes (below 250×128). The weather shows the icon, the temperature, the place and the condition; there is no high and low, no curve and no days, not even when the widget is large. "
+      "The line " + ui("Weather data by Open-Meteo.com") + " stays visible. You drag it and resize it from the corner like the tiles. The smallest sizes are 200×112 for the clock and 240×120 for the weather.")
 
 S4 = p("The " + ui("Weather") + " widget is the only part of YASDE that uses the Internet, and only while a weather widget is on the desktop.", lead=True) + ul([
     "The place comes from the phone's position. YASDE asks the phone, which gives a position rounded to about 500 meters; the precise position never leaves the phone. The name of the place is worked out by Android on the phone from that rounded position; on many phones that uses an online service of Google or of the phone's maker.",

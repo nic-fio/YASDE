@@ -620,8 +620,10 @@ static void geometria_applica(PhDskWidget *w)
     gtk_widget_set_size_request(w->scheda, w->larghezza, w->altezza);
     int raggio = ph_dsk_raggio(w->forma, w->larghezza, w->altezza);
     if (raggio != w->raggio) {
-        ph_shell_vetro_togli(d->sh, w->scheda);
-        ph_shell_vetro_registra(d->sh, w->scheda, raggio, PH_VETRO_SCURO);
+        if (!w->senza_fondo) { /* senza fondo non c'e' vetro da ritagliare */
+            ph_shell_vetro_togli(d->sh, w->scheda);
+            ph_shell_vetro_registra(d->sh, w->scheda, raggio, PH_VETRO_SCURO);
+        }
         w->raggio = raggio;
     }
     int pad_o, pad_v;
@@ -889,6 +891,7 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
     w->altezza = mis.altezza;
     w->dim = ph_dsk_livello(cfg->tipo, w->stile, mis);
     w->forma = ph_dsk_forma(cfg->tipo, w->stile);
+    w->senza_fondo = ph_dsk_senza_fondo(cfg->tipo, w->stile);
     w->percento = -1; /* la barra compare con la prima vista */
 
     w->scheda = g_object_new(GTK_TYPE_BOX, "orientation", GTK_ORIENTATION_VERTICAL,
@@ -899,9 +902,14 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
     gtk_widget_add_css_class(w->scheda, w->forma == PH_DSK_FORMA_TONDO ? "ph-desktop-forma-tondo"
                                          : (w->forma == PH_DSK_FORMA_CAPSULA ? "ph-desktop-forma-capsula"
                                                                              : "ph-desktop-forma-mattonella"));
-    /* Vetro scuro (come la barra). Il raggio dipende dalla forma e dalla misura. */
+    /* Vetro scuro (come la barra). Il raggio dipende dalla forma e dalla misura. Lo stile «Senza fondo»
+     * non ha vetro, fondo ne' bordo: non si registra (cambiando stile il widget si ricostruisce, quindi
+     * il vetro torna da solo con lo stile successivo) e il contenuto prende l'ombra del testo. */
     w->raggio = ph_dsk_raggio(w->forma, w->larghezza, w->altezza);
-    ph_shell_vetro_registra(d->sh, w->scheda, w->raggio, PH_VETRO_SCURO);
+    if (w->senza_fondo)
+        gtk_widget_add_css_class(w->scheda, "ph-desktop-senza-fondo");
+    else
+        ph_shell_vetro_registra(d->sh, w->scheda, w->raggio, PH_VETRO_SCURO);
     gtk_widget_set_cursor_from_name(w->scheda, "move");
     gtk_widget_set_focusable(w->scheda, TRUE); /* per il tasto Menu da tastiera */
     ph_shell_etichetta(w->scheda, ph_dsk_widget_nome(w->tipo), NULL);

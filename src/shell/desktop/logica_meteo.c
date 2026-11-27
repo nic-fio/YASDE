@@ -11,7 +11,8 @@
 const char *ph_dsk_meteo_stile_nome(unsigned stile)
 {
     static const char *const nomi[PH_DSK_METEO_STILI] = {PH_T_("Adesso"), PH_T_("Ore"),     PH_T_("Settimana"),
-                                                         PH_T_("Compatto"), PH_T_("Oggi"), PH_T_("Curva")};
+                                                         PH_T_("Compatto"), PH_T_("Oggi"), PH_T_("Curva"),
+                                                         PH_T_("Senza fondo")};
     return stile < PH_DSK_METEO_STILI ? ph_tv(nomi[stile]) : NULL;
 }
 
@@ -274,6 +275,21 @@ PhDskMeteoSezioni ph_dsk_meteo_sezioni(int larghezza, int altezza)
     if (resto > PH_DSK_METEO_ADESSO_ALT_CURVA_EXTRA)
         resto = PH_DSK_METEO_ADESSO_ALT_CURVA_EXTRA;
     s.altezza_curva = PH_DSK_METEO_ADESSO_ALT_CURVA_BASE + resto;
+    return s;
+}
+
+PhDskMeteoSezioni ph_dsk_meteo_sezioni_stile(unsigned stile, int larghezza, int altezza)
+{
+    PhDskMeteoSezioni s = ph_dsk_meteo_sezioni(larghezza, altezza);
+    if (stile == PH_DSK_METEO_SENZA_FONDO) {
+        s.curva = false;
+        s.n_ore = 0;
+        s.n_giorni = 0;
+        s.altezza_curva = 0;
+        /* Nessuna scheda sotto: il numero cresce con la sola larghezza. */
+        s.corpo_temp = larghezza >= 300 ? 2 : 1;
+        s.lato_icona = s.corpo_temp == 2 ? 56 : 48;
+    }
     return s;
 }
 

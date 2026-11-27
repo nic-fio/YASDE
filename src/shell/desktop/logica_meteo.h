@@ -18,6 +18,7 @@ typedef enum {
     PH_DSK_METEO_COMPATTO,   /* una riga */
     PH_DSK_METEO_OGGI,       /* percepita, vento, pioggia, umidita' (e le prossime ore nel Grande) */
     PH_DSK_METEO_CURVA,      /* l'andamento della temperatura sulle prossime ore */
+    PH_DSK_METEO_SENZA_FONDO, /* icona, temperatura, luogo e condizione sullo sfondo: niente vetro (6) */
     PH_DSK_METEO_STILI
 } PhDskMeteoStile;
 const char *ph_dsk_meteo_stile_nome(unsigned stile); /* tradotto, NULL oltre l'ultimo */
@@ -83,6 +84,9 @@ typedef struct {
 } PhDskMeteoSezioni;
 /* Funzione PURA: misure non positive o enormi sono ammesse (si limitano). */
 PhDskMeteoSezioni ph_dsk_meteo_sezioni(int larghezza, int altezza);
+/* Le sezioni dello stile dato: «Senza fondo» mostra solo icona, temperatura e testo (mai curva ne'
+ * giorni, l'altezza non conta); gli altri come ph_dsk_meteo_sezioni. */
+PhDskMeteoSezioni ph_dsk_meteo_sezioni_stile(unsigned stile, int larghezza, int altezza);
 bool ph_dsk_meteo_sezioni_uguali(const PhDskMeteoSezioni *a, const PhDskMeteoSezioni *b);
 /* «Max 18° · Min 11°» non ci sta per intero (larghezza_lunga > disponibile, in px): si usa la forma
  * breve «18° / 11°». Misure non positive: false (forma lunga). */

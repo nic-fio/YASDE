@@ -27,7 +27,7 @@ test('shell-desktop-logica', executable('prova_desktop', 'prova_desktop.c', depe
 
 # Demo sopra il backend finto (strumenti/demo-sul-tablet.sh desktop); con --prova
 # e' anche la prova con schermo (saltata se nel container non c'e' broadway).
-demo_desktop = executable('demo-desktop', ['demo.c', 'demo_hook.c', 'demo_controlli.c', 'demo_meteo.c', 'demo_note.c'], dependencies: [shell_desktop_dep, shell_finto_dep])
+demo_desktop = executable('demo-desktop', ['demo.c', 'demo_hook.c', 'demo_controlli.c', 'demo_meteo.c', 'demo_note.c', 'demo_senzafondo.c'], dependencies: [shell_desktop_dep, shell_finto_dep])
 test('shell-desktop-schermo', demo_desktop, args: ['--prova', '6000', '--mostra',
   'wx:meteo:0@500,snap-profilo@1300,finto:meteo-nuovi@1500,finto:meteo-nuovi@1900,verifica-profilo@1600'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
@@ -97,4 +97,10 @@ test('shell-desktop-note-logica', executable('prova_note', 'prova_note.c', depen
   env: shell_ambiente_logica, suite: 'shell', timeout: 60)
 test('shell-desktop-note-schermo', demo_desktop, args: ['--prova', '10000', '--mostra',
   'note-attendi@10,note-avvia@300'],
+  env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
+
+# Stile «Senza fondo» di orologio e meteo (logica: in prova_desktop.c): a schermo niente vetro ne' fondo,
+# testo bianco, attribuzione del meteo, maniglia, menu, vetro che torna cambiando stile, misura tenuta.
+test('shell-desktop-senzafondo', demo_desktop, args: ['--prova', '10000', '--mostra',
+  'senzafondo-attendi@10,senzafondo-avvia@300'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 60)

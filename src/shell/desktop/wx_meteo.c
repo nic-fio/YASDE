@@ -209,11 +209,13 @@ static void massima_minima_breve(const PhMeteoPrevisione *p, char *out, size_t c
 }
 
 static void stile_adesso(GtkWidget *box, const PhMeteoPrevisione *p, const PhDskMeteoSezioni *s,
-                         const char *luogo, int larghezza)
+                         const char *luogo, int larghezza, bool senza_fondo)
 {
     const PhMeteoAdesso *a = &p->adesso;
     GtkWidget *r = riga_orizzontale(12);
-    icona_in(r, a->codice, a->giorno, s->lato_icona);
+    /* Senza fondo l'icona porta una sua ombra morbida (il CSS non arriva dentro il disegno). */
+    gtk_box_append(GTK_BOX(r), senza_fondo ? ph_dsk_meteo_icona_nuova_ombra(a->codice, a->giorno, s->lato_icona)
+                                     : ph_dsk_meteo_icona_nuova(a->codice, a->giorno, s->lato_icona));
     char t[24];
     ph_dsk_meteo_temp(a->temperatura, t, sizeof t);
     static const char *const classi[3] = {"ph-desktop-meteo-t-p", "ph-desktop-meteo-t-m", "ph-desktop-meteo-t-g"};
@@ -230,22 +232,24 @@ static void stile_adesso(GtkWidget *box, const PhMeteoPrevisione *p, const PhDsk
         const char *cond = ph_dsk_meteo_condizione(a->codice);
         if (cond[0] != '\0')
             gtk_box_append(GTK_BOX(col), etichetta_taglio(cond, "ph-desktop-w-sotto-nom", 0));
-        /* Se «Max 18° · Min 11°» non ci sta per intero accanto a icona e numero: «18° / 11°». */
-        char mm[96];
-        massima_minima(p, mm, sizeof mm);
-        GtkWidget *lm = etichetta_taglio(mm, "ph-desktop-meteo-mm-riga", 0);
-        int pad_o, pad_v;
-        ph_dsk_imbottitura(PH_DSK_FORMA_MATTONELLA, &pad_o, &pad_v);
-        int disponibile = larghezza - 2 * pad_o - s->lato_icona - 12 - larghezza_naturale(lt) - 12;
-        GtkWidget *prova = etichetta(mm, "ph-desktop-meteo-mm-riga", 0); /* senza taglio: il testo intero */
-        g_object_ref_sink(prova);
-        bool breve = ph_dsk_meteo_forma_breve(disponibile, larghezza_naturale(prova));
-        g_object_unref(prova);
-        if (breve) {
-            massima_minima_breve(p, mm, sizeof mm);
-            gtk_label_set_text(GTK_LABEL(lm), mm);
+        if (!senza_fondo) { /* senza fondo: solo luogo e condizione */
+            /* Se «Max 18° · Min 11°» non ci sta per intero accanto a icona e numero: «18° / 11°». */
+            char mm[96];
+            massima_minima(p, mm, sizeof mm);
+            GtkWidget *lm = etichetta_taglio(mm, "ph-desktop-meteo-mm-riga", 0);
+            int pad_o, pad_v;
+            ph_dsk_imbottitura(PH_DSK_FORMA_MATTONELLA, &pad_o, &pad_v);
+            int disponibile = larghezza - 2 * pad_o - s->lato_icona - 12 - larghezza_naturale(lt) - 12;
+            GtkWidget *prova = etichetta(mm, "ph-desktop-meteo-mm-riga", 0); /* senza taglio: il testo intero */
+            g_object_ref_sink(prova);
+            bool breve = ph_dsk_meteo_forma_breve(disponibile, larghezza_naturale(prova));
+            g_object_unref(prova);
+            if (breve) {
+                massima_minima_breve(p, mm, sizeof mm);
+                gtk_label_set_text(GTK_LABEL(lm), mm);
+            }
+            gtk_box_append(GTK_BOX(col), lm);
         }
-        gtk_box_append(GTK_BOX(col), lm);
         gtk_box_append(GTK_BOX(r), col);
     }
     if (!s->curva) { /* senza curva sotto, la testa si centra nello spazio che resta (attribuzione in fondo) */
@@ -518,14 +522,14 @@ static void meteo_aggiorna(PhDskWidget *w, PhDskVista *v)
                 if (tolti < PH_DSK_METEO_ADESSO_ALT_AVVISO / 2)
                     tolti = PH_DSK_METEO_ADESSO_ALT_AVVISO / 2;
             }
-            PhDskMeteoSezioni sez = ph_dsk_meteo_sezioni(w->larghezza, w->altezza - tolti);
+            PhDskMeteoSezioni sez = ph_dsk_meteo_sezioni_stile(w->stile, w->larghezza, w->altezza - tolti);
             if (x != NULL) {
                 x->sez = sez;
                 x->sez_nota = true;
                 x->alt_avviso = tolti;
             }
             char *luogo = g_utf8_make_valid(m->localita, -1); /* dato di rete: UTF-8 non garantito */
-            stile_adesso(cont, &m->dati, &sez, luogo, w->larghezza);
+            stile_adesso(cont, &m->dati, &sez, luogo, w->larghezza, w->stile == PH_DSK_METEO_SENZA_FONDO);
             g_free(luogo);
             break;
         }
@@ -575,7 +579,7 @@ static void su_misura(GObject *o, GParamSpec *ps, gpointer dati)
     /* Con l'avviso dei dati vecchi sopra, la sua altezza dipende dalla larghezza (va a capo): si
      * ridisegna a ogni cambio di misura. Senza avviso, solo se le sezioni cambiano. */
     if (x->alt_avviso == 0) {
-        PhDskMeteoSezioni nuove = ph_dsk_meteo_sezioni(w->larghezza, w->altezza);
+        PhDskMeteoSezioni nuove = ph_dsk_meteo_sezioni_stile(w->stile, w->larghezza, w->altezza);
         if (ph_dsk_meteo_sezioni_uguali(&x->sez, &nuove))
             return;
     }

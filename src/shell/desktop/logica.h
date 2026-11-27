@@ -284,6 +284,7 @@ typedef enum {
     PH_DSK_OROLOGIO_PALETTE,     /* ore e minuti su tessere separate */
     PH_DSK_OROLOGIO_TESTUALE,    /* l'ora scritta a parole */
     PH_DSK_OROLOGIO_DOPPIO_FUSO, /* ora locale e una seconda citta' */
+    PH_DSK_OROLOGIO_SENZA_FONDO, /* ora grande e data scritte sullo sfondo: niente vetro (6; in fondo, i profili salvati restano validi) */
     PH_DSK_OROLOGIO_STILI
 } PhDskOrologioStile;
 

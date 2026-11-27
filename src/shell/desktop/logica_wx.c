@@ -85,6 +85,12 @@ const char *ph_dsk_stile_nome_di(PhCfgWidgetTipo tipo, unsigned stile)
     return NULL;
 }
 
+bool ph_dsk_senza_fondo(PhCfgWidgetTipo tipo, unsigned stile)
+{
+    return (tipo == PH_CFG_WIDGET_OROLOGIO && stile == PH_DSK_OROLOGIO_SENZA_FONDO) ||
+           (tipo == PH_CFG_WIDGET_METEO && stile == PH_DSK_METEO_SENZA_FONDO);
+}
+
 PhDskDato ph_dsk_dato_da_esito(PhSrvEsito esito, const char *frase)
 {
     if (esito == PH_SRV_ESITO_OK)

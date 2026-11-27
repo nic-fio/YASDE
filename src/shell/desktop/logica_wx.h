@@ -16,6 +16,9 @@ typedef enum { PH_DSK_CAL_MESE = 0, PH_DSK_CAL_SETTIMANA, PH_DSK_CAL_AGENDA, PH_
 size_t ph_dsk_stili_n(PhCfgWidgetTipo tipo);                 /* quanti stili ha il tipo (>= 1) */
 unsigned ph_dsk_stile_valido_di(PhCfgWidgetTipo tipo, unsigned stile); /* fuori elenco = 0 */
 const char *ph_dsk_stile_nome_di(PhCfgWidgetTipo tipo, unsigned stile); /* NULL oltre l'ultimo */
+/* Lo stile e' «Senza fondo» (orologio e meteo): il widget non ha vetro ne' fondo ne' bordo, il
+ * contenuto e' scritto sullo sfondo. Fuori elenco = false. Per la forma vale una mattonella. */
+bool ph_dsk_senza_fondo(PhCfgWidgetTipo tipo, unsigned stile);
 
 /* ---- Stato di un dato chiesto al telefono ---------------------------------------------- */
 typedef enum {

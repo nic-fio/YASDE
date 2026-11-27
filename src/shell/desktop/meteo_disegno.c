@@ -259,6 +259,7 @@ void ph_dsk_meteo_disegna_icona(cairo_t *cr, const GdkRGBA *testo, int codice, i
 
 typedef struct {
     int codice, giorno, lato;
+    bool ombra; /* stile «Senza fondo»: ombra morbida dietro l'icona */
 } DatiIcona;
 
 static void icona_disegna(GtkDrawingArea *a, cairo_t *cr, int w, int h, gpointer dati)
@@ -267,13 +268,36 @@ static void icona_disegna(GtkDrawingArea *a, cairo_t *cr, int w, int h, gpointer
     GdkRGBA testo;
     gtk_widget_get_color(GTK_WIDGET(a), &testo);
     double l = w < h ? w : h;
-    ph_dsk_meteo_disegna_icona(cr, &testo, d->codice, d->giorno, (w - l) / 2.0, (h - l) / 2.0, l);
+    if (!d->ombra) {
+        ph_dsk_meteo_disegna_icona(cr, &testo, d->codice, d->giorno, (w - l) / 2.0, (h - l) / 2.0, l);
+        return;
+    }
+    /* Ombra: l'icona va in un gruppo; la sua sagoma, nera e quasi trasparente, si stampa piu' volte
+     * attorno a un punto un po' sotto (cairo non sfoca), poi l'icona vera sopra. Il nero e' fisso: e'
+     * l'ombra sullo sfondo del desktop, che non ha mai un tema. */
+    cairo_push_group(cr);
+    double r = l > 16 ? l - 8 : l; /* 4 px di margine per lato: l'ombra (fino a 4,5 px sotto) non si taglia */
+    ph_dsk_meteo_disegna_icona(cr, &testo, d->codice, d->giorno, (w - r) / 2.0, (h - r) / 2.0, r);
+    cairo_pattern_t *icona = cairo_pop_group(cr);
+    enum { PUNTI = 12 };
+    for (int i = 0; i < PUNTI; i++) {
+        double a = 2.0 * G_PI * i / PUNTI;
+        cairo_save(cr);
+        cairo_translate(cr, 2.5 * cos(a), 2.0 + 2.5 * sin(a));
+        cairo_set_source_rgba(cr, 0, 0, 0, 0.06);
+        cairo_mask(cr, icona);
+        cairo_restore(cr);
+    }
+    cairo_set_source(cr, icona);
+    cairo_paint(cr);
+    cairo_pattern_destroy(icona);
 }
 
-GtkWidget *ph_dsk_meteo_icona_nuova(int codice, int giorno, int lato)
+static GtkWidget *icona_crea(int codice, int giorno, int lato, bool ombra)
 {
     GtkWidget *a = gtk_drawing_area_new();
     DatiIcona *d = g_new0(DatiIcona, 1);
+    d->ombra = ombra;
     d->codice = codice;
     d->giorno = giorno;
     d->lato = lato;
@@ -283,6 +307,16 @@ GtkWidget *ph_dsk_meteo_icona_nuova(int codice, int giorno, int lato)
     gtk_widget_set_halign(a, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(a, GTK_ALIGN_CENTER);
     return a;
+}
+
+GtkWidget *ph_dsk_meteo_icona_nuova(int codice, int giorno, int lato)
+{
+    return icona_crea(codice, giorno, lato, false);
+}
+
+GtkWidget *ph_dsk_meteo_icona_nuova_ombra(int codice, int giorno, int lato)
+{
+    return icona_crea(codice, giorno, lato, true);
 }
 
 /* ---- Barra di un giorno (minima-massima) ------------------------------------------------------------ */

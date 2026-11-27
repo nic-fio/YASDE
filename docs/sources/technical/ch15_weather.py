@@ -45,7 +45,7 @@ S2 = p("The chain is: widget, " + c("ph_srv_meteo_osserva") + ", the real backen
     "(off, denied, none known, phone not connected). " + c("ph_srv_meteo_fonte") + " says where the data come from.",
     "<b>Place name in the widget:</b> from the phone's geocoder when the position is the phone's, from the chosen result when the city is manual. The title is " + ui("Weather — {localita}") + ", or just " + ui("Weather") + " without a name.",
     "<b>Unavailable</b> service: the widget says " + ui("Weather forecast not available right now.") + " with the time of the last data if there is one.",
-    "<b>Styles.</b> The widget has six drawings (now, hours, week, compact, today, curve; the code names are " + c("PH_DSK_METEO_*") + "), chosen from its menu and remembered in the profile.",
+    "<b>Styles.</b> The widget has seven drawings (now, hours, week, compact, today, curve, no background; the code names are " + c("PH_DSK_METEO_*") + "), chosen from its menu and remembered in the profile.",
 ])
 
 S3 = p("The piece is written from scratch on top of OpenSSL (already a dependency for ADB): no new library.", lead=True) + table(["Part", "File", "Behavior"], [

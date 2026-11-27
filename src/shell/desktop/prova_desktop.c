@@ -33,6 +33,92 @@ static int errori = 0;
         }                                                                                    \
     } while (0)
 
+/* ---- Stile «Senza fondo» (orologio e meteo): numeri, nomi, forma, misure ---- */
+static void prova_senza_fondo(void)
+{
+    /* I numeri degli stili esistenti non cambiano (i profili salvati restano validi); il nuovo e' in fondo. */
+    VERIFICA(PH_DSK_OROLOGIO_SENZA_FONDO == 6 && PH_DSK_OROLOGIO_STILI == 7);
+    VERIFICA(PH_DSK_OROLOGIO_DOPPIO_FUSO == 5 && PH_DSK_OROLOGIO_DIGITALE == 0);
+    VERIFICA(PH_DSK_METEO_SENZA_FONDO == 6 && PH_DSK_METEO_STILI == 7 && PH_DSK_METEO_CURVA == 5);
+    /* Valido: il 6 resta, il 7 e oltre torna al primo. */
+    VERIFICA(ph_dsk_stile_valido_di(PH_CFG_WIDGET_OROLOGIO, 6) == 6 && ph_dsk_stile_valido_di(PH_CFG_WIDGET_OROLOGIO, 7) == 0);
+    VERIFICA(ph_dsk_stile_valido_di(PH_CFG_WIDGET_METEO, 6) == 6 && ph_dsk_stile_valido_di(PH_CFG_WIDGET_METEO, 7) == 0);
+    VERIFICA(ph_dsk_stili_n(PH_CFG_WIDGET_OROLOGIO) == 7 && ph_dsk_stili_n(PH_CFG_WIDGET_METEO) == 7);
+    /* Nome: italiano e inglese; l'ultimo dell'elenco e' questo, poi NULL. */
+    VERIFICA_STR(ph_dsk_stile_nome_di(PH_CFG_WIDGET_OROLOGIO, 6), "Senza fondo");
+    VERIFICA_STR(ph_dsk_stile_nome_di(PH_CFG_WIDGET_METEO, 6), "Senza fondo");
+    VERIFICA(ph_dsk_stile_nome_di(PH_CFG_WIDGET_OROLOGIO, 7) == NULL && ph_dsk_stile_nome_di(PH_CFG_WIDGET_METEO, 7) == NULL);
+    ph_lingua_imposta(PH_LINGUA_EN);
+    VERIFICA_STR(ph_dsk_stile_nome_di(PH_CFG_WIDGET_OROLOGIO, 6), "No background");
+    VERIFICA_STR(ph_dsk_stile_nome_di(PH_CFG_WIDGET_METEO, 6), "No background");
+    ph_lingua_imposta(PH_LINGUA_IT);
+    /* Chi e' senza fondo: solo l'ultimo stile di orologio e meteo. */
+    for (unsigned s = 0; s < 8; s++) {
+        VERIFICA(ph_dsk_senza_fondo(PH_CFG_WIDGET_OROLOGIO, s) == (s == 6));
+        VERIFICA(ph_dsk_senza_fondo(PH_CFG_WIDGET_METEO, s) == (s == 6));
+        VERIFICA(!ph_dsk_senza_fondo(PH_CFG_WIDGET_BATTERIA, s) && !ph_dsk_senza_fondo(PH_CFG_WIDGET_CALENDARIO_MESE, s));
+    }
+    /* Forma: mattonella (limiti, ridimensionamento dall'angolo e trascinamento come le mattonelle). */
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_OROLOGIO, 6) == PH_DSK_FORMA_MATTONELLA);
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_METEO, 6) == PH_DSK_FORMA_MATTONELLA);
+    static const PhCfgWidgetTipo tipi[2] = {PH_CFG_WIDGET_OROLOGIO, PH_CFG_WIDGET_METEO};
+    for (int k = 0; k < 2; k++) {
+        PhCfgWidgetTipo t = tipi[k];
+        PhDskLimiti l = ph_dsk_misura_limiti(t, 6);
+        VERIFICA(l.max.larghezza == 480 && l.max.altezza == 640); /* i massimi della mattonella */
+        VERIFICA(l.min.larghezza >= 200 && l.min.altezza >= 100 && l.min.larghezza <= 240);
+        PhDskMisura p = ph_dsk_misura_equivalente(t, 6, PH_CFG_WIDGET_PICCOLO);
+        PhDskMisura m = ph_dsk_misura_equivalente(t, 6, PH_CFG_WIDGET_MEDIO);
+        PhDskMisura g = ph_dsk_misura_equivalente(t, 6, PH_CFG_WIDGET_GRANDE);
+        VERIFICA(p.larghezza == l.min.larghezza && p.altezza == l.min.altezza);
+        VERIFICA(p.larghezza < m.larghezza && m.larghezza < g.larghezza && p.altezza < m.altezza && m.altezza < g.altezza);
+        /* Ogni misura equivalente ritrova il suo livello. */
+        VERIFICA(ph_dsk_livello(t, 6, p) == PH_CFG_WIDGET_PICCOLO && ph_dsk_livello(t, 6, m) == PH_CFG_WIDGET_MEDIO &&
+                 ph_dsk_livello(t, 6, g) == PH_CFG_WIDGET_GRANDE);
+        /* Il vincolo non e' quello tondo: larghezza e altezza restano indipendenti, entro i limiti. */
+        PhDskMisura v = ph_dsk_misura_vincola(t, 6, (PhDskMisura){400, 300});
+        VERIFICA(v.larghezza == 400 && v.altezza == 300);
+        v = ph_dsk_misura_vincola(t, 6, (PhDskMisura){10, 10});
+        VERIFICA(v.larghezza == l.min.larghezza && v.altezza == l.min.altezza);
+        v = ph_dsk_misura_vincola(t, 6, (PhDskMisura){9999, 9999});
+        VERIFICA(v.larghezza == 480 && v.altezza == 640);
+        /* Ridimensionamento dall'angolo: l'angolo in alto a sinistra resta fermo (destra cala di quanto cresce). */
+        PhDskMisura nuova;
+        int destra = 0;
+        VERIFICA(ph_dsk_ridimensiona(t, 6, m, 300, 20, 40, 24, 800, &nuova, &destra));
+        VERIFICA(nuova.larghezza == m.larghezza + 40 && nuova.altezza == m.altezza + 24 && destra == 300 - 40);
+        /* Cambio di stile: da e verso Senza fondo la misura si tiene (stessa forma), entro i limiti. */
+        for (unsigned altro = 0; altro < 6; altro++) {
+            if (ph_dsk_forma(t, altro) != PH_DSK_FORMA_MATTONELLA)
+                continue;
+            PhDskMisura a = ph_dsk_misura_cambio_stile(t, altro, 6, (PhDskMisura){420, 380});
+            VERIFICA(a.larghezza == 420 && a.altezza == 380);
+            PhDskMisura b = ph_dsk_misura_cambio_stile(t, 6, altro, (PhDskMisura){420, 380});
+            PhDskMisura atteso = ph_dsk_misura_vincola(t, altro, (PhDskMisura){420, 380}); /* la misura si tiene, entro i limiti */
+            VERIFICA(b.larghezza == atteso.larghezza && b.altezza == atteso.altezza);
+        }
+        PhDskMisura piccola = ph_dsk_misura_cambio_stile(t, 0, 6, (PhDskMisura){200, 60});
+        VERIFICA(piccola.larghezza == l.min.larghezza && piccola.altezza == l.min.altezza);
+    }
+    /* Orologio: dal tondo si riparte dall'equivalente (cambia la forma). */
+    PhDskMisura da_tondo = ph_dsk_misura_cambio_stile(PH_CFG_WIDGET_OROLOGIO, PH_DSK_OROLOGIO_CLASSICO, 6, (PhDskMisura){184, 184});
+    VERIFICA(da_tondo.larghezza == 0 && da_tondo.altezza == 0);
+    /* Profilo senza misure: parte dall'equivalente al livello salvato. */
+    PhDskMisura da_profilo = ph_dsk_misura_da_profilo(PH_CFG_WIDGET_METEO, 6, PH_CFG_WIDGET_MEDIO, 0, 0);
+    VERIFICA(da_profilo.larghezza == ph_dsk_misura_equivalente(PH_CFG_WIDGET_METEO, 6, PH_CFG_WIDGET_MEDIO).larghezza);
+    /* Meteo: senza fondo niente curva ne' giorni, a nessuna misura; il numero cresce con la larghezza. */
+    for (int l = 200; l <= 480; l += 40)
+        for (int a = 100; a <= 640; a += 90) {
+            PhDskMeteoSezioni s = ph_dsk_meteo_sezioni_stile(PH_DSK_METEO_SENZA_FONDO, l, a);
+            VERIFICA(!s.curva && s.n_giorni == 0 && s.n_ore == 0);
+            VERIFICA(s.testo == (l >= PH_DSK_METEO_ADESSO_LARG_TESTO));
+            VERIFICA(s.corpo_temp == (l >= 300 ? 2 : 1));
+        }
+    VERIFICA(ph_dsk_meteo_sezioni_stile(PH_DSK_METEO_ADESSO, 400, 400).curva); /* gli altri stili restano com'erano */
+    /* Il minimo del meteo senza fondo tiene luogo e condizione. */
+    VERIFICA(ph_dsk_misura_limiti(PH_CFG_WIDGET_METEO, 6).min.larghezza >= PH_DSK_METEO_ADESSO_LARG_TESTO);
+}
+
 /* ---- Griglia ---- */
 static void prova_griglia(void)
 {
@@ -1513,7 +1599,7 @@ static void prova_calendario_mese(void)
     ph_dsk_altri_testo(5, o, sizeof o);
     VERIFICA_STR(o, "and 5 more");
     ph_lingua_imposta(PH_LINGUA_IT);
-    VERIFICA(ph_dsk_stili_n(PH_CFG_WIDGET_OROLOGIO) == 6 && ph_dsk_stili_n(PH_CFG_WIDGET_CALENDARIO_MESE) == 3 &&
+    VERIFICA(ph_dsk_stili_n(PH_CFG_WIDGET_OROLOGIO) == 7 && ph_dsk_stili_n(PH_CFG_WIDGET_CALENDARIO_MESE) == 3 &&
              ph_dsk_stili_n(PH_CFG_WIDGET_BATTERIA) == 1);
     VERIFICA(ph_dsk_stile_valido_di(PH_CFG_WIDGET_CALENDARIO_MESE, 3) == 0 && ph_dsk_stile_valido_di(PH_CFG_WIDGET_CALENDARIO_MESE, 2) == 2);
     VERIFICA_STR(ph_dsk_stile_nome_di(PH_CFG_WIDGET_CALENDARIO_MESE, 1), "Settimana");
@@ -1789,9 +1875,9 @@ static void prova_meteo(void)
         VERIFICA(ph_dsk_meteo_n_giorni(PH_DSK_METEO_SETTIMANA, (PhCfgWidgetDim)dd) <= PH_METEO_GIORNI_MAX);
     }
     VERIFICA(ph_dsk_meteo_n_dettagli(PH_CFG_WIDGET_PICCOLO) == 2 && ph_dsk_meteo_n_dettagli(PH_CFG_WIDGET_GRANDE) == 4);
-    VERIFICA(ph_dsk_stili_n(PH_CFG_WIDGET_METEO) == PH_DSK_METEO_STILI && PH_DSK_METEO_STILI == 6);
+    VERIFICA(ph_dsk_stili_n(PH_CFG_WIDGET_METEO) == PH_DSK_METEO_STILI && PH_DSK_METEO_STILI == 7);
     VERIFICA_STR(ph_dsk_stile_nome_di(PH_CFG_WIDGET_METEO, PH_DSK_METEO_ORE), "Ore");
-    VERIFICA(ph_dsk_stile_nome_di(PH_CFG_WIDGET_METEO, 6) == NULL);
+    VERIFICA(ph_dsk_stile_nome_di(PH_CFG_WIDGET_METEO, 7) == NULL);
 
     /* Barre della settimana. */
     PhMeteoGiorno gg[3];
@@ -2209,6 +2295,7 @@ int main(void)
 {
     ph_lingua_imposta(PH_LINGUA_IT);
     prova_griglia();
+    prova_senza_fondo();
     prova_cella_libera();
     prova_disponi();
     prova_widget_posto();
@@ -2240,6 +2327,25 @@ int main(void)
     if (ph_shell_stile_controlla("/it/yasde/shell/desktop.css") != 0) {
         fprintf(stderr, "desktop.css: errori di sintassi\n");
         errori++;
+    }
+    /* Senza fondo: il CSS dà al testo l'ombra morbida (anche alle icone) e il colore bianco, tutti da variabili. */
+    {
+        GBytes *css = g_resources_lookup_data("/it/yasde/shell/desktop.css", G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
+        const char *t = css != NULL ? g_bytes_get_data(css, NULL) : "";
+        const char *l = strstr(t, ".ph-desktop-senza-fondo label {");
+        const char *fine = l != NULL ? strchr(l, '}') : NULL;
+        char *regola = fine != NULL ? g_strndup(l, (gsize)(fine - l)) : g_strdup("");
+        VERIFICA(strstr(regola, "text-shadow") != NULL && strstr(regola, "var(--ph-desktop-ombra") != NULL);
+        VERIFICA(strstr(regola, "color: var(--ph-desktop-bianco)") != NULL);
+        g_free(regola);
+        VERIFICA(strstr(t, ".ph-desktop-senza-fondo button.ph-desktop-meteo-attrib:hover .ph-desktop-meteo-attrib-testo {") != NULL);
+        l = strstr(t, ".ph-desktop-senza-fondo image {");
+        fine = l != NULL ? strchr(l, '}') : NULL;
+        regola = fine != NULL ? g_strndup(l, (gsize)(fine - l)) : g_strdup("");
+        VERIFICA(strstr(regola, "-gtk-icon-shadow") != NULL);
+        g_free(regola);
+        if (css != NULL)
+            g_bytes_unref(css);
     }
     /* Vetro (fase 5): nel CSS del pezzo nessun colore scritto a mano fuori dalle eccezioni marcate
      * «colore-dato» (icone sopra lo sfondo, tinte, ombre). Rilevatore comune (shell/prova_css.h). */

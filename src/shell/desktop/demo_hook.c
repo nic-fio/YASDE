@@ -20,6 +20,7 @@ void ph_demo_finto_comando(const char *c);   /* demo.c */
 static void stress_avvia(PhShell *sh);
 void ph_demo_controlli(PhShell *sh, const char *cosa); /* agente D: demo_controlli.c */
 void ph_demo_note(PhShell *sh, const char *cosa);      /* Note rapide: demo_note.c */
+void ph_demo_senzafondo(PhShell *sh, const char *cosa); /* stile «Senza fondo»: demo_senzafondo.c */
 /* agente A: inizio */
 static void vecchi_avvia(PhShell *sh, PhDesktop *d, PhCfgTelefono *p); /* in fondo al file */
 static void vecchi_foto(PhDesktop *d, PhCfgTelefono *p, const char *quale);
@@ -782,6 +783,11 @@ void ph_demo_mostra(PhShell *sh, const char *cosa)
     /* Note rapide: prova a schermo (demo_note.c) */
     if (cosa != NULL && strncmp(cosa, "note-", 5) == 0) {
         ph_demo_note(sh, cosa);
+        return;
+    }
+    /* Stile «Senza fondo» di orologio e meteo (demo_senzafondo.c) */
+    if (cosa != NULL && strncmp(cosa, "senzafondo", 10) == 0) {
+        ph_demo_senzafondo(sh, cosa);
         return;
     }
     /* agente C: prova a schermo del Meteo, stile «Adesso» (demo_meteo.c) */

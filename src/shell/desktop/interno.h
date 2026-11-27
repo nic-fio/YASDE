@@ -30,6 +30,7 @@ struct PhDskWidget {
     PhDskForma forma;
     int percento;           /* riempimento della barra dell'ultima vista (-1 = nessuna barra) */
     int raggio;             /* raggio con cui il vetro e' registrato (segue la misura) */
+    bool senza_fondo;       /* stile «Senza fondo»: nessun vetro registrato, nessun fondo */
 
     GtkWidget *scheda, *interno, *maniglia, *titolo, *testa, *sotto, *barra, *pieno, *quadrante;
     GtkWidget *corpo;       /* contenuto proprio dei widget nuovi (wx_*.c), nascosto se non serve */
@@ -259,6 +260,8 @@ void ph_dsk_apri_uri(PhDesktop *d, GCancellable *annulla, const char *uri);
 void ph_dsk_meteo_disegna_icona(cairo_t *cr, const GdkRGBA *testo, int codice, int giorno, double x, double y,
                                 double lato);
 GtkWidget *ph_dsk_meteo_icona_nuova(int codice, int giorno, int lato);
+/* Come sopra, con un'ombra morbida scura dietro (stile «Senza fondo»: l'icona sta sullo sfondo). */
+GtkWidget *ph_dsk_meteo_icona_nuova_ombra(int codice, int giorno, int lato);
 GtkWidget *ph_dsk_meteo_barra_nuova(bool c_e, double da, double a);
 /* t[i]: temperature delle ore (tutte note), ore[i]: «HH»; n >= 2 per disegnare qualcosa. */
 GtkWidget *ph_dsk_meteo_curva_nuova(const double *t, const char (*ore)[4], size_t n, int altezza);

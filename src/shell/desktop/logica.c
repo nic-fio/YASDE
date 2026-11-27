@@ -250,6 +250,8 @@ static Equivalenti equivalenti(PhCfgWidgetTipo tipo, unsigned stile)
         case PH_DSK_OROLOGIO_PALETTE: return (Equivalenti){{{200, 90}, {250, 136}, {320, 156}}};
         case PH_DSK_OROLOGIO_TESTUALE: return (Equivalenti){{{200, 106}, {250, 128}, {320, 128}}};
         case PH_DSK_OROLOGIO_DOPPIO_FUSO: return (Equivalenti){{{200, 100}, {250, 122}, {320, 122}}};
+        /* Senza fondo: l'ora e' piu' grande (48 px) e non c'e' scheda a contenerla: piu' alto del digitale. */
+        case PH_DSK_OROLOGIO_SENZA_FONDO: return (Equivalenti){{{200, 112}, {250, 128}, {320, 144}}};
         default: return (Equivalenti){{{200, 80}, {250, 100}, {320, 100}}};
         }
     case PH_CFG_WIDGET_CALENDARIO: return (Equivalenti){{{200, 110}, {250, 150}, {320, 210}}};
@@ -264,6 +266,10 @@ static Equivalenti equivalenti(PhCfgWidgetTipo tipo, unsigned stile)
     case PH_CFG_WIDGET_METEO:
         if (stile == PH_DSK_METEO_ADESSO)
             return (Equivalenti){{{200, 200}, {250, 230}, {320, 300}}};
+        /* Senza fondo: icona, temperatura, luogo e condizione (niente curva ne' giorni); il minimo e' largo
+         * quanto serve al luogo accanto al numero (PH_DSK_METEO_ADESSO_LARG_TESTO). */
+        if (stile == PH_DSK_METEO_SENZA_FONDO)
+            return (Equivalenti){{{240, 120}, {280, 140}, {320, 180}}};
         return (Equivalenti){{{200, 150}, {250, 210}, {320, 300}}};
     case PH_CFG_WIDGET_CALENDARIO_MESE: return (Equivalenti){{{200, 110}, {250, 290}, {320, 420}}};
     case PH_CFG_WIDGET_SVEGLIA: return (Equivalenti){{{200, 72}, {250, 80}, {320, 104}}};
@@ -1036,7 +1042,8 @@ const char *ph_dsk_stile_nome(unsigned stile)
 {
     static const char *const nomi[PH_DSK_OROLOGIO_STILI] = {
         PH_T_("Digitale"),         PH_T_("Analogico classico"), PH_T_("Analogico essenziale"),
-        PH_T_("A palette"),        PH_T_("Testuale"),           PH_T_("Doppio fuso")};
+        PH_T_("A palette"),        PH_T_("Testuale"),           PH_T_("Doppio fuso"),
+        PH_T_("Senza fondo")};
     return stile < PH_DSK_OROLOGIO_STILI ? ph_tv(nomi[stile]) : NULL;
 }
 

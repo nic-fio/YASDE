@@ -60,6 +60,33 @@ button.ph-desktop-icona:hover { background-color: rgba(255, 255, 255, 0.14); } /
               inset 0 1px 0 var(--ph-vetro-scuro-luce),
               0 8px 24px rgba(0, 0, 0, 0.35); /* colore-dato: ombra sopra lo sfondo del desktop */
 }
+/* ---- Stile «Senza fondo» (orologio e meteo): nessun vetro, fondo o bordo (widget.c non registra il
+ * vetro e mette questa classe); il contenuto sta direttamente sullo sfondo del desktop: testo bianco con
+ * un'ombra morbida scura (due strati, uno stretto e uno largo) perche' si legga su qualunque sfondo.
+ * Le variabili dell'ombra stanno qui, i colori fissi nel resto del file no. ---- */
+.ph-desktop-senza-fondo {
+  --ph-desktop-bianco: #ffffff;                       /* colore-dato: testo scritto sullo sfondo, senza vetro */
+  --ph-desktop-ombra-stretta: rgba(0, 0, 0, 0.55);    /* colore-dato: ombra del testo sullo sfondo del desktop */
+  --ph-desktop-ombra-larga: rgba(0, 0, 0, 0.40);      /* colore-dato: alone morbido del testo sullo sfondo */
+  --ph-desktop-maniglia-fondo: rgba(0, 0, 0, 0.35);   /* colore-dato: la maniglia si vede anche su uno sfondo chiaro */
+  color: var(--ph-desktop-bianco);
+}
+.ph-desktop-senza-fondo label {
+  color: var(--ph-desktop-bianco);
+  text-shadow: 0 1px 2px var(--ph-desktop-ombra-stretta), 0 2px 14px var(--ph-desktop-ombra-larga);
+}
+.ph-desktop-senza-fondo image {
+  -gtk-icon-shadow: 0 1px 2px var(--ph-desktop-ombra-stretta), 0 2px 14px var(--ph-desktop-ombra-larga);
+}
+.ph-desktop-senza-fondo .ph-desktop-w-testa.ph-desktop-w-grande { font-size: 48px; }
+.ph-desktop-senza-fondo .ph-desktop-w-sotto { font-size: 14px; }
+.ph-desktop-senza-fondo .ph-desktop-meteo-attrib-testo { opacity: 0.85; }
+/* Anche al passaggio del mouse: la regola dell'attribuzione (colore del tema) e' piu' specifica di quella dell'etichetta. */
+.ph-desktop-senza-fondo button.ph-desktop-meteo-attrib:hover .ph-desktop-meteo-attrib-testo { color: var(--ph-desktop-bianco); }
+.ph-desktop-senza-fondo .ph-desktop-maniglia {
+  border-color: var(--ph-desktop-bianco);
+  background-color: var(--ph-desktop-maniglia-fondo);
+}
 /* La finestra che ritaglia il contenuto non disegna nulla di suo. */
 .ph-desktop-widget scrolledwindow,
 .ph-desktop-widget viewport {
