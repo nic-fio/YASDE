@@ -557,6 +557,37 @@ static void leggi_sfondo(const PhTomlTabella *g, PhCfgSfondo *s)
         memcpy(s->immagine, nome, strlen(nome) + 1);
 }
 
+/* Testo delle note rapide. Il lettore TOML ha gia' garantito UTF-8 valido (un file con
+ * byte non validi o con un carattere di controllo scritto in chiaro e' un errore di
+ * sintassi di tutto il file, non di questo campo) e gli escape \\n \\t \\r \\u.
+ * Qui: si toglie ogni '\r' (\r\n diventa \n); un altro carattere di controllo
+ * (comprese le sequenze \u00XX) azzera il testo; se non entra si tronca a un
+ * confine di carattere. Il testo e' dell'utente: mai in un messaggio. */
+static void leggi_note(const PhTomlTabella *g, char *dst, size_t cap)
+{
+    const PhTomlVoce *v = ph_toml_voce(g, "testo", PH_TOML_STRINGA);
+    if (v == NULL)
+        return;
+    size_t n = 0;
+    for (const unsigned char *p = (const unsigned char *)v->s; *p != '\0'; p++) {
+        if (*p == '\r')
+            continue;
+        if ((*p < 0x20 && *p != '\n' && *p != '\t') || *p == 0x7F) {
+            dst[0] = '\0';
+            return;
+        }
+        if (n < cap) /* oltre il limite si continua solo a controllare */
+            dst[n] = (char)*p;
+        n++;
+    }
+    if (n >= cap) {
+        n = cap - 1;
+        while (n > 0 && ((unsigned char)dst[n] & 0xC0) == 0x80) /* in mezzo a un carattere: indietro */
+            n--;
+    }
+    dst[n] = '\0';
+}
+
 int ph_cfg_telefono_da_testo(const char *testo, size_t lunghezza, PhCfgTelefono *t, PhErrore *e)
 {
     ph_cfg_telefono_predefinito(t);
@@ -674,8 +705,24 @@ int ph_cfg_telefono_da_testo(const char *testo, size_t lunghezza, PhCfgTelefono 
             t->meteo_luogo_lon_centesimi = (int32_t)lon->i;
         }
     }
+    if ((g = tabella(&doc, "note")) != NULL)
+        leggi_note(g, t->note, sizeof t->note);
     ph_toml_libera(&doc);
     return 0;
+}
+
+/* Una nota si scrive solo se si rilegge: niente caratteri di controllo (tranne \n \t \r).
+ * Che la riga `testo = "..."` entri sempre nel limite del lettore, anche nel caso peggiore
+ * (ogni byte raddoppia: virgolette, barre, \n, \t, \r), lo garantisce il controllo fatto
+ * alla compilazione qui sotto: non serve un ramo a tempo di esecuzione. */
+_Static_assert(2 * (PH_CFG_LUN_NOTE - 1) + 10 <= PH_TOML_MAX_RIGA,
+               "una nota valida deve stare in una riga TOML");
+static bool note_scrivibile(const char *s)
+{
+    for (const unsigned char *p = (const unsigned char *)s; *p != '\0'; p++)
+        if ((*p < 0x20 && *p != '\n' && *p != '\t' && *p != '\r') || *p == 0x7F)
+            return false;
+    return true;
 }
 
 int ph_cfg_telefono_in_testo(const PhCfgTelefono *t, PhBuffer *out)
@@ -725,6 +772,15 @@ int ph_cfg_telefono_in_testo(const PhCfgTelefono *t, PhBuffer *out)
         SCRIVI(ph_toml_scrivi_stringa(out, "dettaglio", t->meteo_luogo_dettaglio));
         SCRIVI(ph_toml_scrivi_intero(out, "lat_centesimi", t->meteo_luogo_lat_centesimi));
         SCRIVI(ph_toml_scrivi_intero(out, "lon_centesimi", t->meteo_luogo_lon_centesimi));
+    }
+    /* Note rapide: solo se non vuote, chiuse dentro il campo e rileggibili. Stessa regola
+     * della lettura: un carattere di controllo (diverso da \n \t \r) darebbe testo vuoto,
+     * e il writer lo scrive come \u00XX (6 byte): migliaia di questi farebbero una riga
+     * oltre il limite del lettore, che rifiuterebbe TUTTO il profilo. Quindi non si scrive. */
+    const void *fine_note = memchr(t->note, '\0', sizeof t->note);
+    if (t->note[0] != '\0' && fine_note != NULL && note_scrivibile(t->note)) {
+        SCRIVI(ph_toml_scrivi_tabella(out, "note", false));
+        SCRIVI(ph_toml_scrivi_stringa(out, "testo", t->note));
     }
     for (size_t i = 0; i < t->n_aperture && i < PH_CFG_MAX_APERTURE; i++) {
         SCRIVI(ph_toml_scrivi_tabella(out, "apertura", true));

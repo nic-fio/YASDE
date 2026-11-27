@@ -123,6 +123,8 @@ static bool uguali_telefono(const PhCfgTelefono *a, const PhCfgTelefono *b)
                                    a->meteo_luogo_lat_centesimi != b->meteo_luogo_lat_centesimi ||
                                    a->meteo_luogo_lon_centesimi != b->meteo_luogo_lon_centesimi)))
         return false;
+    if (strcmp(a->note, b->note) != 0)
+        return false;
     if (a->n_fissate != b->n_fissate || a->n_aperture != b->n_aperture)
         return false;
     for (size_t i = 0; i < a->n_aperture && i < PH_CFG_MAX_APERTURE; i++)
@@ -191,6 +193,7 @@ static PhCfgTelefono *telefono_ricco(void)
     strcpy(t->meteo_luogo_dettaglio, "Regione Finta");
     t->meteo_luogo_lat_centesimi = -1234;
     t->meteo_luogo_lon_centesimi = 5678;
+    strcpy(t->note, "Riga uno\n\"virgolette\" e barra \\\n\tcon tab \xC3\xA8");
     return t;
 }
 
@@ -1817,6 +1820,214 @@ static void prova_meteo_luogo(void)
     ph_cfg_telefono_libera(r);
 }
 
+/* ---------- note rapide ---------- */
+
+/* File con [note] testo = "<corpo>" (corpo gia' scritto in TOML). */
+static int leggi_note_toml(const char *corpo, PhCfgTelefono *r, PhErrore *e)
+{
+    PhBuffer l = PH_BUFFER_VUOTO;
+    int rr = -2;
+    if (ph_buffer_aggiungi(&l, "[note]\ntesto = \"", 16) == 0 && ph_buffer_aggiungi(&l, corpo, strlen(corpo)) == 0 &&
+        ph_buffer_aggiungi(&l, "\"\n", 2) == 0)
+        rr = leggi_tel((char *)l.dati, l.lunghezza, r, e);
+    ph_buffer_libera(&l);
+    return rr;
+}
+
+/* Scrive t, rilegge in r e torna 1 se r e' identico a t. */
+static int note_andata_ritorno(PhCfgTelefono *t, PhCfgTelefono *r, PhBuffer *b, PhErrore *e)
+{
+    ph_buffer_svuota(b);
+    return ph_cfg_telefono_in_testo(t, b) == 0 && leggi_tel((char *)b->dati, b->lunghezza, r, e) == 0 && uguali_telefono(t, r) &&
+           strcmp(t->note, r->note) == 0;
+}
+
+static void prova_note(void)
+{
+    PhErrore e = {{0}};
+    PhCfgTelefono *t = ph_cfg_telefono_nuovo(), *r = ph_cfg_telefono_nuovo();
+    PhBuffer b = PH_BUFFER_VUOTO;
+    /* predefinito: vuoto, e non si scrive nessuna tabella */
+    CONTROLLA(t->note[0] == '\0');
+    CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0 && strstr((char *)b.dati, "[note]") == NULL);
+    CONTROLLA(note_andata_ritorno(t, r, &b, &e) && r->note[0] == '\0');
+    /* andata e ritorno: piu' righe, virgolette, barre, tab, UTF-8 a 2, 3 e 4 byte */
+    const char *testi[] = {
+        "una riga",
+        "uno\ndue\n\ntre\n",
+        "dice \"ciao\" e \\ barra \\\\ doppia \\n non-a-capo",
+        "\ttab\tdentro\t",
+        "\xC3\xA8 \xE2\x82\xAC \xF0\x9F\x98\x80 fine",
+        "\n",
+    };
+    for (size_t i = 0; i < sizeof testi / sizeof *testi; i++) {
+        strcpy(t->note, testi[i]);
+        CONTROLLA(note_andata_ritorno(t, r, &b, &e));
+        CONTROLLA(strstr((char *)b.dati, "[note]\ntesto = \"") != NULL);
+    }
+    /* il testo scritto ha gli escape, non a capo veri dentro la stringa */
+    strcpy(t->note, "a\nb\tc\"d\\e");
+    ph_buffer_svuota(&b);
+    CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0 && strstr((char *)b.dati, "testo = \"a\\nb\\tc\\\"d\\\\e\"\n") != NULL);
+    /* vuota: la chiave non si scrive, anche se c'e' roba oltre il terminatore */
+    t->note[0] = '\0';
+    t->note[1] = 'x';
+    ph_buffer_svuota(&b);
+    CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0 && strstr((char *)b.dati, "[note]") == NULL && strstr((char *)b.dati, "testo") == NULL);
+    /* campo senza terminatore (non dovrebbe esistere): non si scrive e non si legge fuori */
+    memset(t->note, 'z', sizeof t->note);
+    ph_buffer_svuota(&b);
+    CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0 && strstr((char *)b.dati, "[note]") == NULL);
+    /* profilo vecchio senza la tabella: vuoto */
+    const char *vecchio = "[audio]\nvolume = 10\n";
+    strcpy(r->note, "residuo");
+    CONTROLLA(leggi_tel(vecchio, strlen(vecchio), r, &e) == 0 && r->note[0] == '\0' && r->volume == 10);
+    /* tabella senza la chiave, o chiave di altro tipo: vuoto, il resto del file si legge */
+    const char *tipi[] = {"[note]\ntesto = 5\n[audio]\nvolume = 10\n", "[note]\ntesto = true\n[audio]\nvolume = 10\n",
+                          "[note]\naltro = \"x\"\n[audio]\nvolume = 10\n", "[note]\n[audio]\nvolume = 10\n"};
+    for (size_t i = 0; i < sizeof tipi / sizeof *tipi; i++) {
+        strcpy(r->note, "residuo");
+        CONTROLLA(leggi_tel(tipi[i], strlen(tipi[i]), r, &e) == 0 && r->note[0] == '\0' && r->volume == 10);
+    }
+    /* \r\n -> \n, \r isolato tolto, \r scritto come escape tolto */
+    CONTROLLA(leggi_note_toml("uno\\r\\ndue\\r\\n", r, &e) == 0 && strcmp(r->note, "uno\ndue\n") == 0);
+    CONTROLLA(leggi_note_toml("a\\rb\\r", r, &e) == 0 && strcmp(r->note, "ab") == 0);
+    CONTROLLA(leggi_note_toml("\\r\\r", r, &e) == 0 && r->note[0] == '\0');
+    /* stesso testo scritto da noi con un '\r' dentro: si rilegge senza */
+    strcpy(t->note, "x\r\ny");
+    ph_buffer_svuota(&b);
+    CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0 && leggi_tel((char *)b.dati, b.lunghezza, r, &e) == 0 && strcmp(r->note, "x\ny") == 0);
+    /* caratteri di controllo non ammessi (anche come \u): testo vuoto, il file si legge */
+    const char *ctrl[] = {"a\\u0001b", "a\\u001Fb", "a\\u007Fb", "a\\bb", "a\\fb", "\\u0007", "ok\\u0000"};
+    for (size_t i = 0; i < sizeof ctrl / sizeof *ctrl; i++) {
+        strcpy(r->note, "residuo");
+        int rr = leggi_note_toml(ctrl[i], r, &e);
+        if (i == 6) { /* \u0000 lo rifiuta il lettore: errore di sintassi, tutto predefinito */
+            CONTROLLA(rr < 0 && e_predefinito(r) && r->note[0] == '\0');
+        } else {
+            CONTROLLA(rr == 0 && r->note[0] == '\0');
+        }
+    }
+    /* stesso caso scritto da noi: un carattere di controllo nel campo si rilegge come testo vuoto */
+    strcpy(t->note, "a\x01" "b");
+    ph_buffer_svuota(&b);
+    CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0 && leggi_tel((char *)b.dati, b.lunghezza, r, &e) == 0 && r->note[0] == '\0');
+    /* UTF-8 non valido o controllo in chiaro nel file: errore del file intero (lettore TOML),
+     * tutto predefinito, e il messaggio non riporta il testo */
+    const char *rotti[] = {"[note]\ntesto = \"Segreto\xff\"\n[audio]\nvolume = 10\n",
+                           "[note]\ntesto = \"Segreto\x01\"\n[audio]\nvolume = 10\n",
+                           "[note]\ntesto = \"Segreto\xC3\"\n", "[note]\ntesto = \"Segreto\n"};
+    for (size_t i = 0; i < sizeof rotti / sizeof *rotti; i++) {
+        strcpy(r->note, "residuo");
+        CONTROLLA(leggi_tel(rotti[i], strlen(rotti[i]), r, &e) < 0 && strstr(e.testo, "Segreto") == NULL && e_predefinito(r) &&
+                  r->note[0] == '\0');
+    }
+    /* limite: 2047 byte entrano interi, 2048 e oltre si troncano a 2047 */
+    char *g = malloc(PH_CFG_LUN_NOTE + 16);
+    CONTROLLA(g != NULL);
+    if (g != NULL) {
+        memset(g, 'n', PH_CFG_LUN_NOTE + 8);
+        g[PH_CFG_LUN_NOTE - 1] = '\0'; /* 2047 */
+        CONTROLLA(leggi_note_toml(g, r, &e) == 0 && strlen(r->note) == PH_CFG_LUN_NOTE - 1 && strcmp(r->note, g) == 0);
+        strcpy(t->note, g);
+        CONTROLLA(note_andata_ritorno(t, r, &b, &e));
+        g[PH_CFG_LUN_NOTE - 1] = 'n'; /* 2048 */
+        g[PH_CFG_LUN_NOTE] = '\0';
+        CONTROLLA(leggi_note_toml(g, r, &e) == 0 && strlen(r->note) == PH_CFG_LUN_NOTE - 1 && strncmp(r->note, g, PH_CFG_LUN_NOTE - 1) == 0);
+        g[PH_CFG_LUN_NOTE] = 'n'; /* molto oltre */
+        g[PH_CFG_LUN_NOTE + 8] = '\0';
+        CONTROLLA(leggi_note_toml(g, r, &e) == 0 && strlen(r->note) == PH_CFG_LUN_NOTE - 1);
+        /* niente scritto oltre il campo (il successivo e' compatibilita[0]) */
+        CONTROLLA(r->compatibilita[0][0] == '\0' && r->compatibilita[0][1] == '\0' && r->n_compatibilita == 0);
+        /* taglio dentro un carattere a piu' byte: si torna al confine. Il carattere
+         * comincia al byte 2046 (2 byte: 2046-2047), 2045 (3 byte), 2044 (4 byte). */
+        const char *multi[] = {"\xC3\xA8", "\xE2\x82\xAC", "\xF0\x9F\x98\x80"};
+        for (size_t m = 0; m < 3; m++) {
+            size_t lm = strlen(multi[m]);
+            for (size_t inizio = PH_CFG_LUN_NOTE - 1 - lm; inizio + lm <= PH_CFG_LUN_NOTE - 1 + lm; inizio++) {
+                /* carattere multi[m] a partire da `inizio`, poi altre 'n'; il resto 'n' */
+                memset(g, 'n', PH_CFG_LUN_NOTE + 8);
+                memcpy(g + inizio, multi[m], lm);
+                g[PH_CFG_LUN_NOTE + 8] = '\0';
+                CONTROLLA(leggi_note_toml(g, r, &e) == 0);
+                size_t n = strlen(r->note);
+                CONTROLLA(n <= PH_CFG_LUN_NOTE - 1);
+                if (inizio + lm <= PH_CFG_LUN_NOTE - 1) {
+                    CONTROLLA(n == PH_CFG_LUN_NOTE - 1); /* il carattere entra intero */
+                } else {
+                    CONTROLLA(n == inizio); /* non entra: si taglia prima */
+                }
+                /* nessun carattere spezzato: l'ultimo byte non e' un lead rimasto solo */
+                CONTROLLA(n == 0 || ((unsigned char)r->note[n - 1] & 0xC0) != 0xC0);
+                /* e riscritto si rilegge identico */
+                strcpy(t->note, r->note);
+                CONTROLLA(note_andata_ritorno(t, r, &b, &e));
+            }
+        }
+        /* i \r tolti non contano nel limite: 2047 'n' con dei \r in mezzo entrano interi */
+        memset(g, 'n', PH_CFG_LUN_NOTE - 1);
+        g[PH_CFG_LUN_NOTE - 1] = '\0';
+        PhBuffer cr = PH_BUFFER_VUOTO;
+        int ok_cr = 0;
+        for (size_t i = 0; i < PH_CFG_LUN_NOTE - 1; i++) {
+            ok_cr |= ph_buffer_aggiungi(&cr, "n", 1);
+            if (i % 100 == 0)
+                ok_cr |= ph_buffer_aggiungi(&cr, "\\r", 2);
+        }
+        ok_cr |= ph_buffer_aggiungi(&cr, "", 1);
+        CONTROLLA(ok_cr == 0 && leggi_note_toml((char *)cr.dati, r, &e) == 0 && strlen(r->note) == PH_CFG_LUN_NOTE - 1 && strcmp(r->note, g) == 0);
+        ph_buffer_libera(&cr);
+        free(g);
+    }
+    /* 2047 caratteri di controllo: non si scrive la tabella, il profilo si rilegge intero
+     * (volume conservato), nota vuota. Vale per ogni controllo vietato, 0x7F compreso. */
+    const unsigned char vietati[] = {0x01, 0x08, 0x1F, 0x7F};
+    for (size_t i = 0; i < sizeof vietati; i++) {
+        ph_cfg_telefono_predefinito(t);
+        t->volume = 37;
+        memset(t->note, vietati[i], PH_CFG_LUN_NOTE - 1);
+        t->note[PH_CFG_LUN_NOTE - 1] = '\0';
+        ph_buffer_svuota(&b);
+        CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0 && strstr((char *)b.dati, "[note]") == NULL);
+        strcpy(r->note, "residuo");
+        CONTROLLA(leggi_tel((char *)b.dati, b.lunghezza, r, &e) == 0 && r->volume == 37 && r->note[0] == '\0');
+    }
+    /* un solo controllo in mezzo al testo: niente tabella (come la rilettura darebbe vuoto) */
+    ph_cfg_telefono_predefinito(t);
+    strcpy(t->note, "ciao\x02 mondo");
+    ph_buffer_svuota(&b);
+    CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0 && strstr((char *)b.dati, "[note]") == NULL);
+    /* caso peggiore valido: 2047 caratteri tutti da raddoppiare, si rileggono identici */
+    const char raddoppiano[] = {'"', '\\', '\n', '\t', '\r'};
+    for (size_t i = 0; i < sizeof raddoppiano; i++) {
+        ph_cfg_telefono_predefinito(t);
+        t->volume = 37;
+        memset(t->note, raddoppiano[i], PH_CFG_LUN_NOTE - 1);
+        t->note[PH_CFG_LUN_NOTE - 1] = '\0';
+        if (raddoppiano[i] == '\r') { /* il \r si toglie in lettura: nota vuota, profilo intero */
+            ph_buffer_svuota(&b);
+            CONTROLLA(ph_cfg_telefono_in_testo(t, &b) == 0 && leggi_tel((char *)b.dati, b.lunghezza, r, &e) == 0 &&
+                      r->volume == 37 && r->note[0] == '\0');
+        } else {
+            CONTROLLA(note_andata_ritorno(t, r, &b, &e) && r->volume == 37 && strlen(r->note) == PH_CFG_LUN_NOTE - 1);
+        }
+    }
+    /* su disco: salva e carica, identico; un file con la tabella rovinata non nomina il testo */
+    imposta_ambiente("note");
+    ph_cfg_telefono_predefinito(t);
+    strcpy(t->note, "Segreto\nsu\ndisco \xC3\xA8");
+    CONTROLLA(ph_cfg_telefono_salva("R5CT0000000", t, &e) == 0 && ph_cfg_telefono_carica("R5CT0000000", r, &e) == 0 &&
+              uguali_telefono(t, r) && strcmp(r->note, t->note) == 0);
+    char pf[800];
+    CONTROLLA(ph_cfg_percorso_telefono("R5CT0000000", pf, sizeof pf, &e) == 0);
+    const char *rotto2 = "[note]\ntesto = \"Segreto non chiuso\n";
+    CONTROLLA(ph_cfg_scrivi_file(pf, rotto2, strlen(rotto2), &e) == 0);
+    CONTROLLA(ph_cfg_telefono_carica("R5CT0000000", r, &e) == 1 && strstr(e.testo, "Segreto") == NULL && r->note[0] == '\0');
+    ph_buffer_libera(&b);
+    ph_cfg_telefono_libera(t);
+    ph_cfg_telefono_libera(r);
+}
+
 /* ---------- app in "Compatibilita'" ---------- */
 
 static void prova_compatibilita(void)
@@ -1941,6 +2152,7 @@ int main(void)
     prova_aperture();
     prova_compatibilita();
     prova_meteo_luogo();
+    prova_note();
     prova_decimali_virgola();
     nftw(radice, rm_voce, 16, FTW_DEPTH | FTW_PHYS);
     if (errori == 0)

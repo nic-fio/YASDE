@@ -169,6 +169,7 @@
 #define PH_CFG_LUN_APP 192      /* nome del pacchetto Android */
 #define PH_CFG_LUN_PERCORSO 1024
 #define PH_CFG_LUN_FILE_CACHE 128
+#define PH_CFG_LUN_NOTE 2048   /* testo delle note rapide: 2047 byte di UTF-8 + terminatore */
 #define PH_CFG_MAX_TELEFONI 64
 #define PH_CFG_MAX_ICONE 256
 #define PH_CFG_MAX_WIDGET 32
@@ -401,6 +402,25 @@ typedef struct {
     char meteo_luogo_dettaglio[128]; /* es. regione e paese; puo' essere vuoto */
     int32_t meteo_luogo_lat_centesimi; /* gradi * 100, -9000..9000 */
     int32_t meteo_luogo_lon_centesimi; /* gradi * 100, -18000..18000 */
+    /* Note rapide (widget "note"): un solo testo per telefono, scritto dall'utente sul
+     * PC; non viene dal telefono e non ci va. Chiave "testo" nella tabella [note],
+     * scritta solo se il testo non e' vuoto. UTF-8 valido, a capo ammessi ('\n';
+     * un '\r' letto si toglie), tabulazione ammessa, nessun altro carattere di
+     * controllo ASCII (byte < 0x20, ne' 0x7F); i caratteri U+0080-U+009F non si
+     * filtrano. In lettura: un carattere di controllo non ammesso arrivato come
+     * escape (\\b, \\f, \\u00XX) -> testo vuoto; chiave di altro tipo -> testo
+     * vuoto; piu' lungo del campo -> troncato a un confine di carattere. Come per
+     * ogni altra stringa del profilo, UTF-8 non valido o un carattere di controllo
+     * scritto in chiaro nel file sono un errore di sintassi dell'intero file (lo
+     * rifiuta il lettore TOML): YASDE non scrive mai un file cosi': un testo
+     * con un carattere di controllo non ammesso NON si scrive (la tabella [note]
+     * si salta: alla rilettura e' vuoto, come lo darebbe la lettura). In scrittura
+     * la stringa TOML ha gli escape necessari (\\, \", \n, \t) e un testo valido
+     * si rilegge identico; chi mette il testo nel campo (la shell) lo da' gia'
+     * valido: senza '\r', senza controlli, UTF-8 corretto. E' un dato
+     * dell'utente: mai in un log ne' in un messaggio d'errore. Predefinito:
+     * stringa vuota. */
+    char note[PH_CFG_LUN_NOTE];
     /* App con la voce "Compatibilita'" attiva (si disegnano rimpicciolite): solo
      * pacchetti, in ordine, validi come le app fissate, senza doppioni; file senza
      * [[compatibilita]] = nessuna. */
