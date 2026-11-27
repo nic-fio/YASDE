@@ -720,7 +720,17 @@ static void prova_catalogo(void)
     VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_STATO) != NULL);
     VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_NOTIFICHE) != NULL);
     VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_MEMORIA) != NULL);
-    VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_NOTE) == NULL);
+    /* Note rapide e' nel catalogo (una volta sola), con una descrizione. */
+    VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_NOTE) != NULL);
+    {
+        int voci = 0;
+        for (size_t i = 0; i < PH_DSK_CATALOGO_N; i++)
+            if (PH_DSK_CATALOGO[i].tipo == PH_CFG_WIDGET_NOTE) {
+                voci++;
+                VERIFICA(PH_DSK_CATALOGO[i].descrizione != NULL && PH_DSK_CATALOGO[i].descrizione[0] != '\0');
+            }
+        VERIFICA(voci == 1);
+    }
     VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_METEO) != NULL); /* il meteo e' nel catalogo (§18) */
     VERIFICA(ph_dsk_widget_nome(PH_CFG_WIDGET_RIPRODUZIONE) == NULL);
 }
@@ -740,6 +750,24 @@ static void prova_forme(void)
     VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_BATTERIA, 0) == PH_DSK_FORMA_TONDO);
     VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_SVEGLIA, 0) == PH_DSK_FORMA_CAPSULA);
     VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_INTERRUTTORI, 0) == PH_DSK_FORMA_CAPSULA);
+    /* Note rapide: mattonella, con misure equivalenti e minimo propri (Piccolo = minimo). */
+    VERIFICA(ph_dsk_forma(PH_CFG_WIDGET_NOTE, 0) == PH_DSK_FORMA_MATTONELLA);
+    {
+        PhDskMisura p = ph_dsk_misura_equivalente(PH_CFG_WIDGET_NOTE, 0, PH_CFG_WIDGET_PICCOLO);
+        PhDskMisura m = ph_dsk_misura_equivalente(PH_CFG_WIDGET_NOTE, 0, PH_CFG_WIDGET_MEDIO);
+        PhDskMisura g = ph_dsk_misura_equivalente(PH_CFG_WIDGET_NOTE, 0, PH_CFG_WIDGET_GRANDE);
+        VERIFICA(p.larghezza == 200 && p.altezza == 130);
+        VERIFICA(m.larghezza == 250 && m.altezza == 180);
+        VERIFICA(g.larghezza == 320 && g.altezza == 260);
+        PhDskLimiti l = ph_dsk_misura_limiti(PH_CFG_WIDGET_NOTE, 0);
+        VERIFICA(l.min.larghezza == 200 && l.min.altezza == 130);
+        VERIFICA(l.max.larghezza == 480 && l.max.altezza == 640);
+        /* Sotto il minimo non si scende; dalla misura si ritrova il livello. */
+        PhDskMisura v = ph_dsk_misura_vincola(PH_CFG_WIDGET_NOTE, 0, (PhDskMisura){100, 50});
+        VERIFICA(v.larghezza == 200 && v.altezza == 130);
+        VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_NOTE, 0, m) == PH_CFG_WIDGET_MEDIO);
+        VERIFICA(ph_dsk_livello(PH_CFG_WIDGET_NOTE, 0, g) == PH_CFG_WIDGET_GRANDE);
+    }
     static const PhCfgWidgetTipo tutti[] = {
         PH_CFG_WIDGET_OROLOGIO, PH_CFG_WIDGET_STATO, PH_CFG_WIDGET_NOTIFICHE, PH_CFG_WIDGET_MEMORIA,
         PH_CFG_WIDGET_CALENDARIO, PH_CFG_WIDGET_NOTE, PH_CFG_WIDGET_METEO, PH_CFG_WIDGET_RIPRODUZIONE,

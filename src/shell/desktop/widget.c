@@ -37,6 +37,8 @@ const PhDskCatalogoVoce PH_DSK_CATALOGO[] = {
     {PH_CFG_WIDGET_APP_FREQUENTI, PH_T_("App frequenti"), PH_T_("Le app che apri più spesso, a portata di clic.")},
     {PH_CFG_WIDGET_TRASFERIMENTI, PH_T_("Trasferimenti recenti"),
      PH_T_("Gli ultimi file inviati o ricevuti in questa sessione.")},
+    {PH_CFG_WIDGET_NOTE, PH_T_("Note rapide"),
+     PH_T_("Un foglietto per scrivere al volo sul desktop. Il testo resta sul PC, nel profilo del telefono.")},
 };
 const size_t PH_DSK_CATALOGO_N = sizeof PH_DSK_CATALOGO / sizeof PH_DSK_CATALOGO[0];
 
@@ -657,8 +659,12 @@ static void posizioni_fissa(PhDesktop *d)
 /* ---- Trascinamento -------------------------------------------------------------------- */
 static void trascina_inizio(GtkGestureDrag *g, double x, double y, gpointer dati)
 {
-    (void)g;
     PhDskWidget *w = dati;
+    /* Note rapide: dal campo di testo il widget non si trascina (li' il mouse seleziona il testo). */
+    if (w->tipo == PH_CFG_WIDGET_NOTE && ph_dsk_note_su_campo(w, x, y)) {
+        gtk_gesture_set_state(GTK_GESTURE(g), GTK_EVENT_SEQUENCE_DENIED);
+        return;
+    }
     ph_dsk_in_radice(w->d, w->scheda, x, y, &w->inizio_x, &w->inizio_y);
     w->destra0 = w->destra;
     w->alto0 = w->alto;
@@ -911,8 +917,14 @@ static PhDskWidget *widget_nuovo(PhDesktop *d, size_t indice, const PhCfgWidget 
     gtk_widget_set_vexpand(finestra, TRUE);
     GtkEventController *rot = gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_BOTH_AXES);
     gtk_event_controller_set_propagation_phase(rot, GTK_PHASE_CAPTURE);
+    gtk_event_controller_set_name(rot, "ph-desktop-rotella-ferma"); /* lo riconosce la prova di Note rapide */
     g_signal_connect(rot, "scroll", G_CALLBACK(ridim_rotella), w);
-    gtk_widget_add_controller(finestra, rot);
+    /* Note rapide: la rotella sul campo di testo deve scorrere il testo, quindi qui non si ferma
+     * (il contenuto sta comunque dentro la scheda e non ha nulla da scorrere). */
+    if (w->tipo == PH_CFG_WIDGET_NOTE)
+        g_object_unref(rot);
+    else
+        gtk_widget_add_controller(finestra, rot);
 
     /* Maniglia: visibile al passaggio del mouse e con il fuoco da tastiera (CSS). */
     w->maniglia = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);

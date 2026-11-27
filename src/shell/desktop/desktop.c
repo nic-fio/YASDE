@@ -643,6 +643,8 @@ static void radice_distrutta(GtkWidget *w, gpointer dati)
     PhDesktop *d = dati;
     if (!d->vivo)
         return; /* idempotente: una seconda chiamata non fa nulla */
+    /* Note rapide: il buffer condiviso si stacca da noi. */
+    ph_dsk_note_chiudi(d);
     d->vivo = false;
     /* Prima si smette di ascoltare (le *_smetti sono sicure anche a shell liberata)... */
     for (size_t i = 0; i < G_N_ELEMENTS(EVENTI_ASCOLTATI); i++)

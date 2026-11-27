@@ -275,3 +275,5 @@
 # agente B (passo 2b): batteria tonda e sveglia a capsula
 "Salute: {valore}" = "Health: {valore}"
 "{giorno} · {fra}" = "{giorno} · {fra}"
+# Note rapide
+"Un foglietto per scrivere al volo sul desktop. Il testo resta sul PC, nel profilo del telefono." = "A notepad for jotting things down on the desktop. The text stays on the PC, in the phone's profile."

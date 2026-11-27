@@ -19,6 +19,7 @@ PhFinto *ph_demo_finto(void);                /* demo.c */
 void ph_demo_finto_comando(const char *c);   /* demo.c */
 static void stress_avvia(PhShell *sh);
 void ph_demo_controlli(PhShell *sh, const char *cosa); /* agente D: demo_controlli.c */
+void ph_demo_note(PhShell *sh, const char *cosa);      /* Note rapide: demo_note.c */
 /* agente A: inizio */
 static void vecchi_avvia(PhShell *sh, PhDesktop *d, PhCfgTelefono *p); /* in fondo al file */
 static void vecchi_foto(PhDesktop *d, PhCfgTelefono *p, const char *quale);
@@ -778,6 +779,11 @@ void ph_demo_mostra(PhShell *sh, const char *cosa)
         return;
     }
     /* fine agente D */
+    /* Note rapide: prova a schermo (demo_note.c) */
+    if (cosa != NULL && strncmp(cosa, "note-", 5) == 0) {
+        ph_demo_note(sh, cosa);
+        return;
+    }
     /* agente C: prova a schermo del Meteo, stile «Adesso» (demo_meteo.c) */
     if (cosa != NULL && strncmp(cosa, "meteoa-", 7) == 0) {
         ph_demo_meteo(sh, cosa);
@@ -1259,6 +1265,7 @@ static const struct {
                                   {"torcia", PH_SRV_EV_CONTROLLI}, {NULL, -1}}},
     {PH_CFG_WIDGET_APP_FREQUENTI, {{NULL, -1}}},
     {PH_CFG_WIDGET_TRASFERIMENTI, {{"trasf", PH_SRV_EV_TRASFERIMENTI}, {NULL, -1}}},
+    {PH_CFG_WIDGET_NOTE, {{NULL, -1}}},
 };
 
 static bool st_collegato(Stress *s)

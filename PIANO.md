@@ -281,3 +281,12 @@ Widget più belli e più utili: vetro scuro, forme diverse dal rettangolo, grafi
 - **Come si è lavorato in parallelo, da ricordare:** gli agenti lanciati in una copia di lavoro separata restano vincolati a quella copia (non possono scrivere nell'albero principale, e non devono aggirare il blocco): le correzioni successive vanno fatte lì e riportate dalla sessione principale (file propri copiati, file comuni uniti a tre vie).
 - **Note rapide (B2), decisioni tecniche:** un solo testo per telefono, dentro il profilo (`PhCfgTelefono.note`, tabella `[note]`, contratto già in `src/config/config.h`): si salva con il salvataggio differito del profilo che esiste già, nessun servizio nuovo. Widget «Quick notes» nel catalogo, mattonella, con un campo di testo a più righe: si scrive direttamente; il testo si salva poco dopo l'ultima battuta e quando il campo perde il fuoco; oltre il limite non si accetta altro testo; più widget Note mostrano lo stesso testo. Il trascinamento del widget parte dal titolo, non dal campo. Mai il testo in un log.
 - **Ancora da fare:** note rapide; prova in sola lettura sul telefono per B1/B3/B4 (il telefono non è collegato); AppImage; prova dal vivo; `.nomi-vietati` da rimettere sul tablet; nome della versione.
+
+### 8.5 Note rapide: fatte (27 nov 2026)
+
+- Widget «Quick notes» nel catalogo: mattonella con campo di testo, un testo per telefono nel profilo (tabella `[note]`), limite 2047 byte.
+- Nessun timer nel widget: ogni modifica chiede subito il salvataggio, il rinvio di 1 s e il salvataggio prima del cambio telefono e alla chiusura li fa il servizio.
+- Il riallineamento al profilo è un'azione irreversibile (niente Ctrl+Z verso il testo di un altro telefono). Sulla versione di GTK del server `set_text` azzera già la cronologia: la prova non distingue i due casi.
+- Scelta visibile: il clic destro sul campo apre il menu del widget; copia e incolla solo da tastiera.
+- Non visto: mouse, rotella e Ctrl+Z veri; sfocatura; il caso vero senza profilo.
+- Restano: B1/B3/B4 (serve il telefono collegato per la sonda in sola lettura), stile «senza fondo», AppImage e prova dal vivo.

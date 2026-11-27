@@ -40,6 +40,7 @@ const PhDskWxVt *ph_dsk_wx_vt(PhCfgWidgetTipo tipo)
     case PH_CFG_WIDGET_TROVA: return &PH_DSK_WX_TROVA;
     case PH_CFG_WIDGET_APP_FREQUENTI: return &PH_DSK_WX_APP_FREQUENTI;
     case PH_CFG_WIDGET_TRASFERIMENTI: return &PH_DSK_WX_TRASFERIMENTI;
+    case PH_CFG_WIDGET_NOTE: return &PH_DSK_WX_NOTE;
     default: return NULL;
     }
 }

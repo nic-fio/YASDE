@@ -107,6 +107,23 @@ button.ph-desktop-icona:hover { background-color: rgba(255, 255, 255, 0.14); } /
 .ph-desktop-w-riga-sx { font-size: 12px; }
 .ph-desktop-w-riga-dx { font-size: 12px; color: var(--ph-testo-2); }
 
+/* ---- Note rapide: il campo di testo (scheda B2: fondo da riga, raggio 10, testo 13 px; il fuoco e'
+ * un anello d'accento). Il fondo scuro viene dal vetro del widget: qui solo variabili. ---- */
+.ph-desktop-widget scrolledwindow.ph-desktop-note-campo {
+  background-color: var(--ph-sopra-riga);
+  border-radius: 10px;
+}
+.ph-desktop-widget scrolledwindow.ph-desktop-note-campo:focus-within {
+  outline: 2px solid var(--ph-accento);
+  outline-offset: -2px;
+}
+.ph-desktop-widget textview.ph-desktop-note-testo,
+.ph-desktop-widget textview.ph-desktop-note-testo text {
+  background: transparent;
+  color: var(--ph-testo-campo);
+  font-size: 13px;
+}
+
 /* Sonda dell'accento: il quadrante dell'Orologio (disegnato in C) legge da qui il colore
  * dell'accento del tema (da C le variabili CSS non si leggono). Il colore del testo lo
  * eredita dalla scheda del widget. */

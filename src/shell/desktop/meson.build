@@ -14,7 +14,7 @@ logica_vecchi_lib = static_library('logica_vecchi', ['logica_vecchi.c'],
   include_directories: inc, dependencies: [shell_comune_dep, pixbuf_dep])
 # agente A: fine
 shell_desktop_lib = static_library('shell_desktop',
-  ['desktop.c', 'logica.c', 'logica_wx.c', 'logica_meteo.c', 'logica_comp.c', 'componenti.c', 'immagine.c', 'sfondo.c', 'icone.c', 'widget.c', 'orologio.c', 'wx.c', 'wx_calendario.c', 'wx_telefono.c', 'logica_telefono.c', 'wx_controlli.c', 'wx_elenchi.c', 'wx_meteo.c', 'meteo_disegno.c', 'meteo_luogo.c', 'dialoghi.c', 'logica_controlli.c'],
+  ['desktop.c', 'logica.c', 'logica_wx.c', 'logica_meteo.c', 'logica_comp.c', 'componenti.c', 'immagine.c', 'sfondo.c', 'icone.c', 'widget.c', 'orologio.c', 'wx.c', 'wx_calendario.c', 'wx_telefono.c', 'logica_telefono.c', 'wx_controlli.c', 'wx_elenchi.c', 'wx_meteo.c', 'meteo_disegno.c', 'meteo_luogo.c', 'dialoghi.c', 'logica_controlli.c', 'logica_note.c', 'wx_note.c'],
   objects: risorse_desktop_lib.extract_all_objects(recursive: false),
   link_with: logica_vecchi_lib, # agente A
   include_directories: inc, dependencies: [shell_comune_dep, pixbuf_dep])
@@ -27,7 +27,7 @@ test('shell-desktop-logica', executable('prova_desktop', 'prova_desktop.c', depe
 
 # Demo sopra il backend finto (strumenti/demo-sul-tablet.sh desktop); con --prova
 # e' anche la prova con schermo (saltata se nel container non c'e' broadway).
-demo_desktop = executable('demo-desktop', ['demo.c', 'demo_hook.c', 'demo_controlli.c', 'demo_meteo.c'], dependencies: [shell_desktop_dep, shell_finto_dep])
+demo_desktop = executable('demo-desktop', ['demo.c', 'demo_hook.c', 'demo_controlli.c', 'demo_meteo.c', 'demo_note.c'], dependencies: [shell_desktop_dep, shell_finto_dep])
 test('shell-desktop-schermo', demo_desktop, args: ['--prova', '6000', '--mostra',
   'wx:meteo:0@500,snap-profilo@1300,finto:meteo-nuovi@1500,finto:meteo-nuovi@1900,verifica-profilo@1600'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
@@ -89,3 +89,12 @@ test('shell-desktop-meteo-schermo', demo_desktop, args: ['--prova', '45000', '--
   'meteoa-attendi@10,meteoa-misure@300,meteoa-verifica@900'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 90)
 # agente C: fine
+
+# Note rapide: filtro e taglio del testo (logica pura, senza schermo) e prova a schermo: scrivere,
+# salvataggio differito e sul fuoco perso, due widget sullo stesso testo, limite incollando,
+# rimozione con testo non ancora salvato, cambio di profilo.
+test('shell-desktop-note-logica', executable('prova_note', 'prova_note.c', dependencies: shell_desktop_dep),
+  env: shell_ambiente_logica, suite: 'shell', timeout: 60)
+test('shell-desktop-note-schermo', demo_desktop, args: ['--prova', '10000', '--mostra',
+  'note-attendi@10,note-avvia@300'],
+  env: shell_ambiente_schermo, suite: 'shell', timeout: 60)

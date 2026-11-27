@@ -117,6 +117,10 @@ struct PhDesktop {
     char *app_calendario;           /* pacchetto dell'app Calendario del telefono (NULL = non noto) */
     GCancellable *annulla_app_cal;  /* la richiesta che lo scopre */
     /* agente A: fine */
+    /* Note rapide (wx_note.c): un solo testo per telefono, nel buffer condiviso da tutti i widget
+     * Note; a ogni modifica dell'utente si chiede ph_dsk_salva (il rinvio lo fa il servizio). */
+    GtkTextBuffer *note_testo;
+    bool note_mio; /* il buffer lo sta cambiando il programma (allineamento al profilo): non e' una battuta */
 };
 
 PhDesktop *ph_dsk_ref(PhDesktop *d);
@@ -227,7 +231,18 @@ void ph_dsk_wx_annulla(GCancellable **c);
 void ph_dsk_wx_svuota(GtkWidget *box);
 /* Le tabelle dei tipi. */
 extern const PhDskWxVt PH_DSK_WX_METEO, PH_DSK_WX_CALENDARIO_MESE, PH_DSK_WX_SVEGLIA, PH_DSK_WX_BATTERIA,
-    PH_DSK_WX_INTERRUTTORI, PH_DSK_WX_TROVA, PH_DSK_WX_APP_FREQUENTI, PH_DSK_WX_TRASFERIMENTI;
+    PH_DSK_WX_INTERRUTTORI, PH_DSK_WX_TROVA, PH_DSK_WX_APP_FREQUENTI, PH_DSK_WX_TRASFERIMENTI, PH_DSK_WX_NOTE;
+
+/* Note rapide (wx_note.c). Thread GTK.
+ * (Un altro telefono: i widget si ricostruiscono e ogni campo nuovo si allinea al profilo, senza
+ *   chiedere salvataggi.)
+ * chiudi: dal "destroy" della radice: stacca il buffer condiviso dal desktop.
+ * profilo_assente_prova: solo per le prove, finge il profilo assente (campo non modificabile).
+ * su_campo: il punto (x, y), nelle coordinate della scheda, e' sul campo di testo? Serve a widget.c
+ *   per non far partire da li' il trascinamento del widget. */
+void ph_dsk_note_chiudi(PhDesktop *d);
+void ph_dsk_note_profilo_assente_prova(bool assente);
+bool ph_dsk_note_su_campo(PhDskWidget *w, double x, double y);
 
 /* Dialogo «Località…» del widget Meteo (meteo_luogo.c). */
 void ph_dsk_luogo_apri(PhDesktop *d);

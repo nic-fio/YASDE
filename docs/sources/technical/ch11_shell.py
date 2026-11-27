@@ -190,9 +190,12 @@ S6 = p("Short descriptions of the pieces; the real behavior is in each folder's 
         ["<b>Desktop</b>", "Wallpaper (solid, gradient or an image taken from the phone and saved in the cache), icon grid with cells of 92×96 "
          "starting at 16,16, and widgets. The catalog in " + c("src/shell/desktop/widget.c") + " has Clock, Calendar, Phone status, "
          "Recent notifications, Phone storage, Weather, Month calendar, Next alarm, Battery in detail, Quick switches, Frequent apps and "
-         "Recent transfers; each card has a shape (tile with a corner radius of 28 px, circle or capsule, " + c("ph_dsk_forma") + ") and a free size set from a handle at its bottom right corner, in steps of " + c("PH_DSK_PASSO") + " (8 px), between a minimum and a maximum of the type (" + c("ph_dsk_misura_limiti") + "). "
-         "Find-my-phone is compiled out (" + c("PH_DSK_TROVA_OFFERTO") + " is 0), and the types "
-         + c("note") + " and " + c("riproduzione") + " exist in the profile format but are not in the catalog."],
+         "Recent transfers, plus Quick notes (see below); each card has a shape (tile with a corner radius of 28 px, circle or capsule, " + c("ph_dsk_forma") + ") and a free size set from a handle at its bottom right corner, in steps of " + c("PH_DSK_PASSO") + " (8 px), between a minimum and a maximum of the type (" + c("ph_dsk_misura_limiti") + "). "
+         "Find-my-phone is compiled out (" + c("PH_DSK_TROVA_OFFERTO") + " is 0), and the type "
+         + c("riproduzione") + " exists in the profile format but is not in the catalog. "
+         "<b>Quick notes</b> (" + c("wx_note.c") + ", filter in " + c("logica_note.c") + "): the text is one per phone (" + c("PhCfgTelefono.note") + ") and lives in one " + c("GtkTextBuffer") + " held by the desktop and shared by all the Quick notes widgets. "
+         "Every change by the user goes into the profile and asks for " + c("ph_dsk_salva") + " at once; the delay of about 1 s and the flush when the profile is replaced by another phone's, and at close, are done by the service (" + c("ph_srv_profilo_salva") + "), not by the widget. "
+         "What enters the field is filtered by " + c("ph_dsk_note_filtra") + " (valid UTF-8, new line and tab only, at most " + c("PH_DSK_NOTE_MAX") + " bytes). Free size: minimum 200×130, initial 250×180, maximum 480×640 (" + c("logica.c") + "). Dragging does not start from the field (" + c("ph_dsk_note_su_campo") + "), the wheel scrolls the text and right-click opens the widget menu."],
         ["<b>Inner window</b>", "Title bar of 50 px with Back on the left, then the name, and on the right the REC marker (just before screenshot), screenshot, "
          "record, more (⋮), minimize, maximize, close, as round buttons of 30 px that show only their symbol until the pointer passes over them "
          "(Close turns coral); in very narrow windows (such as the minimum, 288 px; the room for the name is the width minus 270 px) the name has no room and is not shown. Light frame, corner radius 24 px (0 when maximized or snapped, with no shadow and no border); border and highlight line are drawn by a "
