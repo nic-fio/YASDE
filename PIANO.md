@@ -207,116 +207,31 @@ Regole fisse (quelle già in `CLAUDE.md` non si ripetono):
 - **Server web**: cartella `/srv/www/yasde.nicfio.it` e blocco del sito nella configurazione del server web, preparati il 25 nov 2026; record DNS `yasde.nicfio.it` e alias email `yasde@nicfio.it` creati lo stesso giorno nel pannello del fornitore del dominio.
 - **Pubblicato il 25 nov 2026**: `https://yasde.nicfio.it/` risponde in HTTPS (certificato ottenuto dal server web), con le cinque pagine identiche a quelle generate dal repository; gli altri siti sullo stesso server verificati attivi dopo la modifica. La release 2.1 è stata pubblicata su GitHub lo stesso giorno, per ordine del committente («rendi disponibile sul sito e sul repo github l'appimage»), con AppImage, archivio dei sorgenti di terze parti e `SHA256SUMS`: i pulsanti di scaricamento del sito funzionano.
 
-## 8. Widget nuovi: forma, vetro, funzioni (26 nov 2026, approvato dal committente)
+## 8. YASDE 2.2: widget nuovi (26–27 nov 2026) — FATTO e pubblicato
 
-Nasce dalla pagina di confronto mostrata al committente (sigle A, B, C, D, E). Le sue scelte prevalgono sulla specifica 5.2.3 dove la superano (tre misure fisse, schede rettangolari).
+Approvato dal committente dal vivo («È meraviglioso») e pubblicato come release `v2.2` (AppImage, sorgenti di terze parti, somme). Pagina di riferimento delle scelte d'aspetto: `mockup/widget/proposta.html`.
 
-### Obiettivo
-Widget più belli e più utili: vetro scuro, forme diverse dal rettangolo, grafica al posto delle righe di testo, clic che fanno qualcosa, misure libere, quattro widget nuovi.
+**Che cosa è entrato**
+- Stile unico «yasde»: vetro scuro come la barra (`PH_VETRO_SCURO`); forme per tipo (`ph_dsk_forma`): mattonella per i widget ricchi, tondo per orologio analogico e batteria, capsula per sveglia e interruttori.
+- Misure libere dall'angolo in basso a destra (passi di 8 px, anche da tastiera); nel profilo `larghezza`/`altezza` (0 = misura equivalente al vecchio Piccolo/Medio/Grande).
+- Widget rifatti (memoria, notifiche, calendario del giorno, batteria, sveglia, meteo, interruttori) sui componenti di disegno comuni (`componenti.c`, `logica_comp.*`).
+- «Quick notes»: un testo per telefono nel profilo (tabella `[note]`, 2047 byte), salvato a ogni modifica con il rinvio del servizio.
+- Stile «No background» per orologio e meteo (stile 6 di entrambi: niente vetro, testo bianco con ombra).
+- Clic che apre la pagina giusta: protocollo versione 2, `u8` pagina in coda a VIDEO_APRI e nuovo 0x46 VIDEO_PAGINA; elenco fisso (1 batteria, 2 memoria), mai un intent libero dal PC; ogni pagina è un task nuovo sullo schermo virtuale, mai riuso di task di altri schermi. Contratti toccati: `componente.h`, `shell.h`, `servizi.h`, `servizi_backend.h`, `superficie.h`.
+- Versione del prodotto 2.2 (formato del profilo e cartella dei dati invariati).
 
-### Deciso dal committente (26 nov)
-- **Vetro scuro (E3)** per tutti i widget: lo stesso della barra in basso, testo bianco. «E3 vince l'oscar».
-- **Forme (D):** i tondi e le altre forme piacciono.
-- **Tipi e funzioni (A, B):** «siamo già un passo avanti».
+**Limiti noti e cose non fatte**
+- B1 «in riproduzione», B3 chiamate recenti, B4 rete: NON fatti. Sonda in sola lettura sul telefono di prova: registro chiamate e rete leggibili senza root; musica non verificata (nessun lettore attivo).
+- «Stato del telefono» non reagisce al clic. Il clic sulle notifiche chiede l'app al telefono senza controllare l'elenco delle app.
+- Le pagine aperte dai clic si accumulano sotto (Indietro torna alla precedente) fino alla chiusura della finestra; correzione possibile in `Sessione.pagina` (togliere i task vecchi dello schermo virtuale dopo il lancio riuscito).
+- Una pagina chiesta mentre il telefono è scollegato o in riconnessione si perde (resta la schermata normale).
+- Clic destro sul campo delle note: menu del widget; copia e incolla solo da tastiera.
+- `telefono/video/prove/prova_video.py` `prova_pagine`: scritta, MAI eseguita sul telefono (il committente lo stava usando); il formato di `dumpsys activity activities` che legge va verificato alla prima esecuzione.
+- `prova_meteo_veri.c`: corretta una corsa della prova al passo 7; al passo 8b (~riga 363) potrebbe restarne una uguale, non riprodotta.
+- La prova `vecchi` può fallire a torto nei secondi attorno alla mezzanotte vera.
+- Chiave italiana della descrizione del widget Memoria ancora con «usato»; `src/shell/ossatura/COMPITO.md` descrive il titolo della finestra con il numero, il programma usa solo «YASDE».
 
-### Confermato dal committente (26 nov, «Sì li confermo»)
-- Forma per tipo di widget: mattonella (angoli molto morbidi) per quelli ricchi (meteo, calendario, notifiche, memoria, stato del telefono, app frequenti, trasferimenti); tondo per orologio analogico e batteria; capsula per sveglia e interruttori; «senza fondo» (D3) solo come stile a scelta di orologio e meteo.
-- Misure libere (C1) al posto di Piccolo / Medio / Grande, a scatti di 8 px; i tondi restano tondi.
-- Tutti i widget A1–A7 rifatti come nella pagina; orologio, stato del telefono, app frequenti e trasferimenti tengono il contenuto di oggi e prendono solo vetro e forma nuovi.
-
-### Passi
-0. **Preparazione** (serve il committente): ricreare l'ambiente sul server (`strumenti/prepara-server.sh`); prova in sola lettura sul telefono per sapere se musica, chiamate e rete si leggono senza root (B1, B3, B4). Ciò che il telefono non dà non si fa.
-1. **Fondamenta** (in sequenza, un solo agente): vetro scuro sui widget, anche nel percorso senza sfocatura (fondo scuro quasi opaco); forme, cioè il raggio del vetro e della scheda per tipo; misure libere con maniglia nell'angolo, contenuto che compare al crescere dello spazio; profilo che salva larghezza e altezza e legge i profili di oggi (piccolo / medio / grande diventano le misure equivalenti, senza perdere niente).
-2. **Widget rifatti** (in parallelo, un file per agente): batteria ad anello, memoria a fette colorate, meteo con curva e giorni, notifiche con icona e ora, calendario del giorno, sveglia con il tempo che manca, interruttori tondi. Clic: notifica → la sua app; impegno → Calendario; sveglia → Orologio; batteria e memoria → la pagina delle impostazioni del telefono (richieste standard di Android, nessuna dipendenza da un produttore).
-3. **Widget nuovi:** note rapide (solo PC, nel profilo del telefono); musica, chiamate e rete solo se il passo 0 li conferma (toccano telefono, protocollo, dati e desktop: contratto prima, poi codice).
-4. **Chiusura:** manuali (capitolo dei widget, capitolo tecnico del desktop, schermate rifatte), `tutto`, `veloce`, `telefono`, revisore su ogni pezzo, AppImage, prova a schermo e poi col telefono vero prima della consegna.
-
-### File
-`src/shell/desktop/` (widget, stile, logica, prove), `src/config/` (profilo: misure libere), `src/shell/comune/vetro.c` solo se il vetro scuro dei widget lo richiede; per B1/B3/B4 anche `docs/protocollo.md`, `src/dati/`, `telefono/`; `docs/sources/user/ch05_widgets.py` e il capitolo tecnico corrispondente.
-
-### Rischi
-- Vetro scuro sopra sfondi scuri: il widget si stacca poco; lo tengono leggibile il bordo chiaro e l'ombra. Da giudicare a schermo sullo sfondo del committente.
-- Misure libere: ogni widget deve restare leggibile alla misura minima; per ognuno si fissa un minimo sotto cui non scende.
-- Musica, chiamate, rete: possono risultare non leggibili senza root; in quel caso restano fuori, come «Trova il telefono».
-- Profili esistenti: la lettura delle vecchie misure deve avere la sua prova.
-- Prove sul telefono: una alla volta, in sola lettura al passo 0; nessun suono, nessuna impostazione toccata.
-
-### Criteri di completamento
-- Ogni widget del catalogo si vede con vetro scuro e forma nuova, si ridimensiona dall'angolo e ricorda misura e posto alla riapertura.
-- Ogni clic descritto apre ciò che promette, o non fa nulla se il telefono non sa quale app aprire (mai un errore a schermo).
-- Un profilo salvato con la 2.1 di oggi si apre con i widget al loro posto.
-- `tutto`, `veloce`, `telefono` puliti; revisore APPROVATO; manuali rigenerati e `--controlla` pulito; visto a schermo dal committente.
-
-### Stato
-- Server: a disposizione del committente ma da ripreparare. Verificato il 26 nov: `/media` c'è ed è scrivibile, `/media/YASDE` non esiste, **manca `podman`** e l'installazione chiede la password di amministratore: la fa il committente, poi `strumenti/prepara-server.sh`.
-- Aperto: nome della versione che esce con questi widget (oggi l'unica è la 2.1).
-
-### 8.1 Fondamenta: decisioni tecniche (sessione principale)
-- **Profilo** (`src/config/config.h`, contratto già scritto): `PhCfgWidget` ha `larghezza` e `altezza`; 0 = non salvate, vale `dimensione`. `dimensione` resta e si continua a scrivere.
-- **Vetro:** i widget si registrano `PH_VETRO_SCURO`; menu e dialoghi del desktop restano chiari. I colori del testo vengono dalla classe del vetro: nel CSS dei widget nessun colore fisso che valga solo sul chiaro.
-- **Forma** (funzione pura in `logica.c`, con prova): per tipo e stile → mattonella (raggio 28), tondo (lato uguale, raggio = lato/2), capsula (raggio = altezza/2). Tondo: orologio negli stili analogici e batteria. Capsula: sveglia e interruttori. Mattonella: tutti gli altri. Il raggio del vetro segue la misura (se serve: `ph_shell_vetro_togli` e nuova registrazione).
-- **Misure libere:** maniglia nell'angolo in basso a destra (come nella pagina vista dal committente), visibile al passaggio del mouse e col fuoco da tastiera (frecce: 8 px); scatti di `PH_DSK_PASSO`. L'angolo in alto a sinistra resta fermo: allargando, `destra` nel profilo diminuisce di conseguenza. Minimo e massimo per tipo (funzione pura, con prova); il widget non esce dall'area. La voce «Size» del menu si toglie.
-- **Contenuto:** in questa fase il contenuto resta quello di oggi; il livello (piccolo / medio / grande) si ricava dalla misura con una funzione pura per tipo, così i disegni esistenti continuano a funzionare. Un profilo senza misure parte dalle misure equivalenti alla sua `dimensione`.
-- **Manuali:** capitolo dei widget e capitolo tecnico si aggiornano a fine passo 2 (una volta sola), prima di ogni consegna.
-
-### 8.2 Stato e passo 2 (26 nov 2026, sera)
-- **Fatto, approvato dal revisore, nel repository:** profilo con misure libere; widget con vetro scuro, forme e maniglia; posto del widget nuovo calcolato sulle misure vere; al cambio di stile la misura si perde solo se cambia la forma. `tutto` 75 OK / 4 attesi / 0 falliti, `veloce` pulito. Server ricreato (podman installato dal committente tramite la sessione, ambiente rifatto con `prepara-server.sh`).
-- **Visto a schermo (schermo invisibile, senza sfocatura):** tre widget predefiniti scuri con angoli da 28. Difetto visto: i predefiniti quasi si toccano (le posizioni di partenza sono pensate per le altezze vecchie): si corregge nel passo 2a.
-- **Mai visto:** vetro scuro con sfocatura, tondi e capsule, maniglia col mouse.
-- **Riferimento d'aspetto per il passo 2:** `mockup/widget/proposta.html` (la pagina vista dal committente; si apre in un browser). Vale per disposizione e contenuto delle schede A1–A7; i colori vanno portati sul vetro scuro.
-- **Passo 2a, componenti (un agente, in sequenza):** pezzi di disegno comuni in `src/shell/desktop/` usati poi da tutti i widget: anello con percentuale, barra a fette con legenda, curva delle temperature, tratto minima–massima, riga con tondo colorato + titolo + sottotitolo + ora (cliccabile), numero grande. Tutti leggono la misura vera del widget. Colori d'accento per widget come variabili nel CSS del pezzo, scelti per il fondo scuro. Geometria in funzioni pure con prove. Insieme: distanza giusta tra i widget predefiniti; la prova della barra fallisce se nessuna barra è stata controllata.
-- **Passo 2b, widget (in parallelo, un file per agente, dopo 2a):** `widget.c` (notifiche, memoria, calendario del giorno, stato), `wx_telefono.c` (batteria ad anello, sveglia), `wx_meteo.c` (meteo), `wx_controlli.c` (interruttori tondi). Prima di lanciarlo: decidere come si aprono app e pagine di impostazioni dal clic (servizio esistente o comando nuovo nel protocollo: nel secondo caso contratto prima).
-- **Ancora da fare:** prova in sola lettura sul telefono per B1/B3/B4 (serve il telefono collegato e sveglio); note rapide; manuali; righe di traduzione non più usate in `data/en/shell-comune.txt`; rimettere `.nomi-vietati` sul tablet.
-
-### 8.3 Passo 2b: decisioni tecniche (sessione principale)
-- **Clic senza toccare il protocollo.** Si usa ciò che c'è già: `ph_shell_apri_app(sh, pacchetto)`. Notifica → il pacchetto della notifica; impegno → `app_calendario`; sveglia → il pacchetto dato con la sveglia; batteria e memoria → l'app Impostazioni standard di Android, solo se `ph_srv_app_cerca` la trova tra le app del telefono. Dove il pacchetto non c'è il clic non fa nulla e l'elemento non si presenta come cliccabile. Non si apre una pagina precisa né una conversazione: si apre l'app (limite accettato, da dire nel manuale).
-- **Icone vere.** Le righe delle notifiche mostrano l'icona dell'app (`ph_srv_icona`), la sigla colorata solo se l'icona manca.
-- **Quattro agenti in parallelo, ognuno nella sua copia di lavoro** (le prove sul server si mettono in fila da sole): A `widget.c` (stato, notifiche, memoria, calendario del giorno); B `wx_telefono.c` (batteria ad anello, tonda; sveglia a capsula con il tempo che manca); C `wx_meteo.c` e `meteo_disegno.c` (stile unito con curva e giorni alla misura grande; gli stili esistenti restano); D `wx_controlli.c` (interruttori tondi). Ognuno mette logica e prove nuove in file SUOI (`logica_<nome>.c/.h`, `prova_<nome>.c`) e tocca i file comuni (`meson.build`, `desktop.css`, `interno.h`, `demo_hook.c`, traduzioni) solo con aggiunte piccole in un blocco suo, per unire le quattro copie senza conflitti. Unione, `tutto`, `veloce` e revisore: sessione principale.
-- **Contenuto per misura vera**, non per livello: ogni widget decide che cosa mostrare con una funzione pura sulla larghezza e l'altezza che ha.
-
-### 8.4 Stato (27 nov 2026) e note rapide
-- **Fatto, approvato dai revisori, nel repository:** componenti di disegno comuni; widget rifatti (memoria, notifiche, calendario del giorno, stato, batteria tonda, sveglia a capsula, meteo «Now» che cresce, interruttori tondi); manuali (utente e tecnico) e tutte le schermate rifatte. `tutto` 84 OK / 4 attesi / 0 falliti, `veloce` pulito.
-- **Visto a schermo (schermo invisibile):** tutti i widget rifatti alle tre misure, senza sfocatura; desktop e dialogo «Add widget» con la sfocatura (schermate dei manuali). **Mai visto:** la maniglia e i clic con il mouse vero; tondi, capsule, meteo e memoria con la sfocatura; il telefono vero.
-- **Limiti noti:** un clic apre l'app, non una pagina precisa; il clic su una notifica chiede sempre al telefono di aprire l'app (senza controllare che sia nell'elenco); la prova `vecchi` può fallire a torto per pochi secondi a cavallo della mezzanotte; la chiave italiana della descrizione della Memoria nel catalogo dice ancora «usato» (la traduzione è giusta).
-- **Come si è lavorato in parallelo, da ricordare:** gli agenti lanciati in una copia di lavoro separata restano vincolati a quella copia (non possono scrivere nell'albero principale, e non devono aggirare il blocco): le correzioni successive vanno fatte lì e riportate dalla sessione principale (file propri copiati, file comuni uniti a tre vie).
-- **Note rapide (B2), decisioni tecniche:** un solo testo per telefono, dentro il profilo (`PhCfgTelefono.note`, tabella `[note]`, contratto già in `src/config/config.h`): si salva con il salvataggio differito del profilo che esiste già, nessun servizio nuovo. Widget «Quick notes» nel catalogo, mattonella, con un campo di testo a più righe: si scrive direttamente; il testo si salva poco dopo l'ultima battuta e quando il campo perde il fuoco; oltre il limite non si accetta altro testo; più widget Note mostrano lo stesso testo. Il trascinamento del widget parte dal titolo, non dal campo. Mai il testo in un log.
-- **Ancora da fare:** note rapide; prova in sola lettura sul telefono per B1/B3/B4 (il telefono non è collegato); AppImage; prova dal vivo; `.nomi-vietati` da rimettere sul tablet; nome della versione.
-
-### 8.5 Note rapide: fatte (27 nov 2026)
-
-- Widget «Quick notes» nel catalogo: mattonella con campo di testo, un testo per telefono nel profilo (tabella `[note]`), limite 2047 byte.
-- Nessun timer nel widget: ogni modifica chiede subito il salvataggio, il rinvio di 1 s e il salvataggio prima del cambio telefono e alla chiusura li fa il servizio.
-- Il riallineamento al profilo è un'azione irreversibile (niente Ctrl+Z verso il testo di un altro telefono). Sulla versione di GTK del server `set_text` azzera già la cronologia: la prova non distingue i due casi.
-- Scelta visibile: il clic destro sul campo apre il menu del widget; copia e incolla solo da tastiera.
-- Non visto: mouse, rotella e Ctrl+Z veri; sfocatura; il caso vero senza profilo.
-- Restano: B1/B3/B4 (serve il telefono collegato per la sonda in sola lettura), stile «senza fondo», AppImage e prova dal vivo.
-
-### 8.6 Versione 2.2 (27 nov 2026)
-
-- Il committente ha deciso: i widget nuovi escono come YASDE 2.2. Numero cambiato ovunque indichi il prodotto; protocollo e formato del profilo restano 1; la cartella dei dati non contiene il numero.
-- Stile «No background» per orologio e meteo: fatto.
-- Sonda in sola lettura sul telefono: registro chiamate e rete leggibili senza root; musica non verificata (nessun lettore attivo). B1/B3/B4 fuori dalla 2.2.
-
-### 8.7 Clic sui widget: la pagina giusta (27 nov 2026, deciso dal committente dopo la prova dal vivo)
-
-**Difetto visto dal vivo:** il clic sulla batteria apre le Impostazioni sulla schermata iniziale. **Obiettivo:** batteria → pagina Batteria; memoria → pagina Archiviazione; funziona anche se la finestra delle Impostazioni è già aperta. Poi si pubblica la 2.2.
-
-**Regola di sicurezza:** il PC non manda mai un intent libero. Manda un numero di pagina da un elenco fisso; il telefono lo traduce in un'azione standard di Android puro. Pagina sconosciuta = errore senza toccare nulla.
-
-**Pagine (u8):** 0 = nessuna (avvio normale); 1 = batteria (`android.intent.action.POWER_USAGE_SUMMARY`); 2 = memoria (`android.settings.INTERNAL_STORAGE_SETTINGS`). Sul telefono di prova entrambe rispondono in `com.android.settings` (letto con `resolve-activity`, sola lettura).
-
-**Protocollo (versione 2: il corpo di VIDEO_APRI cambia):**
-- VIDEO_APRI: in coda `u8` pagina. Con pagina ≠ 0 il telefono cerca l'attività che risponde a quell'azione DENTRO il pacchetto dato (`setPackage`); se non c'è, avvio normale del pacchetto (risposta OK comunque). Pagina fuori elenco → ERRORE, niente creato.
-- Nuovo 0x46 VIDEO_PAGINA (0x44 e 0x45 erano già pausa e ripresa), PC→T: `u32` id, `u8` pagina (≠ 0). Avvia la pagina sullo schermo virtuale di quella sessione, restando nel pacchetto della sessione. OK; ERRORE se sessione ignota, specchio, pagina fuori elenco o nessuna attività risponde (nulla toccato).
-
-**Contratti (autorizzati a cambiare per questo lavoro, solo come scritto qui):**
-- `src/componente/componente.h`: `PH_PROTOCOLLO_VERSIONE 2`; enum `PhVideoPagina`; campo `uint8_t pagina` in `PhVideoRichiesta`; `int ph_video_pagina(PhVideoFlusso *f, uint8_t pagina, PhErrore *e)` (regge la chiusura in parallelo come le altre; attesa con limite).
-- `src/shell/servizi.h`: campo pagina nella richiesta di flusso e una chiamata per mandare la pagina a un flusso aperto (mai bloccante per il thread GTK: stesso schema delle altre richieste ai flussi).
-- `src/shell/shell.h`: `ph_shell_apri_app_pagina(sh, pacchetto, pagina)` e il campo `apri_pagina` nel gestore delle finestre; `ph_shell_apri_app` resta e vale pagina 0.
-- `docs/protocollo.md`, `telefono/base` (`Protocollo.java`, tipi) e `telefono/contratto/` se serve.
-
-**Pezzi:** telefono-video (Sessione/Video), componente (video.c + finto), ossatura (sv_flussi, finti), finestra-app (finestra del pacchetto già aperta → in primo piano + VIDEO_PAGINA; altrimenti apertura con pagina), desktop (batteria → 1, memoria → 2; «stato del telefono» resta sulle Impostazioni generali), telefono finto.
-
-**Rischi:** la finestra identificata dal pacchetto resta una sola (Impostazioni); una pagina che fallisce non deve chiudere né sporcare la sessione; telefono vero: prova solo quando il committente non sta usando YASDE (regola: se c'è già un `it.yasde` la prova esce).
-
-**Finito quando:** `tutto`, `veloce`, `telefono` puliti; ogni ramo d'errore ha la sua prova; manuali (protocollo, capitoli tecnici, ch05 utente) allineati; revisore APPROVATO; il committente vede dal vivo batteria → Batteria.
+**Lezioni**
+- Gli agenti lanciati con copia isolata dell'albero non possono scrivere nell'albero principale: o lavorano tutti nella copia e si unisce a mano, o tutti nell'albero con cartelle distinte.
+- Dopo un giro di mutazioni, prima di fotografare si rilancia `prova.sh` sul codice pulito: `foto-demo.sh` prende il demo dalla cartella di compilazione del pezzo.
+- Sul tablet non esiste più una configurazione di prova separata né `.nomi-vietati`: la prova dal vivo l'ha fatta il committente con la sua configurazione; la ricerca dei dati personali prima dei push è stata fatta a mano sulle righe aggiunte.
