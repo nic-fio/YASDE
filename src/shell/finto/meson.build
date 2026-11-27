@@ -13,6 +13,10 @@ shell_superficie_finta_lib = static_library('shell_superficie_finta', 'superfici
 test('shell-finto', executable('prova_finto', 'prova_finto.c', dependencies: shell_finto_dep),
   env: shell_ambiente_logica, suite: 'shell', timeout: 120)
 
+# Insieme di app SOLO demo (app_note): tutte nella tabella vera delle icone.
+test('shell-finto-app-note', executable('prova_app_note', 'prova_app_note.c', dependencies: shell_finto_dep),
+  args: [files('../../../data/icone-kora.txt')], env: shell_ambiente_logica, suite: 'shell', timeout: 60)
+
 demo_finto = executable('demo-finto', 'demo_finto.c',
   link_with: shell_superficie_finta_lib, dependencies: shell_finto_dep)
 test('shell-finto-schermo', demo_finto, args: ['--prova', '1500'],

@@ -39,17 +39,59 @@ static const AppFinta APP[] = {
     {"it.finto.banca", "Bank", "Bk", 0x334155, false, false},
 };
 
-uint32_t finto_colore_app(const char *pacchetto)
-{
-    for (size_t i = 0; pacchetto != NULL && i < G_N_ELEMENTS(APP); i++)
-        if (strcmp(APP[i].pacchetto, pacchetto) == 0)
-            return APP[i].colore;
-    return 0x475569;
-}
-
 typedef struct {
     const char *pacchetto, *titolo, *testo;
 } NotificaFinta;
+
+/* Insieme di SOLO demo per le schermate dei manuali e del sito (opzione app_note):
+ * app note, con pacchetti e nomi veri, tutti presenti in data/icone-kora.txt, cosi' il
+ * programma mostra le loro icone Kora vere (quelle dell'AppImage). I dati restano finti.
+ * Nessun altro insieme cambia: i test e le altre demo usano le app it.finto.*. Il colore e
+ * le iniziali servirebbero solo per le app senza icona Kora: qui non servono. */
+static const AppFinta APP_NOTE[] = {
+    {"com.whatsapp", "WhatsApp", "Wa", 0x15803d, true, false},
+    {"com.android.chrome", "Chrome", "Ch", 0xb45309, false, false},
+    {"com.google.android.keep", "Keep", "Ke", 0xa16207, false, false},
+    {"com.google.android.apps.photos", "Photos", "Ph", 0xbe185d, false, false},
+    {"org.telegram.messenger", "Telegram", "Te", 0x0369a1, true, false},
+    {"com.google.android.apps.maps", "Maps", "Ma", 0x0f766e, false, false},
+    {"com.spotify.music", "Spotify", "Sp", 0x15803d, true, false},
+    {"com.android.vending", "Play Store", "Ps", 0x475569, false, true},
+    {"com.google.android.apps.tachyon", "Meet", "Me", 0x0e7490, false, false},
+    {"com.google.android.calendar", "Calendar", "Ca", 0x4338ca, false, false},
+    {"com.google.android.apps.docs", "Drive", "Dr", 0x1d4ed8, false, false},
+    {"com.google.android.gm", "Gmail", "Gm", 0xb91c1c, false, false},
+    {"com.google.android.youtube", "YouTube", "Yt", 0xb91c1c, false, false},
+    {"com.instagram.android", "Instagram", "In", 0x9d174d, true, false},
+    {"com.netflix.mediaclient", "Netflix", "Nf", 0xb91c1c, false, false},
+    {"com.discord", "Discord", "Di", 0x4338ca, false, false},
+    {"com.google.android.apps.translate", "Translate", "Tr", 0x1d4ed8, false, false},
+};
+
+static const NotificaFinta NOTIFICHE_INIZIALI_NOTE[] = {
+    {"com.whatsapp", "New message", "Are we still on for 6 pm?"},
+    {"com.android.chrome", "Download complete", "report.pdf"},
+    {"com.android.vending", "Update available", "A new system version"},
+};
+
+static const NotificaFinta NOTIFICHE_NUOVE_NOTE[] = {
+    {"com.whatsapp", "Meeting moved to 3 pm", "Updated by the organizer"},
+    {"com.android.chrome", "Download complete", "invoice.pdf"},
+    {"com.android.vending", "Battery almost full", "The phone reached 80%"},
+};
+
+/* Insieme in uso: lo sceglie ph_finto_nuovo (un solo telefono finto per processo con
+ * app_note; i test non lo usano e restano sulle app it.finto.*). */
+static const AppFinta *app_tab = APP;
+static size_t app_n = G_N_ELEMENTS(APP);
+
+uint32_t finto_colore_app(const char *pacchetto)
+{
+    for (size_t i = 0; pacchetto != NULL && i < app_n; i++)
+        if (strcmp(app_tab[i].pacchetto, pacchetto) == 0)
+            return app_tab[i].colore;
+    return 0x475569;
+}
 
 static const NotificaFinta NOTIFICHE_INIZIALI[] = {
     {"it.finto.messaggi", "New message", "Are we still on for 6 pm?"},
@@ -62,6 +104,11 @@ static const NotificaFinta NOTIFICHE_NUOVE[] = {
     {"it.finto.browser", "Download complete", "invoice.pdf"},
     {"it.finto.impostazioni", "Battery almost full", "The phone reached 80%"},
 };
+
+static const NotificaFinta *notif_iniziali = NOTIFICHE_INIZIALI;
+static size_t notif_iniziali_n = G_N_ELEMENTS(NOTIFICHE_INIZIALI);
+static const NotificaFinta *notif_nuove = NOTIFICHE_NUOVE;
+static size_t notif_nuove_n = G_N_ELEMENTS(NOTIFICHE_NUOVE);
 
 /* ---- Thread di lavoro ------------------------------------------------------ */
 typedef struct {
@@ -167,18 +214,18 @@ static void pubblica_telefono(PhFinto *f)
 
 static void pubblica_app(PhFinto *f)
 {
-    size_t n = G_N_ELEMENTS(APP);
+    size_t n = app_n;
     PhSrvApp *v = calloc(n, sizeof *v);
     if (v == NULL)
         return;
     size_t k = 0;
     for (size_t i = 0; i < n; i++) {
-        if (g_hash_table_contains(f->disinstallate, APP[i].pacchetto))
+        if (g_hash_table_contains(f->disinstallate, app_tab[i].pacchetto))
             continue;
-        v[k].pacchetto = strdup(APP[i].pacchetto);
-        v[k].nome = strdup(APP[i].nome);
-        v[k].di_sistema = APP[i].sistema;
-        v[k].solo_verticale = APP[i].verticale;
+        v[k].pacchetto = strdup(app_tab[i].pacchetto);
+        v[k].nome = strdup(app_tab[i].nome);
+        v[k].di_sistema = app_tab[i].sistema;
+        v[k].solo_verticale = app_tab[i].verticale;
         k++;
     }
     ph_servizi_pubblica_app(f->s, v, k);
@@ -415,18 +462,21 @@ static void collegati(PhFinto *f, void *dati)
          * del mockup (deskPos: msg, web, note, photo nella colonna 0). */
         PhCfgTelefono *p = ph_cfg_telefono_nuovo();
         if (p != NULL) {
-            static const char *const icone[] = {"it.finto.messaggi", "it.finto.browser", "it.finto.note",
-                                                "it.finto.foto"};
-            for (size_t i = 0; i < G_N_ELEMENTS(icone); i++) {
+            static const char *const icone_finte[] = {"it.finto.messaggi", "it.finto.browser", "it.finto.note",
+                                                      "it.finto.foto"};
+            static const char *const icone_note[] = {"com.whatsapp", "com.android.chrome", "com.google.android.keep",
+                                                     "com.google.android.apps.photos"};
+            const char *const *icone = f->o.app_note ? icone_note : icone_finte;
+            for (size_t i = 0; i < 4; i++) {
                 g_strlcpy(p->icone[i].app, icone[i], sizeof p->icone[i].app);
                 p->icone[i].colonna = 0;
                 p->icone[i].riga = (int)i;
             }
-            p->n_icone = G_N_ELEMENTS(icone);
+            p->n_icone = 4;
             /* Due app fissate sulla barra (richieste del committente, PIANO.md):
              * una che si apre spesso e una non aperta. */
-            if (ph_cfg_telefono_fissa_app(p, "it.finto.messaggi", NULL) != 0 ||
-                ph_cfg_telefono_fissa_app(p, "it.finto.calcolatrice", NULL) != 0)
+            if (ph_cfg_telefono_fissa_app(p, f->o.app_note ? "com.whatsapp" : "it.finto.messaggi", NULL) != 0 ||
+                ph_cfg_telefono_fissa_app(p, f->o.app_note ? "com.spotify.music" : "it.finto.calcolatrice", NULL) != 0)
                 fprintf(stderr, "finto: app fissate non impostate\n");
             p->volume = 100;
             f->volume = 100;
@@ -584,7 +634,7 @@ static void notifica_libera(gpointer p)
 static void fai_notifica(PhFinto *f, void *dati)
 {
     (void)dati;
-    const NotificaFinta *n = &NOTIFICHE_NUOVE[f->prossima_notifica++ % G_N_ELEMENTS(NOTIFICHE_NUOVE)];
+    const NotificaFinta *n = &notif_nuove[f->prossima_notifica++ % notif_nuove_n];
     aggiungi_notifica(f, n);
     fprintf(stderr, "finto: notifica nuova \"%s\"\n", n->titolo);
     if (f->stato == PH_SRV_COLLEGATO || f->stato == PH_SRV_BLOCCATO)
@@ -1168,9 +1218,9 @@ static void fai_icona(PhFinto *f, void *dati)
 {
     IconaChiesta *c = dati;
     const char *mono = "?";
-    for (size_t i = 0; i < G_N_ELEMENTS(APP); i++)
-        if (strcmp(APP[i].pacchetto, c->pacchetto) == 0)
-            mono = APP[i].mono;
+    for (size_t i = 0; i < app_n; i++)
+        if (strcmp(app_tab[i].pacchetto, c->pacchetto) == 0)
+            mono = app_tab[i].mono;
     GBytes *b = finto_png_icona(mono, finto_colore_app(c->pacchetto), c->lato);
     gsize n = 0;
     const void *d = b != NULL ? g_bytes_get_data(b, &n) : NULL;
@@ -1392,9 +1442,9 @@ static void fai_disinstalla(PhFinto *f, void *dati)
     Disinstallazione *d = dati;
     d->finito = true;
     const AppFinta *a = NULL;
-    for (size_t i = 0; i < G_N_ELEMENTS(APP); i++)
-        if (strcmp(APP[i].pacchetto, d->pacchetto) == 0 && !g_hash_table_contains(f->disinstallate, d->pacchetto))
-            a = &APP[i];
+    for (size_t i = 0; i < app_n; i++)
+        if (strcmp(app_tab[i].pacchetto, d->pacchetto) == 0 && !g_hash_table_contains(f->disinstallate, d->pacchetto))
+            a = &app_tab[i];
     PhSrvInstRisultato r = {PH_SRV_INST_RIUSCITO, "App disinstallata.", "", false};
     if (!collegato(f)) {
         r = (PhSrvInstRisultato){PH_SRV_INST_ERRORE, "Nessun telefono collegato.", "", false};
@@ -1707,7 +1757,8 @@ static void fai_calendario_mese(PhFinto *f, void *dati)
     bool troncato = n > massimo;
     if (troncato)
         n = massimo;
-    ph_servizi_lavoro_calendario_intervallo(r->l, PH_SRV_ESITO_OK, NULL, out, n, troncato, "it.finto.calendario");
+    ph_servizi_lavoro_calendario_intervallo(r->l, PH_SRV_ESITO_OK, NULL, out, n, troncato,
+                                             f->o.app_note ? "com.google.android.calendar" : "it.finto.calendario");
     g_free(out);
 }
 
@@ -2536,13 +2587,19 @@ PhFinto *ph_finto_nuovo(const PhFintoOpzioni *opzioni)
     f->media_stato = PH_SRV_MEDIA_RIPRODUZIONE;
     if (opzioni != NULL)
         f->o = *opzioni;
+    app_tab = f->o.app_note ? APP_NOTE : APP;
+    app_n = f->o.app_note ? G_N_ELEMENTS(APP_NOTE) : G_N_ELEMENTS(APP);
+    notif_iniziali = f->o.app_note ? NOTIFICHE_INIZIALI_NOTE : NOTIFICHE_INIZIALI;
+    notif_iniziali_n = f->o.app_note ? G_N_ELEMENTS(NOTIFICHE_INIZIALI_NOTE) : G_N_ELEMENTS(NOTIFICHE_INIZIALI);
+    notif_nuove = f->o.app_note ? NOTIFICHE_NUOVE_NOTE : NOTIFICHE_NUOVE;
+    notif_nuove_n = f->o.app_note ? G_N_ELEMENTS(NOTIFICHE_NUOVE_NOTE) : G_N_ELEMENTS(NOTIFICHE_NUOVE);
     g_mutex_init(&f->m);
     f->flussi = g_ptr_array_new();
     f->batteria = 78;
     f->volume = 100;
     f->notifiche = g_ptr_array_new_with_free_func(notifica_libera);
-    for (size_t i = G_N_ELEMENTS(NOTIFICHE_INIZIALI); i > 0; i--)
-        aggiungi_notifica(f, &NOTIFICHE_INIZIALI[i - 1]);
+    for (size_t i = notif_iniziali_n; i > 0; i--)
+        aggiungi_notifica(f, &notif_iniziali[i - 1]);
     f->tr = g_ptr_array_new_with_free_func(tr_libera);
     f->disinstallate = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
     atomic_init(&f->chiavi, 0);

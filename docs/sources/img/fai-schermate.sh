@@ -9,11 +9,13 @@
 #         phone-popup transfer transfer-list widgets window-menu decoding-warning desktop-widgets
 # Prima va compilato "veloce" sul server (strumenti/prova.sh veloce): i demo si
 # prendono da /media/YASDE/lavoro/veloce/build-veloce.
-# Icone delle app finte: icone generiche del tema Kora (GPL-3, NON nel repository). Le SVG
-# si prendono dalla copia di Kora sul server (/media/YASDE/terzi/kora, al commit fissato
-# da pacchetto/icone-kora.sh), si convertono in PNG 128x128 con gdk-pixbuf e restano in
-# ~/.cache/yasde-sviluppo/schermate/icone-kora/ insieme a tabella.txt (copia di
-# icone-demo.txt); il programma le legge con YASDE_ICONE_KORA, come nel pacchetto vero.
+# Icone delle app: quelle VERE del programma. Si estrae dall'AppImage 2.3 costruita sul
+# server (/media/YASDE/lavoro/pacchetto/YASDE-2.3-x86_64.AppImage) la sola cartella
+# usr/share/yasde/icone-kora (tabella.txt + PNG del tema Kora, GPL-3), in
+# ~/.cache/yasde-sviluppo/schermate/appimage/ (mai nel repository), e la si passa
+# cosi' com'e' al programma con YASDE_ICONE_KORA, come fa AppRun. Le app del telefono
+# dimostrativo (opzione --app-note di demo-ossatura) sono app note con pacchetto e nome
+# veri della tabella: i dati (notifiche, chiamate, rete, meteo, note) restano inventati.
 # Le foto grezze restano in ~/.cache/yasde-sviluppo/schermate/grezze/.
 set -e
 QUI="$(cd "$(dirname "$0")" && pwd)"
@@ -24,24 +26,27 @@ B=/media/YASDE/lavoro/veloce/build-veloce/src/shell
 mkdir -p "$G" "$D/bin"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
-# Prepara la cartella delle icone Kora per il demo (SVG dal server, PNG con gdk-pixbuf).
+# App del telefono dimostrativo (src/shell/finto/finto.c, APP_NOTE) che le schermate usano:
+# ognuna deve avere nella tabella vera la sua icona e il suo PNG nell'AppImage.
+APP_USATE="com.whatsapp com.android.chrome com.google.android.keep com.google.android.apps.photos"
+
+# Estrae dall'AppImage la cartella delle icone e controlla tabella e PNG.
 prepara_icone() {
-    K="$D/icone-kora"; mkdir -p "$K/svg"
-    cp "$QUI/icone-demo.txt" "$K/tabella.txt"
-    # Tabella letta riga per riga; un nome di icona strano ferma tutto (finirebbe in un
-    # percorso locale e in uno remoto).
-    while IFS= read -r riga || [ -n "$riga" ]; do
-        case "$riga" in ''|'#'*) continue ;; esac
-        n=${riga#* }
+    A="$D/appimage"; rm -rf "$A"; mkdir -p "$A"
+    scp -q -o BatchMode=yes "$SRV:/media/YASDE/lavoro/pacchetto/YASDE-2.3-x86_64.AppImage" "$A/YASDE.AppImage" \
+        || { echo "AppImage 2.3 non trovata sul server"; exit 1; }
+    chmod +x "$A/YASDE.AppImage"
+    # Estrae nella cartella dell'AppImage (squashfs-root), non altrove.
+    ( cd "$A" && ./YASDE.AppImage --appimage-extract 'usr/share/yasde/icone-kora/*' > "$A/estrazione.log" 2>&1 ) \
+        || { echo "estrazione fallita: $A/estrazione.log"; exit 1; }
+    K="$A/squashfs-root/usr/share/yasde/icone-kora"
+    [ -f "$K/tabella.txt" ] || { echo "manca tabella.txt nell'AppImage"; exit 1; }
+    for p in $APP_USATE; do
+        n=$(grep -E "^$p " "$K/tabella.txt" | head -1 | cut -d' ' -f2)
         printf '%s\n' "$n" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]*$' && ! printf '%s' "$n" | grep -q '\.\.' \
-            || { echo "nome di icona non ammesso in icone-demo.txt: $n"; exit 1; }
-        [ -f "$K/$n.png" ] && continue
-        scp -q -o BatchMode=yes "$SRV:/media/YASDE/terzi/kora/kora/apps/scalable/$n.svg" "$K/svg/$n.svg" \
-            || { echo "manca l'icona Kora $n sul server"; exit 1; }
-        gdk-pixbuf-thumbnailer -s 128 "$K/svg/$n.svg" "$K/$n.png.nuovo" \
-            && mv -f "$K/$n.png.nuovo" "$K/$n.png" \
-            || { rm -f "$K/$n.png.nuovo"; echo "conversione fallita: $n"; exit 1; }
-    done < "$QUI/icone-demo.txt"
+            || { echo "$p: non c'e' nella tabella dell'AppImage"; exit 1; }
+        [ -f "$K/$n.png" ] || { echo "$p: manca il PNG $n.png nell'AppImage"; exit 1; }
+    done
     export YASDE_ICONE_KORA="$K"
 }
 
@@ -87,21 +92,21 @@ fai() {
     case "$1" in
     connect)   foto connect 4 demo-connessione --stato non-abbinato ;;
     connect-search) foto connect-search 3 demo-connessione --stato cerca-nuovo ;;
-    transfer-list) foto transfer-list 7 demo-ossatura --app-neutra \
+    transfer-list) foto transfer-list 7 demo-ossatura --app-note \
                    --passi "invia:holiday-photos.zip,clic:tip=Send files to the phone (PC to phone)" ;;
-    desktop)   foto desktop 4 demo-ossatura --app-neutra ;;
-    launcher)  foto launcher 6 demo-ossatura --app-neutra --passi "clic:tip=App launcher" ;;
-    window)    foto window 6 demo-ossatura --app-neutra --passi "app:it.finto.note" ;;
-    windows-snapped) foto windows-snapped 9 demo-ossatura --app-neutra \
-                   --passi "app:it.finto.note,app:it.finto.browser,hook:aggancia-sinistra:0,hook:aggancia-destra:1" ;;
-    volume)    foto volume 6 demo-ossatura --app-neutra --passi "clic:$SIS#0" ;;
-    phone-popup) foto phone-popup 6 demo-ossatura --app-neutra --passi "clic:$SIS#1" ;;
-    notifications) foto notifications 6 demo-ossatura --app-neutra --passi "clic:$SIS#2" ;;
-    transfer)  foto transfer 6 demo-ossatura --app-neutra --passi "clic:tip=Send files to the phone (PC to phone)" ;;
-    desktop-widgets) foto desktop-widgets 9 demo-ossatura --app-neutra --passi "vetrina" ;;
-    widgets)   foto widgets 8 demo-ossatura --app-neutra --passi "destro:600:300,clic:testo=Add widget…" ;;
-    window-menu) foto window-menu 7 demo-ossatura --app-neutra --passi "app:it.finto.note,clic:css=ph-finestra-app-puls#3" ;;
-    decoding-warning) foto decoding-warning 6 demo-ossatura --app-neutra --passi "decodifica-sw" ;;
+    desktop)   foto desktop 4 demo-ossatura --app-note ;;
+    launcher)  foto launcher 6 demo-ossatura --app-note --passi "clic:tip=App launcher" ;;
+    window)    foto window 6 demo-ossatura --app-note --passi "app:com.google.android.keep" ;;
+    windows-snapped) foto windows-snapped 9 demo-ossatura --app-note \
+                   --passi "app:com.google.android.keep,app:com.android.chrome,hook:aggancia-sinistra:0,hook:aggancia-destra:1" ;;
+    volume)    foto volume 6 demo-ossatura --app-note --passi "clic:$SIS#0" ;;
+    phone-popup) foto phone-popup 6 demo-ossatura --app-note --passi "clic:$SIS#1" ;;
+    notifications) foto notifications 6 demo-ossatura --app-note --passi "clic:$SIS#2" ;;
+    transfer)  foto transfer 6 demo-ossatura --app-note --passi "clic:tip=Send files to the phone (PC to phone)" ;;
+    desktop-widgets) foto desktop-widgets 9 demo-ossatura --app-note --passi "vetrina" ;;
+    widgets)   foto widgets 8 demo-ossatura --app-note --passi "destro:600:300,clic:testo=Add widget…" ;;
+    window-menu) foto window-menu 7 demo-ossatura --app-note --passi "app:com.google.android.keep,clic:css=ph-finestra-app-puls#3" ;;
+    decoding-warning) foto decoding-warning 6 demo-ossatura --app-note --passi "decodifica-sw" ;;
     *) echo "schermata sconosciuta: $1"; return 1 ;;
     esac
 }

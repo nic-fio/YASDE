@@ -8,7 +8,8 @@
  * schermo intero. I testi qui sono per chi sviluppa: niente traduzioni.
  * Per le schermate del manuale (nello schermo invisibile non c'e' ne' mouse ne'
  * tastiera): --app-neutra (finestre con un'immagine "da app" a rettangoli
- * invece delle barre), --passi "p1,p2,..." (un passo ogni 1,2 s, il primo dopo
+ * invece delle barre), --app-note (come --app-neutra, ma con app note: pacchetti e nomi
+ * veri di data/icone-kora.txt, per mostrare le icone Kora vere; solo schermate), --passi "p1,p2,..." (un passo ogni 1,2 s, il primo dopo
  * 2,5 s): app:<pacchetto> apre una finestra; clic:<sel> preme un pulsante, con
  * <sel> = css=<classe>[#n] | tip=<suggerimento>[#n] | dato=<chiave>[#n] | testo=<etichetta>[#n]
  * (n-esimo in ordine di albero, da 0); hook:<azione>:<n> e' un'azione di
@@ -360,7 +361,7 @@ int main(int argc, char **argv)
     int larg = 0, alt = 0, prova_ms = -1;
     bool comandi = false, dmabuf = false;
     const char *mostra = NULL;
-    bool apri_app = false, app_neutra = false;
+    bool apri_app = false, app_neutra = false, app_note = false;
     char **passi = NULL;
     int chiudi_dopo = 0;
     for (int i = 1; i < argc; i++) {
@@ -377,6 +378,9 @@ int main(int argc, char **argv)
             apri_app = true;
         } else if (strcmp(argv[i], "--app-neutra") == 0) {
             app_neutra = true;
+        } else if (strcmp(argv[i], "--app-note") == 0) {
+            app_neutra = true;
+            app_note = true;
         } else if (strcmp(argv[i], "--passi") == 0 && i + 1 < argc) {
             passi = g_strsplit(argv[++i], ",", -1);
         } else if (strcmp(argv[i], "--chiudi-dopo") == 0 && i + 1 < argc) {
@@ -386,7 +390,7 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "--prova") == 0 && i + 1 < argc) {
             prova_ms = atoi(argv[++i]);
         } else {
-            fprintf(stderr, "uso: %s [--misura LxA] [--comandi] [--dmabuf] [--mostra blocco|persa|intero] [--apri-app] [--app-neutra] [--passi P,P,...] [--chiudi-dopo S] [--prova MS]\n", argv[0]);
+            fprintf(stderr, "uso: %s [--misura LxA] [--comandi] [--dmabuf] [--mostra blocco|persa|intero] [--apri-app] [--app-neutra] [--app-note] [--passi P,P,...] [--chiudi-dopo S] [--prova MS]\n", argv[0]);
             return 2;
         }
     }
@@ -407,7 +411,7 @@ int main(int argc, char **argv)
     d.chiudi_dopo_s = chiudi_dopo;
     d.passi = passi;
     PhFintoOpzioni o = {.dmabuf = dmabuf, .notifiche_ogni_s = prova_ms >= 0 ? -1 : 0,
-                        .ritardo_ms = prova_ms >= 0 ? 20 : 0, .aspetto_app = app_neutra};
+                        .ritardo_ms = prova_ms >= 0 ? 20 : 0, .aspetto_app = app_neutra, .app_note = app_note};
     d.f = ph_finto_nuovo(&o);
     if (d.f == NULL)
         return 1;

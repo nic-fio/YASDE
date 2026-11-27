@@ -52,6 +52,8 @@ typedef struct {
     int ritardo_ms;       /* ritardo simulato delle risposte; 0 = 150 ms */
     int inizio;           /* PhFintoInizio (aggiunto il 23 nov per la prima connessione) */
     bool aspetto_app;     /* fotogrammi con un'immagine neutra "da app" (rettangoli) invece delle barre */
+    bool app_note;        /* SOLO demo (schermate dei manuali): app note con pacchetti e nomi veri, tutti in
+                           * data/icone-kora.txt, al posto delle it.finto.*; notifiche e profilo le usano */
 } PhFintoOpzioni;
 
 /* Come parte il telefono finto (prima connessione, src/shell/connessione/):

@@ -131,7 +131,8 @@ GRUPPI = [
     grp("Shell: fake backend", "src/shell/finto", [
         ("finto.c", "The fake phone: connection, apps, notifications, folders, transfers, widgets"), ("finto.h", "Contract of the fake and of the demo program"), ("interno.h", "Internal parts"),
         ("comandi.c", "The small window of fake-phone commands"), ("flusso_finto.c", "Synthetic video streams"), ("superficie_finta.c", "Fake surface for tests"), ("demo_finto.c", "Demo of the fake backend"),
-        ("prova_finto.c", T + " of the fake backend")]),
+        ("prova_finto.c", T + " of the fake backend"),
+        ("prova_app_note.c", T + " of the demo-only app set: every app is in data/icone-kora.txt")]),
     grp("Packaging", "pacchetto", [
         ("AppRun", "AppImage launcher: libraries, schemas, loaders"), ("costruisci.sh", "Runs the packaging on the build server"), ("icone-kora.sh", "Packaging step: Kora icons as PNG, sources, GPL-3 text and credits"), ("dentro.sh", "Packaging inside the container: tools, FFmpeg, libtiff, cairo, checks, AppImage"),
         ("yasde.desktop", "Desktop entry used only by " + c("appimagetool")), ("prova_pixbuf.c", "Packaging test: image loaders"), ("prova_tls.c", "Packaging test: certificate authorities with the package's OpenSSL"),
