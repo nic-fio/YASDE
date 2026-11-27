@@ -3,7 +3,7 @@
 <head>
 {{INCLUDI:parti/testa.html}}
 <title>YASDE — Yet Another Samsung Dex Emulator: your phone's apps on your Linux desktop</title>
-<meta name="description" content="YASDE turns one window on your Linux PC into a desktop. The apps of an Android 14 or later phone open as windows inside it. One AppImage, nothing installed on the phone, free to use but not to sell.">
+<meta name="description" content="YASDE turns one window on your Linux PC into a desktop with widgets. The apps of an Android 14 or later phone open as windows inside it. One AppImage, nothing installed on the phone, free to use but not to sell.">
 <!--IF:INDIRIZZO-->
 <link rel="canonical" href="{{INDIRIZZO}}">
 <meta property="og:url" content="{{INDIRIZZO}}">
@@ -26,7 +26,7 @@
 <!--/IF-->
       <p class="occhiello">Yet Another Samsung Dex Emulator · {{VERSION}}</p>
       <h1>Your phone's apps on <em>your Linux desktop</em></h1>
-      <p class="sotto">YASDE turns one window on your Linux PC into a desktop. The apps of your Android phone open as windows inside it, and you use them with mouse and keyboard.</p>
+      <p class="sotto">YASDE turns one window on your Linux PC into a desktop, with icons, a taskbar and glass widgets. The apps of your Android phone open as windows inside it, and you use them with mouse and keyboard.</p>
       <div class="bottoni">
         <a class="pulsante primario" href="{{URL_APPIMAGE}}">Download YASDE {{VERSION}}</a>
         <a class="pulsante vetro-blu" href="User%20Manual.html">Read the User Manual</a>
@@ -39,8 +39,8 @@
           <div class="lucchetto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Encrypted<br>connection</div>
         </div>
         <div class="portatile">
-          <div class="laptop"><div class="coperchio"><div class="schermo"><button type="button" data-zoom class="zoom-pieno" aria-label="Enlarge the screenshot"><img src="{{IMG:desktop-widgets.png}}" alt="The YASDE desktop on a dark teal wallpaper: app icons on the left and eleven dark glass widgets (an analog clock, a round battery, quick switches, now playing, network, quick notes, a month calendar, phone storage, next alarm, weather and recent calls) above the taskbar." width="1280" height="720"></button></div></div><div class="base"></div></div>
-          <div class="didascalia">YASDE on your Linux PC<small>The phone's apps, in a window. A screenshot taken with a demonstration phone: well-known apps with the icons of the included theme, invented data</small></div>
+          <div class="laptop"><div class="coperchio"><div class="schermo"><button type="button" data-zoom class="zoom-pieno" aria-label="Enlarge the screenshot"><img src="{{IMG:desktop-widgets.png}}" alt="The YASDE desktop on a dark teal wallpaper: four app icons on the left, eleven dark glass widgets (an analog clock, a round battery, quick switches, now playing, network, quick notes, a month calendar, phone storage, next alarm, weather and recent calls) and the taskbar at the bottom." width="1280" height="720"></button></div></div><div class="base"></div></div>
+          <div class="didascalia">YASDE on your Linux PC<small>The desktop with widgets. Screenshot of a demonstration phone: invented data, app icons from the included Kora theme</small></div>
         </div>
       </div>
     </div>
@@ -57,89 +57,139 @@
 </div>
 
 <main id="principale">
-  <section class="sezione chiara">
+  <section class="sezione chiara" id="features-list">
     <div class="largo due-col">
       <div>
         <p class="occhiello">What it does</p>
         <h2>With YASDE you can</h2>
         <p class="guida">YASDE is an independent project. It is designed for Android 14 or later phones of any make, using only standard Android.</p>
         <ul class="punti-v">
-          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><div><b>Keep a desktop</b><span>A wallpaper, app icons and widgets, and a taskbar with a launcher. Open the phone's apps in separate windows, several at the same time.</span></div></li>
-          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></span><div><b>Type and paste</b><span>Type with the PC keyboard and copy and paste text in both directions.</span></div></li>
-          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg></span><div><b>Hear the apps</b><span>The phone's app sound plays through the PC speakers.</span></div></li>
-          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg></span><div><b>Widgets and notifications</b><span>Dark glass widgets on the desktop, which you can resize from a corner: weather, calendar, battery, storage, quick notes, recent calls, network and now playing. Read the phone's notifications on the PC.</span></div></li>
-          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg></span><div><b>Files and APKs</b><span>Send files to the phone, download files from it and install an APK.</span></div></li>
-          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.5"/></svg></span><div><b>Screenshots and recordings</b><span>Take screenshots and record an app's screen.</span></div></li>
-          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span><div><b>The real screen</b><span>Open a window that mirrors the phone's real screen.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><div><b>A desktop for the phone's apps</b><span>A wallpaper, app icons, widgets and a taskbar with a launcher. Each app opens in its own window, up to 64 at the same time. Windows move, resize, minimize, maximize and snap to the left or right half.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></span><div><b>Mouse, keyboard and clipboard</b><span>The mouse acts as one finger (tap, drag, scroll, and Ctrl plus wheel to zoom). Type with the PC keyboard; the clipboard is shared for text, in both directions.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg></span><div><b>Sound</b><span>The sound of the phone's apps, games, alarms and notifications plays through the PC speakers, in step with the video. Calls and ringtone stay on the phone.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 10h6M7 14h3"/></svg></span><div><b>Glass widgets</b><span>Sixteen kinds of widget on the desktop, drawn on the PC with data from the phone: clock, weather, calendar, battery, storage, quick notes, recent calls, network, now playing and more. See below.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg></span><div><b>Notifications and phone status</b><span>A panel with the phone's notifications, cards for new ones, and a phone popup with the battery, the network and the switch for the physical panel.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg></span><div><b>Files and APKs</b><span>Drag files onto the window to send them to the phone, download files from it, and drop an APK to install an app.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.5"/></svg></span><div><b>Screenshots and recordings</b><span>A screenshot of an app is saved as a PNG and copied to the clipboard. A recording is an MP4 of the app's screen, without sound.</span></div></li>
+          <li><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span><div><b>The real screen, on demand</b><span>A window that mirrors the phone's real screen. The physical panel is kept off while you work on the PC and turns on when you touch the phone.</span></div></li>
         </ul>
       </div>
       <div class="in-cornice">
-        <div class="laptop"><div class="coperchio"><div class="schermo"><button type="button" data-zoom class="zoom-pieno" aria-label="Enlarge the screenshot"><img src="{{IMG:windows-snapped.png}}" alt="Two app windows snapped side by side, each with its own title bar, above the taskbar." width="1280" height="720" loading="lazy"></button></div></div><div class="base"></div></div>
-        <p class="cornice-did">Two app windows snapped side by side.</p>
+        <div class="laptop"><div class="coperchio"><div class="schermo"><button type="button" data-zoom class="zoom-pieno" aria-label="Enlarge the screenshot"><img src="{{IMG:window.png}}" alt="An app window on the desktop, with its glass title bar (back, screenshot, record, more commands, minimize, maximize and close) and the widgets behind it." width="1280" height="720" loading="lazy"></button></div></div><div class="base"></div></div>
+        <p class="cornice-did">An app window with its glass title bar. The app's content here is a placeholder.</p>
       </div>
     </div>
   </section>
 
-  <section class="sezione grigia" id="screens">
+  <section class="sezione grigia" id="widgets">
+    <div class="largo">
+      <div class="due-col">
+        <div>
+          <p class="occhiello">Widgets</p>
+          <h2>Cards on the desktop, drawn on the PC</h2>
+          <p class="guida">Widgets show data that YASDE reads from the phone. They are not Android widgets: only the ones in the catalog below exist. Like the taskbar they are dark glass with white text; menus and dialogs stay light.</p>
+          <ul class="elenco-c" style="margin-top:1.6rem">
+            <li><b>Shapes.</b> Rounded tiles for most widgets, round for the analog clock and the battery, capsules for the next alarm and the quick switches.</li>
+            <li><b>Resize from the corner.</b> Point at a widget and drag the small corner at its bottom right, in steps of 8 pixels. From the keyboard, Tab to the corner and use the arrow keys. A larger widget shows more: more notifications, the legend of the storage, the next days of the weather.</li>
+            <li><b>Put them where you like.</b> Right-click an empty part of the desktop and choose <i>Add widget…</i>; drag a widget to place it on an 8-pixel grid. Position, size and style are saved for each phone.</li>
+            <li><b>Styles.</b> The right-click menu of a widget changes its style (the clock, the month calendar and the weather have several), and removes it.</li>
+            <li><b>A click can open an app.</b> On some widgets a click opens the matching app of the phone in a YASDE window; if the phone does not have that app, the click does nothing. The battery and storage widgets open the right page of the phone's Settings.</li>
+          </ul>
+        </div>
+        <div class="in-cornice">
+          <div class="laptop"><div class="coperchio"><div class="schermo"><button type="button" data-zoom class="zoom-pieno" aria-label="Enlarge the screenshot"><img src="{{IMG:widgets.png}}" alt="The Add widget dialog over the desktop, with cards for Clock, Calendar, Phone status, Recent notifications, Phone storage and Weather, each with an Add button, and the top of Month calendar and Next alarm." width="1280" height="720" loading="lazy"></button></div></div><div class="base"></div></div>
+          <p class="cornice-did">The Add widget dialog: press Add on the card you want.</p>
+        </div>
+      </div>
+
+      <h3 class="sotto-titolo">The catalog</h3>
+      <div class="scorre">
+        <table class="tabella">
+          <caption class="vh">The widgets you can add</caption>
+          <thead class="vh"><tr><th scope="col">Widget</th><th scope="col">What it shows</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Clock</th><td>Time and date, in digital, classic analog (with a seconds hand), minimal analog, flip tiles, in-words and dual time zone styles, also without background.</td></tr>
+            <tr><th scope="row">Calendar</th><td>The events of today, the one going on now marked <i>NOW</i>. Read-only.</td></tr>
+            <tr><th scope="row">Month calendar</th><td>The month with a dot on the days that have events, in Month, Week and Agenda styles.</td></tr>
+            <tr><th scope="row">Phone status</th><td>The battery level with a bar; larger sizes add the network, the physical panel and the lock state.</td></tr>
+            <tr><th scope="row">Battery details</th><td>A round ring with the percentage and the charging state; with more room, temperature, health and voltage.</td></tr>
+            <tr><th scope="row">Phone storage</th><td>The free space, and a bar divided into images, videos, audio, apps and other.</td></tr>
+            <tr><th scope="row">Recent notifications</th><td>The latest notifications of the phone, without opening the panel.</td></tr>
+            <tr><th scope="row">Weather</th><td>Current conditions and forecast for the place of the phone, in several styles. The only part of YASDE that uses the Internet, and only while a weather widget is on the desktop.</td></tr>
+            <tr><th scope="row">Next alarm</th><td>A capsule with the time of the phone's next alarm and how long is left.</td></tr>
+            <tr><th scope="row">Quick switches</th><td>Three round buttons that change the phone: ringer, do not disturb and flashlight.</td></tr>
+            <tr><th scope="row">Quick notes</th><td>A notepad on the desktop.</td></tr>
+            <tr><th scope="row">Recent calls</th><td>The phone's latest calls, newest first.</td></tr>
+            <tr><th scope="row">Network</th><td>The Wi-Fi network and the mobile network of the phone.</td></tr>
+            <tr><th scope="row">Now playing</th><td>The track that plays on the phone, with three buttons.</td></tr>
+            <tr><th scope="row">Frequent apps</th><td>The apps you open most often, counted by YASDE for each phone.</td></tr>
+            <tr><th scope="row">Recent transfers</th><td>The latest files sent or received in this session.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nota-b">Find my phone is not available in this version. The weather comes from Open-Meteo.com: the phone's position is rounded to about 500 meters before it is used, and the precise position never leaves the phone.</p>
+
+      <h3 class="sotto-titolo">Four in detail</h3>
+      <div class="due-schede">
+        <div class="scheda-b ampia"><h3>Quick notes</h3>
+          <ul class="elenco-c">
+            <li>A notepad: a title and a text field of several lines. Drag the widget by its title; in the text field the mouse selects text.</li>
+            <li>One text for each phone, saved while you type. It stays on the PC, in the phone's profile: it is not sent to the phone and is not written in the logs.</li>
+            <li>Up to 2047 bytes of UTF-8, about 2000 characters. Right-click the text for Cut, Copy, Paste and Select all.</li>
+          </ul></div>
+        <div class="scheda-b ampia"><h3>Recent calls</h3>
+          <ul class="elenco-c">
+            <li>Each row has the kind of call (incoming, outgoing, missed or declined), the name or the number, and the time. A missed call is in coral.</li>
+            <li>Read-only. The larger the widget, the more rows; the phone gives at most 20. It says <i>Not available on this phone</i> when the phone does not give its call log to YASDE.</li>
+            <li>A click on a row opens the phone's Phone app, when YASDE finds one of the usual dialer apps; otherwise nothing happens. Names and numbers are kept only in the PC's memory.</li>
+          </ul></div>
+        <div class="scheda-b ampia"><h3>Network</h3>
+          <ul class="elenco-c">
+            <li>Two blocks: <i>Wi-Fi</i> with the signal and the name of the network, and <i>Mobile</i> with the signal, the operator and the generation (for example 5G), or <i>No service</i> or <i>No SIM</i>.</li>
+            <li>Read-only: a click does nothing and nothing is changed on the phone. A value the phone does not tell is never guessed.</li>
+            <li>Read about every 15 seconds, only while the widget is on the desktop.</li>
+          </ul></div>
+        <div class="scheda-b ampia"><h3>Now playing</h3>
+          <ul class="elenco-c">
+            <li>The title, the artist and the name of the app that plays, with <i>Previous track</i>, <i>Play or pause</i> and <i>Next track</i>.</li>
+            <li>A button works only if the player allows that command: the commands depend on the app. These three are the only commands YASDE can send to a player.</li>
+            <li>It says <i>Nothing playing</i> when no player is active. A click on the title opens the app that is playing, when the phone has it.</li>
+          </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sezione chiara" id="screens">
     <div class="largo">
       <p class="occhiello">Screenshots</p>
       <h2>What it looks like</h2>
-      <p class="guida">Select a picture to enlarge it. They were taken with a demonstration phone: the apps are well-known apps shown with the icons of the theme included in the program (Kora, credits below), the data is invented and the content inside the app windows is a placeholder. App names and icons belong to their respective owners.</p>
+      <p class="guida">Select a picture to enlarge it. They were taken with a demonstration phone: the apps are well-known apps shown with the icons of the Kora theme included in the program (credits below), the data is invented and the content inside the app windows is a placeholder. App names and icons belong to their respective owners.</p>
       <div class="galleria" style="margin-top:2.2rem">
-        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:launcher.png}}" alt="The launcher open over the desktop, with a search field and a grid of the phone's apps." width="1280" height="720" loading="lazy"></button><figcaption>The launcher, with a search field and the phone's apps.</figcaption></figure>
-        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:widgets.png}}" alt="The Add widget dialog listing widgets such as clock, calendar, phone status and weather." width="1280" height="720" loading="lazy"></button><figcaption>The Add widget dialog.</figcaption></figure>
-        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:transfer.png}}" alt="The Send to the phone panel, with a drop area for files and a choice of destination folder on the phone." width="1280" height="720" loading="lazy"></button><figcaption>Sending files to the phone: drop them on the window or choose them, then pick the folder.</figcaption></figure>
+        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:launcher.png}}" alt="The launcher open over the desktop: a search field and a grid of the phone's apps with their icons, the widgets blurred behind it." width="1280" height="720" loading="lazy"></button><figcaption>The launcher: a search field and all the phone's apps in a grid. Enter opens the first result.</figcaption></figure>
+        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:windows-snapped.png}}" alt="Two app windows snapped side by side, each filling half of the desktop above the taskbar." width="1280" height="720" loading="lazy"></button><figcaption>Two windows snapped side by side: drag a title bar to the left or right edge and release.</figcaption></figure>
+        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:window-menu.png}}" alt="The More commands menu of an app window, with Rotate, a Compatibility check box and Close app." width="1280" height="720" loading="lazy"></button><figcaption>The More commands menu: Rotate, Compatibility (for apps that look too small) and Close app.</figcaption></figure>
+        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:notifications.png}}" alt="The notifications panel above the taskbar: three notifications, each with the app icon, title, text, app name and time, and Hide buttons." width="1280" height="720" loading="lazy"></button><figcaption>The notifications panel, with Hide for one entry and Hide all. Hiding works only in YASDE.</figcaption></figure>
+        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:phone-popup.png}}" alt="The phone popup: Android version, battery and network, a Show the phone screen switch and a Physical panel switch." width="1280" height="720" loading="lazy"></button><figcaption>The phone popup: status, the mirror of the phone's real screen and the physical panel switch.</figcaption></figure>
+        <figure class="scheda-b"><button type="button" data-zoom><img src="{{IMG:transfer.png}}" alt="The Send to the phone panel, with a drop area, a Choose files from the PC button and the destination folder on the phone with quick buttons." width="1280" height="720" loading="lazy"></button><figcaption>Send to the phone: drop files on the window or choose them, then pick the destination folder.</figcaption></figure>
       </div>
     </div>
   </section>
 
-  <section class="sezione chiara" id="how">
+  <section class="sezione grigia" id="how">
     <div class="largo come">
       <div>
         <p class="occhiello">How it works</p>
         <h2>A desktop in one window</h2>
-        <p class="guida">A single YASDE window on the PC is the desktop. The apps keep running on the phone.</p>
+        <p class="guida">The PC and the phone talk over your Wi-Fi network, through an encrypted connection. The first time you pair them with a six-digit code.</p>
       </div>
       <div class="passi">
-        <div class="passo"><h3><i>1.</i>One window</h3><p>A single YASDE window on the PC is the desktop.</p></div>
+        <div class="passo"><h3><i>1.</i>One window</h3><p>A single YASDE window on the PC is the desktop; each app opens as a window inside it.</p></div>
         <div class="tratteggio" aria-hidden="true">- - →</div>
-        <div class="passo"><h3><i>2.</i>Apps stay on the phone</h3><p>They keep running there, with their data and accounts. YASDE sends their picture and sound to the PC.</p></div>
+        <div class="passo"><h3><i>2.</i>Apps stay on the phone</h3><p>They keep running there, with their data and accounts, on virtual screens, while the phone's real panel stays off. YASDE sends their picture and sound to the PC.</p></div>
         <div class="tratteggio" aria-hidden="true">- - →</div>
         <div class="passo"><h3><i>3.</i>Mouse and keyboard</h3><p>Your clicks and keystrokes go back to the phone.</p></div>
         <div class="tratteggio" aria-hidden="true">- - →</div>
-        <div class="passo"><h3><i>4.</i>Nothing to install</h3><p>No app on the phone, no root access. What YASDE changes while it runs is put back when it closes.</p></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="sezione grigia" id="download">
-    <div class="largo">
-      <p class="occhiello">Get YASDE</p>
-      <h2>Three steps in</h2>
-      <p class="guida">Version {{VERSION}}: <a href="{{URL_APPIMAGE}}">YASDE-{{VERSION}}-x86_64.AppImage</a> · <a href="{{URL_SORGENTI}}">third-party sources</a> · <a href="{{URL_SOMME}}">SHA256SUMS</a> · <a href="{{URL_RELEASE}}">release page</a> · <a href="{{GITHUB_REPO}}">source code on GitHub</a></p>
-      <div class="schede-3">
-        <div class="scheda-d"><h3><i>1.</i>Download</h3><p>Download <code>YASDE-{{VERSION}}-x86_64.AppImage</code> and put it in any folder you like.</p><p>The archive of the third-party sources is published next to it, in the same release.</p>
-          <a class="pulsante primario" href="{{URL_APPIMAGE}}">Download YASDE {{VERSION}}</a>
-        </div>
-        <div class="scheda-d"><h3><i>2.</i>Make it executable</h3><p>In your file manager open the file's properties and allow running it as a program, or type in a terminal:</p><pre>chmod +x YASDE-{{VERSION}}-x86_64.AppImage</pre></div>
-        <div class="scheda-d"><h3><i>3.</i>Start it</h3><p>Double-click the file, or run it from a terminal. A single YASDE window opens.</p><p>At the first start it shows <em>Connect your phone</em>; the User Manual goes on from there. YASDE adds no menu entry, no launcher and no icon: the file runs from where you put it.</p></div>
-      </div>
-      <p class="collegamenti">To check the downloads, put <code>SHA256SUMS</code> next to them and run <code>sha256sum -c --ignore-missing SHA256SUMS</code>. The licence is on the <a href="licence.html">licence page</a>.</p>
-      <div class="due-schede">
-        <div class="scheda-b ampia"><h3>Version {{VERSION}}</h3>
-          <ul class="elenco-c">
-            <li><b>The desktop</b> — wallpaper, app icons, widgets, and a taskbar with a launcher.</li>
-            <li><b>The phone's apps</b> as windows, several at the same time, with keyboard, clipboard and sound.</li>
-            <li><b>Widgets</b> in dark glass, resizable, including <em>Recent calls</em>, <em>Network</em>, <em>Now playing</em> and <em>Quick notes</em>; notifications and phone status on the PC.</li>
-            <li><b>Files</b> — send, download, install an APK; screenshots and recordings; a window that mirrors the phone's real screen.</li>
-          </ul></div>
-        <div class="scheda-b ampia"><h3>What you get</h3>
-          <ul class="elenco-c">
-            <li><b>One AppImage</b> of about 20 MB, with GTK 4 and the video libraries it needs.</li>
-            <li><b>English only</b> — the program and its manuals.</li>
-            <li><b>The two manuals</b>, the User Manual and the Technical Manual, on this site.</li>
-            <li><b>Third-party licences</b> — the components keep their own licences, listed in the documentation folder of the package.</li>
-          </ul></div>
+        <div class="passo"><h3><i>4.</i>Nothing to install</h3><p>No app on the phone and no root access. What YASDE changes while it runs is put back when it closes.</p></div>
       </div>
     </div>
   </section>
@@ -168,11 +218,56 @@
     </div>
   </section>
 
+  <section class="sezione grigia" id="download">
+    <div class="largo">
+      <p class="occhiello">Get YASDE</p>
+      <h2>Three steps in</h2>
+      <p class="guida">Version {{VERSION}}: <a href="{{URL_APPIMAGE}}">YASDE-{{VERSION}}-x86_64.AppImage</a> · <a href="{{URL_SORGENTI}}">third-party sources</a> · <a href="{{URL_SOMME}}">SHA256SUMS</a> · <a href="{{URL_RELEASE}}">release page</a> · <a href="{{GITHUB_REPO}}">source code on GitHub</a></p>
+      <div class="schede-3">
+        <div class="scheda-d"><h3><i>1.</i>Download</h3><p>Download <code>YASDE-{{VERSION}}-x86_64.AppImage</code> and put it in any folder you like.</p><p>The archive of the third-party sources is published next to it, in the same release.</p>
+          <a class="pulsante primario" href="{{URL_APPIMAGE}}">Download YASDE {{VERSION}}</a>
+        </div>
+        <div class="scheda-d"><h3><i>2.</i>Make it executable</h3><p>In your file manager open the file's properties and allow running it as a program, or type in a terminal:</p><pre>chmod +x YASDE-{{VERSION}}-x86_64.AppImage</pre></div>
+        <div class="scheda-d"><h3><i>3.</i>Start it</h3><p>Double-click the file, or run it from a terminal. A single YASDE window opens.</p><p>At the first start it shows <em>Connect your phone</em>; the User Manual goes on from there. YASDE adds no menu entry, no launcher and no icon: the file runs from where you put it.</p></div>
+      </div>
+      <p class="collegamenti">To check the downloads, put <code>SHA256SUMS</code> next to them and run <code>sha256sum -c --ignore-missing SHA256SUMS</code>. The licence is on the <a href="licence.html">licence page</a>.</p>
+      <div class="due-schede">
+        <div class="scheda-b ampia"><h3>New in {{VERSION}}</h3>
+          <ul class="elenco-c">
+            <li><b>Three new widgets</b> — <em>Recent calls</em>, <em>Network</em> and <em>Now playing</em>.</li>
+            <li><b>Quick notes</b> has a right-click menu with Cut, Copy, Paste and Select all.</li>
+            <li><b>Phone status</b> opens the phone's Settings when you click it.</li>
+            <li><b>Pages opened by widget clicks</b> no longer pile up: each replaces the one before.</li>
+          </ul></div>
+        <div class="scheda-b ampia"><h3>What you get</h3>
+          <ul class="elenco-c">
+            <li><b>One AppImage</b> of about 20 MB, with GTK 4 and the video libraries it needs.</li>
+            <li><b>English only</b> — the program and its manuals.</li>
+            <li><b>The two manuals</b>, the User Manual and the Technical Manual, on this site.</li>
+            <li><b>Third-party licences</b> — the components keep their own licences, listed in the documentation folder of the package.</li>
+          </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sezione chiara" id="docs">
+    <div class="largo">
+      <p class="occhiello">Documentation</p>
+      <h2>Manuals and licence</h2>
+      <p class="guida">Both manuals are single pages that open in the browser, and they describe YASDE {{VERSION}} as it is: what they do not describe, YASDE does not do.</p>
+      <div class="due-schede">
+        <div class="scheda-b ampia"><h3>User Manual</h3><p style="margin:0 0 1.2rem;color:var(--tenue)">Installing YASDE, connecting the phone, and using the desktop, the widgets, the apps and the files; privacy and problems.</p><a class="pulsante primario" href="User%20Manual.html">Read the User Manual</a></div>
+        <div class="scheda-b ampia"><h3>Technical Manual</h3><p style="margin:0 0 1.2rem;color:var(--tenue)">The internals of YASDE, the protocol with the phone, the tests and the map of the project's files.</p><a class="pulsante secondario" href="Technical%20Manual.html">Read the Technical Manual</a></div>
+      </div>
+      <p class="nota-b">YASDE is free: anyone may use it, change it and pass it on, but may not sell it. The terms are the MIT License with the Commons Clause condition; the full text is on the <a href="licence.html">licence page</a>. All the documents are on the <a href="docs.html">documentation page</a>.</p>
+    </div>
+  </section>
+
   <section class="sezione grigia" id="limits">
     <div class="largo">
       <p class="occhiello">What has been tried</p>
       <h2>Status and limits</h2>
-      <p class="guida">What the manuals say has and has not been tried.</p>
+      <p class="guida">What the manuals say has and has not been tried. The screenshots on this page come from a demonstration phone, not from a real one.</p>
       <div class="due-blocchi">
         <ul class="elenco-c">
           <li><b>Tried on one phone so far.</b> YASDE is designed for Android 14 or later phones of any make, using only standard Android, but it has been tried on one phone so far.</li>

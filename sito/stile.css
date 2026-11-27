@@ -232,3 +232,7 @@ dialog .x { position: absolute; top: -14px; right: -6px; width: 44px; height: 44
 .zoom-pieno { all: unset; display: block; cursor: zoom-in; position: absolute; inset: 0; }
 .zoom-pieno:focus-visible { outline: 2px solid var(--accento); outline-offset: -4px; }
 .piede-chiaro .destra a { color: var(--accento); }
+.sotto-titolo { margin: 3rem 0 0; font-size: 1.5rem; letter-spacing: -.02em; }
+.sezione .sotto-titolo + .scorre, .sezione .sotto-titolo + .due-schede { margin-top: 1.2rem; }
+@media (min-width: 900px) { #screens .galleria { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { #features-list .in-cornice { position: sticky; top: 6rem; } }

@@ -54,7 +54,7 @@ S3 = flow([
     + ui("Pair") + ".",
     "The screen shows " + ui("Pairing in progress…") + " and then " + ui("Paired: connecting the phone…") +
     ". When the connection is made the screen disappears and your desktop appears.",
-]) + shot("connect.png", "«FIG» — The pairing screen, ready for the six-digit code") + shot("desktop.png", "«FIG» — The desktop after the connection (with a few icons added)") + tip(
+]) + shot("connect.png", "«FIG» — The pairing screen, ready for the six-digit code") + shot("desktop-widgets.png", "«FIG» — The desktop after the connection (with a few icons and widgets added)") + tip(
     "keep the pairing screen on the phone open until YASDE has finished: the code is valid only while that screen is shown.",
     "Do not close it.") + note("YASDE never saves the pairing code, on disk or in logs. "
                               "It saves the key of the PC, so the phone recognises it next time, and the phone's last address, "

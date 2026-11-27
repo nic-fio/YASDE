@@ -30,11 +30,14 @@ PREDEFINITA = SITO / "pubblico"
 USCITA = PREDEFINITA  # fissata in main() dopo i controlli
 CONTRASSEGNO = ".uscita-sito-yasde"  # file vuoto scritto in ogni cartella generata: dice «qui si può svuotare»
 IMG = RADICE / "docs" / "sources" / "img"
-TIPI = {".png": "image/png"}
+TIPI = {".png": "image/png", ".webp": "image/webp"}
 # Immagini incorporate nella pagina come data URI
 IMMAGINI = {}
-for _n in ("desktop-widgets.png", "launcher.png", "windows-snapped.png", "widgets.png", "transfer.png"):
+# Le schermate si incorporano come WebP (qualita' 84): stesse dimensioni, un quarto del peso del PNG dei manuali.
+for _n in ("desktop-widgets.png", "window.png", "widgets.png", "launcher.png", "windows-snapped.png",
+           "window-menu.png", "notifications.png", "phone-popup.png", "transfer.png"):
     IMMAGINI[_n] = IMG / _n
+QUALITA_WEBP = 84
 
 
 def fine(msg):
@@ -97,7 +100,13 @@ def data_uri(nome):
     f = IMMAGINI[nome]
     if not f.is_file():
         fine("file di partenza mancante: " + str(f))
-    return "data:%s;base64,%s" % (TIPI[f.suffix], base64.b64encode(f.read_bytes()).decode())
+    try:
+        from PIL import Image
+    except ImportError:
+        fine("serve la libreria Pillow (PIL) per preparare le schermate: python3 -m pip install pillow")
+    buf = io.BytesIO()
+    Image.open(f).convert("RGB").save(buf, "WEBP", quality=QUALITA_WEBP, method=6)
+    return "data:%s;base64,%s" % (TIPI[".webp"], base64.b64encode(buf.getvalue()).decode())
 
 
 def immagine(nome):

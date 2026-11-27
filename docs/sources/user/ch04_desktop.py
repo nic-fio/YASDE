@@ -5,7 +5,7 @@ from build import c, note, p, rif, shot, steps, table, tip, ui, ul
 
 S1 = p("Once the phone is connected, the YASDE window is a desktop: a wallpaper, app icons and widgets in the middle, "
        "the taskbar at the bottom. App windows open on top of it.", lead=True) + \
-    shot("desktop.png", "«FIG» — A desktop with four icons, three widgets and the taskbar") + ul([
+    shot("desktop-widgets.png", "«FIG» — A desktop with four icons, widgets and the taskbar") + ul([
         "The desktop is kept for each phone: wallpaper, icons and widgets are saved automatically and come back at the next start.",
         "A new phone starts with a teal gradient wallpaper, no icons and three widgets on the right: " + ui("Clock")
         + ", " + ui("Phone status") + " and " + ui("Recent notifications") + ".",

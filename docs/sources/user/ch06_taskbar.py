@@ -16,7 +16,7 @@ S1 = p("The taskbar is the strip at the bottom of the YASDE window. On the left 
 ], "«TAB» — The taskbar, from left to right") + \
     p("The taskbar and the widgets are dark glass; the launcher, the panels, the menus and the dialogs are light glass. Both let you glimpse, blurred, what is behind them. "
       "On computers without graphics acceleration they have a plain, almost opaque background. Nothing changes in how they work.") + \
-    shot("desktop.png", "«FIG» — The taskbar at the bottom of the desktop")
+    shot("desktop-widgets.png", "«FIG» — The taskbar at the bottom of the desktop")
 
 S2 = p("A click on an app's icon does what you expect:", lead=True) + table(["Click on…", "Result"], [
     ["A pinned app that is not open", "Opens the app."],

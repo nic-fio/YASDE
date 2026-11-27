@@ -5,8 +5,10 @@
 # fotografa con "grim". Poi crea la copia ottimizzata (Pillow) in docs/sources/img/.
 #
 # Uso:  docs/sources/img/fai-schermate.sh [nome ...]      (senza nomi: tutte)
-#   nomi: connect connect-search desktop launcher window windows-snapped volume notifications
+#   nomi: connect connect-search launcher window windows-snapped volume notifications
 #         phone-popup transfer transfer-list widgets window-menu decoding-warning desktop-widgets
+# Ogni schermata del desktop parte dalla disposizione "vetrina" (undici widget, primo passo);
+# desktop-widgets e' il desktop senza altro. Il vecchio "desktop" (tre widget predefiniti) non c'e' piu'.
 # Prima va compilato "veloce" sul server (strumenti/prova.sh veloce): i demo si
 # prendono da /media/YASDE/lavoro/veloce/build-veloce.
 # Icone delle app: quelle VERE del programma. Si estrae dall'AppImage 2.3 costruita sul
@@ -92,21 +94,20 @@ fai() {
     case "$1" in
     connect)   foto connect 4 demo-connessione --stato non-abbinato ;;
     connect-search) foto connect-search 3 demo-connessione --stato cerca-nuovo ;;
-    transfer-list) foto transfer-list 7 demo-ossatura --app-note \
-                   --passi "invia:holiday-photos.zip,clic:tip=Send files to the phone (PC to phone)" ;;
-    desktop)   foto desktop 4 demo-ossatura --app-note ;;
-    launcher)  foto launcher 6 demo-ossatura --app-note --passi "clic:tip=App launcher" ;;
-    window)    foto window 6 demo-ossatura --app-note --passi "app:com.google.android.keep" ;;
-    windows-snapped) foto windows-snapped 9 demo-ossatura --app-note \
-                   --passi "app:com.google.android.keep,app:com.android.chrome,hook:aggancia-sinistra:0,hook:aggancia-destra:1" ;;
-    volume)    foto volume 6 demo-ossatura --app-note --passi "clic:$SIS#0" ;;
-    phone-popup) foto phone-popup 6 demo-ossatura --app-note --passi "clic:$SIS#1" ;;
-    notifications) foto notifications 6 demo-ossatura --app-note --passi "clic:$SIS#2" ;;
-    transfer)  foto transfer 6 demo-ossatura --app-note --passi "clic:tip=Send files to the phone (PC to phone)" ;;
+    transfer-list) foto transfer-list 11 demo-ossatura --app-note \
+                   --passi "vetrina,invia:holiday-photos.zip,clic:tip=Send files to the phone (PC to phone)" ;;
+    launcher)  foto launcher 10 demo-ossatura --app-note --passi "vetrina,clic:tip=App launcher" ;;
+    window)    foto window 10 demo-ossatura --app-note --passi "vetrina,app:com.google.android.keep" ;;
+    windows-snapped) foto windows-snapped 11 demo-ossatura --app-note \
+                   --passi "vetrina,app:com.google.android.keep,app:com.android.chrome,hook:aggancia-sinistra:0,hook:aggancia-destra:1" ;;
+    volume)    foto volume 10 demo-ossatura --app-note --passi "vetrina,clic:$SIS#0" ;;
+    phone-popup) foto phone-popup 10 demo-ossatura --app-note --passi "vetrina,clic:$SIS#1" ;;
+    notifications) foto notifications 10 demo-ossatura --app-note --passi "vetrina,clic:$SIS#2" ;;
+    transfer)  foto transfer 10 demo-ossatura --app-note --passi "vetrina,clic:tip=Send files to the phone (PC to phone)" ;;
     desktop-widgets) foto desktop-widgets 9 demo-ossatura --app-note --passi "vetrina" ;;
-    widgets)   foto widgets 8 demo-ossatura --app-note --passi "destro:600:300,clic:testo=Add widget…" ;;
-    window-menu) foto window-menu 7 demo-ossatura --app-note --passi "app:com.google.android.keep,clic:css=ph-finestra-app-puls#3" ;;
-    decoding-warning) foto decoding-warning 6 demo-ossatura --app-note --passi "decodifica-sw" ;;
+    widgets)   foto widgets 10 demo-ossatura --app-note --passi "vetrina,destro:600:645,clic:testo=Add widget…" ;;
+    window-menu) foto window-menu 11 demo-ossatura --app-note --passi "vetrina,app:com.google.android.keep,clic:css=ph-finestra-app-puls#3" ;;
+    decoding-warning) foto decoding-warning 10 demo-ossatura --app-note --passi "vetrina,decodifica-sw" ;;
     *) echo "schermata sconosciuta: $1"; return 1 ;;
     esac
 }
@@ -114,7 +115,7 @@ fai() {
 prepara_icone
 scarica demo-ossatura ossatura/demo-ossatura
 scarica demo-connessione connessione/demo-connessione
-TUTTE="connect connect-search desktop launcher window windows-snapped volume notifications phone-popup transfer transfer-list widgets window-menu decoding-warning desktop-widgets"
+TUTTE="connect connect-search launcher window windows-snapped volume notifications phone-popup transfer transfer-list widgets window-menu decoding-warning desktop-widgets"
 for n in ${*:-$TUTTE}; do fai "$n"; done
 
 # Copie ottimizzate: stesso nome, in docs/sources/img/ (le grezze restano nella cache).
