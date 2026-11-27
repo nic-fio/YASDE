@@ -355,6 +355,13 @@ void ph_superficie_indietro(GtkWidget *w)
         ph_srv_flusso_indietro(s->l->f);
 }
 
+void ph_superficie_pagina(GtkWidget *w, uint8_t pagina)
+{
+    PhSupFinta *s = PH_SUP_FINTA(w);
+    if (s->l != NULL)
+        ph_srv_flusso_pagina(s->l->f, pagina);
+}
+
 GdkTexture *ph_superficie_fotografa(GtkWidget *w)
 {
     PhSupFinta *s = PH_SUP_FINTA(w);

@@ -69,7 +69,7 @@ def prova():
         threading.Thread(target=lambda: [log.append(x.strip()) for x in p.stdout], daemon=True).start()
         s = socket.create_connection(("127.0.0.1", PORTA), timeout=15)
         s.sendall(b"comandi\n")
-        chiedi(s, 1, struct.pack(">H", 1))
+        chiedi(s, 1, struct.pack(">H", 2))
         print("API mancanti nel log:", [x for x in log if "MANCANTE" in x])
         ora = int(time.time() * 1000)
 

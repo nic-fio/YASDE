@@ -16,10 +16,24 @@
 #include "interno.h"
 #include "shell/finto/finto.h"
 
+/* Ultima app e pagina chieste al gestore (le legge la prova d'insieme in demo_hook.c). */
+char g_demo_aperta[256];
+PhShellPagina g_demo_pagina = PH_SHELL_PAGINA_NESSUNA;
+
 static void apri_app_finto(void *io, const char *pacchetto)
 {
     (void)io;
     fprintf(stderr, "demo: apri app %s\n", pacchetto);
+    g_strlcpy(g_demo_aperta, pacchetto, sizeof g_demo_aperta);
+    g_demo_pagina = PH_SHELL_PAGINA_NESSUNA;
+}
+
+static void apri_pagina_finta(void *io, const char *pacchetto, PhShellPagina pagina)
+{
+    (void)io;
+    fprintf(stderr, "demo: apri app %s sulla pagina %d\n", pacchetto, (int)pagina);
+    g_strlcpy(g_demo_aperta, pacchetto, sizeof g_demo_aperta);
+    g_demo_pagina = pagina;
 }
 
 static size_t elenco_finto(void *io, PhShellFinestra *out, size_t max)
@@ -201,6 +215,7 @@ static void installa(PhShell *sh, PhFinto *f, void *u)
     g_finto = f;
     PhShellGestoreFinestre gf = {.io = NULL,
                                  .apri_app = apri_app_finto,
+                                 .apri_pagina = apri_pagina_finta,
                                  .elenco = elenco_finto,
                                  .clic_barra = clic_barra_finto,
                                  .specchio = specchio_finto,

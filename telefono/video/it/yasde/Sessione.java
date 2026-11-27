@@ -2,6 +2,7 @@ package it.yasde;
 
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.hardware.display.DisplayManager;
@@ -11,6 +12,7 @@ import android.net.LocalSocket;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -19,6 +21,12 @@ final class Sessione {
     // Flag degli schermi virtuali (DisplayManager.VIRTUAL_DISPLAY_FLAG_*; alcuni sono nascosti).
     private static final int PUBBLICO = 1, SOLO_SUO = 1 << 3, SPECCHIO = 1 << 4, TOCCO = 1 << 6,
             DISTRUGGI = 1 << 8, FIDATO = 1 << 10, GRUPPO_PROPRIO = 1 << 11, SEMPRE_SBLOCCATO = 1 << 12;
+
+    // Flag dell'intent, per l'avvio e per ogni pagina: NUOVO_TASK | PIU_TASK = sempre un task NUOVO
+    // sullo schermo virtuale. Mai SVUOTA_TASK e mai il riuso di un task esistente: Android potrebbe
+    // prendere un task dell'utente da un altro schermo, e alla chiusura sparirebbe (modifica al
+    // telefono senza ripristino). I task nati qui si tolgono tutti alla chiusura (taskDelloSchermo).
+    private static final String FLAG_AVVIO = "0x18000000";
 
     final int id;
     final String pacchetto;
@@ -48,13 +56,37 @@ final class Sessione {
         this.pacchetto = pacchetto;
     }
 
-    static Sessione apri(int id, int l, int a, int dpi, int bps, int fps, String pacchetto) throws Exception {
+    /**
+     * `pagina` (vedi Pagine): con un pacchetto e pagina diversa da 0 si lancia la pagina, se nel
+     * pacchetto c'e' un'attivita' che risponde all'azione; altrimenti avvio normale. Una pagina
+     * fuori elenco lancia IllegalArgumentException prima di creare qualunque cosa. Con lo
+     * specchio (pacchetto vuoto) la pagina non ha senso e si ignora.
+     */
+    static Sessione apri(int id, int l, int a, int dpi, int bps, int fps, String pacchetto, int pagina)
+            throws Exception {
+        String azione = Pagine.azione(pagina);
         Sessione s = new Sessione(id, l, a, dpi, bps, fps, pacchetto);
         try {
-            if (!pacchetto.isEmpty()) s.risolvi(); // prima di consumare codificatore e schermo
+            ComponentName pag = null;
+            if (!pacchetto.isEmpty()) {
+                s.risolvi(); // prima di consumare codificatore e schermo
+                if (azione != null) pag = s.risolviPagina(azione);
+            }
             s.codificatore = Codificatore.crea(l, a, bps, fps, s.ascoltaGuasti());
             s.creaSchermo();
-            if (!pacchetto.isEmpty()) s.lancia();
+            if (!pacchetto.isEmpty()) {
+                boolean fatto = false;
+                if (pag != null) {
+                    try {
+                        s.lancia(azione, pag, FLAG_AVVIO);
+                        fatto = true;
+                    } catch (Exception e) {
+                        // la pagina non parte: ripiego sull'avvio normale (docs/protocollo.md §2.2)
+                        System.out.println("[video] pagina non avviata, avvio normale: " + e.getMessage());
+                    }
+                }
+                if (!fatto) s.lancia(null, s.attivita, FLAG_AVVIO);
+            }
         } catch (Throwable t) {
             s.rilascia(false);
             throw t;
@@ -151,10 +183,50 @@ final class Sessione {
         if (!pacchetto.equals(attivita.getPackageName())) throw new IllegalStateException("pacchetto inatteso");
     }
 
-    /** Lancia l'attivita' sullo schermo virtuale e controlla l'esito (con tempo massimo). */
-    private void lancia() throws Exception {
-        String[] cmd = {"am", "start-activity", "--display", String.valueOf(idSchermo), "-n",
-            attivita.getPackageName() + "/" + attivita.getClassName(), "-f", "0x18000000"};
+    /**
+     * Cerca DENTRO il pacchetto della sessione l'attivita' che risponde all'azione (setPackage:
+     * mai fuori dal pacchetto). null se non c'e', se non e' esportata o se il nome non e' quello atteso.
+     */
+    private ComponentName risolviPagina(String azione) {
+        Intent in = new Intent(azione).setPackage(pacchetto);
+        List<ResolveInfo> r = NascosteVideo.contesto().getPackageManager()
+                .queryIntentActivities(in, PackageManager.ResolveInfoFlags.of(0));
+        if (r == null || r.isEmpty()) return null;
+        ActivityInfo ai = r.get(0).activityInfo;
+        if (ai == null || !ai.exported || !pacchetto.equals(ai.packageName) || !ai.name.matches("[A-Za-z0-9_.$]+")) return null;
+        return new ComponentName(ai.packageName, ai.name);
+    }
+
+    /**
+     * VIDEO_PAGINA: avvia la pagina sullo schermo virtuale, nel pacchetto della sessione. Eccezione
+     * (nulla toccato, la sessione resta com'era) se la sessione e' chiusa o e' uno specchio, se la
+     * pagina e' 0 o fuori elenco, o se nessuna attivita' risponde. Non cambia nessuna impostazione
+     * del telefono: niente da ripristinare.
+     */
+    void pagina(int pagina) throws Exception {
+        if (chiusa) throw new IllegalStateException("sessione chiusa");
+        if (specchio()) throw new IllegalStateException("sessione specchio: nessuna app");
+        String azione = Pagine.azioneRichiesta(pagina);
+        ComponentName c = risolviPagina(azione);
+        if (c == null) throw new IllegalStateException("nessuna attivita' risponde alla pagina");
+        lancia(azione, c, FLAG_AVVIO); // task nuovo: i precedenti restano sotto fino alla chiusura
+    }
+
+    /** Lancia l'attivita' sullo schermo virtuale (con l'azione, se c'e') e controlla l'esito (con tempo massimo). */
+    private void lancia(String azione, ComponentName componente, String flag) throws Exception {
+        List<String> cmd = new ArrayList<>();
+        cmd.add("am");
+        cmd.add("start-activity");
+        cmd.add("--display");
+        cmd.add(String.valueOf(idSchermo));
+        if (azione != null) {
+            cmd.add("-a");
+            cmd.add(azione);
+        }
+        cmd.add("-n");
+        cmd.add(componente.getPackageName() + "/" + componente.getClassName());
+        cmd.add("-f");
+        cmd.add(flag);
         final Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
         p.getOutputStream().close();
         final ByteArrayOutputStream o = new ByteArrayOutputStream();

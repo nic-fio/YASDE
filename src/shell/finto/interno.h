@@ -44,6 +44,10 @@ struct PhFinto {
     bool inst_rifiutate, cal_illeggibile, prima_vuota, schermo_spento, reg_guasta;
     GHashTable *disinstallate; /* pacchetti tolti */
     atomic_uint chiavi;
+    /* 27 nov: pagine chieste (per le prove a schermo di finestra-app e desktop). */
+    atomic_uint pagine_apertura, pagine_inviate;
+    atomic_int ultima_pagina;
+    atomic_bool pagina_rifiuta;
     atomic_int ultima_densita; /* densita' applicata per ultima a un flusso (per le prove) */
     /* Prima connessione (thread di lavoro). */
     bool raggiungibile;
@@ -92,6 +96,7 @@ void finto_flusso_screenshot(void *b, void *fl, PhSrvLavoro *l, unsigned dove, c
 void finto_flusso_registra(void *b, void *fl, bool avvia, const char *cartella_pc, const char *nome_app,
                            bool con_audio);
 void finto_flusso_chiave(void *b, void *fl);
+void finto_flusso_pagina(void *b, void *fl, uint8_t pagina);
 void finto_flusso_pizzico(void *b, void *fl, int video_w, int video_h, int fase, int x, int y, int passo);
 void finto_flusso_ridimensiona_densita(void *b, void *fl, int larghezza, int altezza, int densita);
 /* Dal thread di lavoro: flussi fermi per lo schermo spento (nessun avviso). */

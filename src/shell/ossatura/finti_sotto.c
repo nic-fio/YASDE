@@ -40,6 +40,17 @@ void finti_apri_cancello_input(void)
     g_mutex_unlock(&input_m);
 }
 
+static GMutex pag_m;
+static GCond pag_c;
+
+void finti_apri_cancello_pagina(void)
+{
+    g_mutex_lock(&pag_m);
+    atomic_store(&finti.pag_gate, false);
+    g_cond_broadcast(&pag_c);
+    g_mutex_unlock(&pag_m);
+}
+
 static void ordine_scrivi(char c)
 {
     int k = atomic_fetch_add(&finti.ordine_n, 1);
@@ -357,6 +368,7 @@ PhVideoFlusso *ph_video_apri(PhComponente *c, const PhVideoRichiesta *r, PhError
     (void)c;
     (void)e;
     atomic_store(&finti.apri_dens, r->densita);
+    atomic_store(&finti.apri_pagina, r->pagina);
     dormi_ms(RITARDO_MS);
     atomic_fetch_add(&finti.video_aperti, 1);
     return calloc(1, 16);
@@ -405,6 +417,24 @@ int ph_video_chiave(PhVideoFlusso *f, PhErrore *e)
 {
     (void)f; (void)e;
     atomic_fetch_add(&finti.chiavi, 1);
+    return 0;
+}
+int ph_video_pagina(PhVideoFlusso *f, uint8_t pagina, PhErrore *e)
+{
+    (void)f;
+    atomic_fetch_add(&finti.pag_n, 1);
+    atomic_store(&finti.pag_ultima, pagina);
+    g_mutex_lock(&pag_m);
+    gint64 scade = g_get_monotonic_time() + 10 * G_USEC_PER_SEC;
+    if (atomic_load(&finti.pag_gate)) {
+        atomic_store(&finti.pag_in_corso, true);
+        while (atomic_load(&finti.pag_gate) && g_cond_wait_until(&pag_c, &pag_m, scade)) {}
+        atomic_store(&finti.pag_in_corso, false);
+    }
+    g_mutex_unlock(&pag_m);
+    ordine_scrivi('G');
+    if (atomic_load(&finti.pag_rifiuta))
+        return ph_errore(e, "rifiutata");
     return 0;
 }
 int ph_video_pausa(PhVideoFlusso *f, PhErrore *e)

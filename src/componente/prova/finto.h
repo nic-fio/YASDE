@@ -39,6 +39,7 @@ typedef struct {
     bool presenza_errore;        /* PRESENZA -> ERRORE "tipo sconosciuto" (jar vecchio) */
     int ritardo_chiudi_ms;       /* la risposta a CHIUDI arriva con questo ritardo */
     bool pausa_rifiuta;          /* VIDEO_PAUSA/RIPRENDI -> ERRORE "pausa non riuscita" */
+    bool pagina_senza_attivita;  /* VIDEO_PAGINA -> ERRORE "nessuna attivita' risponde" */
     bool video_resta_aperto;     /* dopo i pacchetti non chiude il canale */
 } FintoConfig;
 

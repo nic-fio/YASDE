@@ -210,6 +210,13 @@ static atomic_int gestiti, ridim_fatti, input_fatti;
 static void su_input(void) { atomic_fetch_add(&input_fatti, 1); }
 static void su_ridim(void) { atomic_fetch_add(&ridim_fatti, 1); }
 static void su_gestito(void) { atomic_fetch_add(&gestiti, 1); }
+/* Pagina su un flusso aperto: ogni lavoro di pagina (mandato o no) segnala qui l'esito. */
+static atomic_int pag_fatte, pag_esito;
+static void su_pagina(int esito)
+{
+    atomic_store(&pag_esito, esito);
+    atomic_fetch_add(&pag_fatte, 1);
+}
 static gpointer lettore_corpo(gpointer p)
 {
     PhSrvFlusso *f = p;
@@ -412,6 +419,7 @@ int main(void)
     finti.connesso = true;
     sv_prova_evento_gestito = su_gestito;
     sv_prova_ridim_fatto = su_ridim;
+    sv_prova_pagina_fatto = su_pagina;
     sv_prova_input_fatto = su_input;
     PhCfgPreferenze pref;
     ph_cfg_preferenze_predefinite(&pref);
@@ -686,14 +694,25 @@ int main(void)
     CONTROLLA(atomic_load(&finti.ricerche_avviate) == 2);
 
     /* ---- Un flusso: apertura sul telefono, senza bloccare. */
-    PhSrvFlussoRichiesta rq = {"it.finto.uno", 640, 400, 160}; /* densita' 160 all'apertura */
+    PhSrvFlussoRichiesta rq = {"it.finto.uno", 640, 400, 160, 0}; /* densita' 160 all'apertura */
+    /* Pagina fuori elenco: rifiutata subito, nulla aperto; con una pagina dell'elenco la richiesta
+     * arriva al componente (solo alla prima apertura: vedi la riapertura piu' sotto). */
+    rq.pagina = 3;
+    {
+        int va0 = atomic_load(&finti.video_aperti);
+        CONTROLLA(ph_srv_flusso_apri(s, &rq, cb_flusso, NULL, &e) == NULL && e.testo[0] != '\0');
+        CONTROLLA(atomic_load(&finti.video_aperti) == va0);
+    }
+    rq.pagina = 2;
     INIZIO();
     PhSrvFlusso *fl = ph_srv_flusso_apri(s, &rq, cb_flusso, NULL, &e);
     FINE_VELOCE("flusso_apri");
+    rq.pagina = 0; /* i flussi seguenti si aprono normali */
     CONTROLLA(fl != NULL);
     ASPETTA(ev_aperto == 1, 4000);
     CONTROLLA(ev_aperto == 1 && atomic_load(&finti.video_aperti) == 1);
     CONTROLLA(atomic_load(&finti.apri_dens) == 160);
+    CONTROLLA(atomic_load(&finti.apri_pagina) == 2);
 
     /* ---- Lettore del flusso, screenshot senza immagine (2 s) e registrazione. */
     GThread *lettore = g_thread_new("lettore", lettore_corpo, fl);
@@ -751,6 +770,44 @@ int main(void)
     atomic_store(&finti.dai_fallisce, false);
     int chiavi = atomic_load(&finti.chiavi) - chiavi0;
     CONTROLLA(chiavi >= 1 && chiavi <= 2);
+
+    /* ---- Pagina su un flusso aperto (27 nov): richiesta lenta sul thread dei flussi, mai sul GTK.
+     * Riuscita; rifiutata dal telefono (nessun effetto sul flusso); pagina 0 e fuori elenco mai
+     * mandate; in pausa non si manda. Ogni passo aspetta il segnale del lavoro, mai un sonno. */
+    {
+        int pn0 = atomic_load(&finti.pag_n);
+        int pf0 = atomic_load(&pag_fatte);
+        INIZIO();
+        ph_srv_flusso_pagina(fl, PH_SRV_PAGINA_BATTERIA);
+        FINE_VELOCE("flusso_pagina");
+        ASPETTA(atomic_load(&pag_fatte) == pf0 + 1, 4000);
+        CONTROLLA(atomic_load(&pag_fatte) == pf0 + 1 && atomic_load(&pag_esito) == 0);
+        CONTROLLA(atomic_load(&finti.pag_n) == pn0 + 1 && atomic_load(&finti.pag_ultima) == 1);
+        /* Il telefono rifiuta: il lavoro lo dice (-1) e il flusso resta vivo. */
+        atomic_store(&finti.pag_rifiuta, true);
+        ph_srv_flusso_pagina(fl, PH_SRV_PAGINA_MEMORIA);
+        ASPETTA(atomic_load(&pag_fatte) == pf0 + 2, 4000);
+        CONTROLLA(atomic_load(&pag_fatte) == pf0 + 2 && atomic_load(&pag_esito) == -1);
+        CONTROLLA(atomic_load(&finti.pag_n) == pn0 + 2 && atomic_load(&finti.pag_ultima) == 2);
+        atomic_store(&finti.pag_rifiuta, false);
+        /* Pagina 0 e fuori elenco: scartate prima di arrivare al telefono; la coda e' in ordine,
+         * quindi la pagina valida che segue arriva sola. */
+        ph_srv_flusso_pagina(fl, 0);
+        ph_srv_flusso_pagina(fl, 9);
+        ph_srv_flusso_pagina(fl, PH_SRV_PAGINA_BATTERIA);
+        ASPETTA(atomic_load(&pag_fatte) == pf0 + 3, 4000);
+        CONTROLLA(atomic_load(&pag_fatte) == pf0 + 3 && atomic_load(&finti.pag_n) == pn0 + 3);
+        /* In pausa (il telefono risponderebbe ERRORE) non si manda: esito 1. */
+        int o_pr = atomic_load(&finti.ordine_n);
+        ph_srv_flusso_pausa(fl);
+        ph_srv_flusso_pagina(fl, PH_SRV_PAGINA_MEMORIA);
+        ASPETTA(atomic_load(&pag_fatte) == pf0 + 4, 4000);
+        CONTROLLA(atomic_load(&pag_fatte) == pf0 + 4 && atomic_load(&pag_esito) == 1 &&
+                  atomic_load(&finti.pag_n) == pn0 + 3);
+        ph_srv_flusso_riprendi(fl);
+        ASPETTA(atomic_load(&finti.ordine_n) >= o_pr + 2, 4000); /* P e R sono partite */
+        CONTROLLA(atomic_load(&finti.ordine_n) == o_pr + 2 && strncmp(finti.ordine + o_pr, "PR", 2) == 0);
+    }
 
     /* GTK rifiuta il DMA-BUF: decodificatore software, con l'ultima configurazione ridata. */
     ph_srv_flusso_preferisci_memoria(fl);
@@ -846,6 +903,7 @@ int main(void)
     CONTROLLA(atomic_load(&finti.tr_ripresa) == 1 && atomic_load(&finti.tr_creati) == 1);
     CONTROLLA(ev_ripreso == 1 && ev_aperto == 1);
     CONTROLLA(atomic_load(&finti.video_aperti) == 2 && atomic_load(&finti.video_chiusi) == 1);
+    CONTROLLA(atomic_load(&finti.apri_pagina) == 0); /* la riapertura dopo la caduta e' normale */
     CONTROLLA(atomic_load(&finti.apri_dens) == 280); /* riaperto con l'ultima densita' chiesta, anche a flusso PERSO */
     CONTROLLA(numero_app(s) == 2);
     /* Riconnessione: l'osservazione dei controlli riparte da sola e lo stato si ripubblica. */
@@ -1088,6 +1146,31 @@ int main(void)
     ph_srv_pannello_chiedi(s, true, NULL, cb_pan_fatto, NULL);
     ASPETTA(n_pan_fatto == np0 + 1, 4000);
     CONTROLLA(n_pan_fatto == np0 + 1 && atomic_load(&finti.pan_on) == pan_on0 + 2);
+    /* ---- Pagina e chiusura (27 nov) */
+    {
+        /* Flusso chiuso con la pagina in coda (la prima ferma dentro il telefono, la seconda dietro
+         * di lei, poi la chiusura): la seconda NON parte e la chiusura viene dopo la prima. */
+        PhSrvFlusso *fp = ph_srv_flusso_apri(s, &rq, cb_flusso, NULL, &e);
+        CONTROLLA(fp != NULL);
+        int ea_fp = ev_aperto;
+        ASPETTA(ev_aperto == ea_fp + 1, 4000);
+        CONTROLLA(ev_aperto == ea_fp + 1);
+        int pn1 = atomic_load(&finti.pag_n), pf1 = atomic_load(&pag_fatte);
+        int vc_fp = atomic_load(&finti.video_chiusi);
+        int o_fp = atomic_load(&finti.ordine_n);
+        atomic_store(&finti.pag_gate, true);
+        ph_srv_flusso_pagina(fp, PH_SRV_PAGINA_BATTERIA);
+        ASPETTA(atomic_load(&finti.pag_in_corso), 4000);
+        CONTROLLA(atomic_load(&finti.pag_in_corso));
+        ph_srv_flusso_pagina(fp, PH_SRV_PAGINA_MEMORIA); /* in coda dietro la prima */
+        ph_srv_flusso_chiudi(fp, false);
+        finti_apri_cancello_pagina();
+        ASPETTA(atomic_load(&finti.video_chiusi) == vc_fp + 1 && atomic_load(&pag_fatte) == pf1 + 2, 4000);
+        CONTROLLA(atomic_load(&finti.video_chiusi) == vc_fp + 1 && atomic_load(&pag_fatte) == pf1 + 2);
+        CONTROLLA(atomic_load(&finti.pag_n) == pn1 + 1 && atomic_load(&pag_esito) == 1);
+        CONTROLLA(atomic_load(&finti.ordine_n) >= o_fp + 2 && strncmp(finti.ordine + o_fp, "GV", 2) == 0);
+    }
+
     /* Un secondo flusso, che poi sopravvivra' ai servizi (vedi sotto). */
     PhSrvFlusso *fl2 = ph_srv_flusso_apri(s, &rq, cb_flusso, NULL, &e);
     CONTROLLA(fl2 != NULL);

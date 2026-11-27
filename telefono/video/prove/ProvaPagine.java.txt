@@ -1,0 +1,35 @@
+package it.yasde;
+
+/** Prova su JVM della traduzione pagina -> azione (classe di prova, fuori dal jar). */
+public final class ProvaPagine {
+    private static int errori = 0;
+
+    private static void verifica(boolean ok, String nome) {
+        if (!ok) {
+            errori++;
+            System.out.println("ERRORE: " + nome);
+        }
+    }
+
+    private static boolean rifiuta(int pagina, boolean richiesta) {
+        try {
+            if (richiesta) Pagine.azioneRichiesta(pagina); else Pagine.azione(pagina);
+            return false;
+        } catch (IllegalArgumentException e) {
+            return true;
+        }
+    }
+
+    public static void main(String[] args) {
+        verifica(Pagine.azione(0) == null, "pagina 0 = nessuna azione (avvio normale)");
+        verifica("android.intent.action.POWER_USAGE_SUMMARY".equals(Pagine.azione(1)), "pagina 1 = batteria");
+        verifica("android.settings.INTERNAL_STORAGE_SETTINGS".equals(Pagine.azione(2)), "pagina 2 = memoria");
+        verifica("android.intent.action.POWER_USAGE_SUMMARY".equals(Pagine.azioneRichiesta(1)), "richiesta 1");
+        verifica("android.settings.INTERNAL_STORAGE_SETTINGS".equals(Pagine.azioneRichiesta(2)), "richiesta 2");
+        verifica(rifiuta(3, false) && rifiuta(255, false) && rifiuta(-1, false) && rifiuta(256, false),
+            "fuori elenco rifiutata");
+        verifica(rifiuta(0, true) && rifiuta(3, true) && rifiuta(255, true), "VIDEO_PAGINA: 0 e fuori elenco rifiutate");
+        System.out.println(errori == 0 ? "ProvaPagine: tutto ok" : "ProvaPagine: " + errori + " errori");
+        System.exit(errori == 0 ? 0 : 1);
+    }
+}

@@ -21,6 +21,9 @@ java -classpath classi:classi-prove-video it.yasde.ProvaGesti
 cp video/prove/ProvaBarriera.java.txt classi-prove-video/ProvaBarriera.java
 javac -Xlint:all -Xlint:-options -Werror -classpath classi -d classi-prove-video classi-prove-video/ProvaBarriera.java
 java -classpath classi:classi-prove-video it.yasde.ProvaBarriera
+cp video/prove/ProvaPagine.java.txt classi-prove-video/ProvaPagine.java
+javac -Xlint:all -Xlint:-options -Werror -classpath classi -d classi-prove-video classi-prove-video/ProvaPagine.java
+java -classpath classi:classi-prove-video it.yasde.ProvaPagine
 rm -rf classi-prove-video
 
 # Misura della pausa (Fase 0): classe di prova in un jar a parte, fuori da yasde.jar.

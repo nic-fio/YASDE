@@ -1498,6 +1498,10 @@ PhSrvFlusso *ph_srv_flusso_apri(PhServizi *s, const PhSrvFlussoRichiesta *r,
                   r->altezza);
         return NULL;
     }
+    if (r->pagina > PH_SRV_PAGINA_MEMORIA) { /* elenco fisso: 0 nessuna, 1 batteria, 2 memoria */
+        ph_errore(e, "flusso: pagina %u fuori elenco", (unsigned)r->pagina);
+        return NULL;
+    }
     if (s->vt.flusso_apri == NULL) {
         ph_errore(e, "flusso: servizio non disponibile");
         return NULL;
@@ -2104,6 +2108,19 @@ void ph_srv_flusso_chiave(PhSrvFlusso *f)
 {
     if (f != NULL && f->s->vt.flusso_chiave != NULL && !atomic_load(&f->chiuso))
         f->s->vt.flusso_chiave(f->s->b, f->fl);
+}
+
+/* ---- (9) Pagina su un flusso aperto (27 nov) ------------------------------ */
+void ph_srv_flusso_pagina(PhSrvFlusso *f, uint8_t pagina)
+{
+    if (f == NULL)
+        return;
+    if (pagina == PH_SRV_PAGINA_NESSUNA || pagina > PH_SRV_PAGINA_MEMORIA) {
+        fprintf(stderr, "servizi: pagina %u fuori elenco, scartata\n", (unsigned)pagina);
+        return;
+    }
+    if (f->s->vt.flusso_pagina != NULL && !atomic_load(&f->chiuso))
+        f->s->vt.flusso_pagina(f->s->b, f->fl, pagina);
 }
 
 /* ---- Densita' nel ridimensionamento (23 nov) ----------------------------- */

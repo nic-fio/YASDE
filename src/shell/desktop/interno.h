@@ -411,6 +411,9 @@ void ph_dsk_dialoghi_annulla_scelta(PhDesktop *d);
 /* wx_telefono.c, per la prova d'insieme: fa lo stesso del clic su una batteria o una sveglia e torna il
  * pacchetto aperto (NULL = nulla). `forza` != NULL prende il posto del pacchetto. */
 const char *ph_dsk_wx_telefono_clic_prova(PhDskWidget *w, const char *forza);
+/* demo.c: ultima app e pagina chieste al gestore delle finestre del demo (prova d'insieme). */
+extern char g_demo_aperta[256];
+extern PhShellPagina g_demo_pagina;
 /* ---- fine agente B ---- */
 
 /* agente A: l'«adesso» dei widget in millisecondi (l'ora congelata da ph_dsk_orologio_ora_fissa,

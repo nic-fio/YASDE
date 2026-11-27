@@ -314,6 +314,11 @@ typedef struct {
     int larghezza, altezza;/* misura del flusso in pixel del telefono: multipli di 8, 64-2560
                               (ph_fin_misura_flusso); ignorata per lo specchio */
     int densita;           /* dpi; 0 = quella del telefono */
+    uint8_t pagina;        /* 27 nov: pagina su cui aprire l'app (PH_SRV_PAGINA_*, stessi numeri di
+                              PhShellPagina in shell.h: 0 = avvio normale, 1 = batteria, 2 = memoria); solo alla PRIMA apertura,
+                              mai alla riapertura dopo una caduta. Fuori elenco: ph_srv_flusso_apri
+                              torna NULL. Ignorata per lo specchio. Il telefono che non trova la
+                              pagina apre l'app normale (la richiesta riesce comunque). */
 } PhSrvFlussoRichiesta;
 
 typedef enum {
@@ -573,6 +578,20 @@ bool ph_srv_flusso_registrando(PhSrvFlusso *f);
  * Chiede al telefono un fotogramma chiave (~0,1 s), per esempio alla fine
  * dello schermo protetto. In pausa o senza backend: nulla. */
 void ph_srv_flusso_chiave(PhSrvFlusso *f);
+
+/* ---- (9) Pagina su un flusso aperto (27 nov, PIANO.md 8.7) ----------------
+ * Chiede al telefono di mostrare `pagina` (1 = batteria, 2 = memoria; numeri di
+ * PhShellPagina) nell'app della sessione di questo flusso: serve quando la
+ * finestra di quell'app e' gia' aperta. Non blocca mai e non risponde: stesso
+ * schema di ph_srv_flusso_chiave (la richiesta lenta gira sul thread dei
+ * flussi, mai sul thread GTK). Nessuna callback. Se il telefono rifiuta, la
+ * sessione non e' pronta (flusso in apertura o perso), il flusso e' in pausa
+ * o la pagina e' fuori elenco (0 compreso), non si fa nulla: una riga su stderr
+ * senza dati, il flusso e la finestra restano com'erano. Se il flusso si chiude
+ * nel frattempo la richiesta o finisce prima della chiusura o e' scartata:
+ * mai uso di un flusso liberato. Senza backend che la realizza: nulla. */
+enum { PH_SRV_PAGINA_NESSUNA = 0, PH_SRV_PAGINA_BATTERIA = 1, PH_SRV_PAGINA_MEMORIA = 2 };
+void ph_srv_flusso_pagina(PhSrvFlusso *f, uint8_t pagina);
 
 /* ---- Densita' nel ridimensionamento (23 nov, PIANO.md «Finestre grandi:
  * modalita' tablet») ------------------------------------------------------

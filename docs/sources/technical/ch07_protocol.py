@@ -1,7 +1,7 @@
 from build import c, note, p, rif, table, ul, warn
 
 S1 = p("The protocol between the PC and the component is described in " + c("docs/protocollo.md") + ", which is the contract between " + c("src/componente") + " (PC, C) and " + c("telefono/") + " (phone, Java). Whoever finds it wrong or incomplete does not change it alone: the problem is reported to whoever coordinates. "
-       "This chapter reorganises that document for reading; the version is " + c("1") + " (" + c("PH_PROTOCOLLO_VERSIONE") + ", " + c("Protocollo.VERSIONE") + ").", lead=True) + \
+       "This chapter reorganises that document for reading; the version is " + c("2") + " (" + c("PH_PROTOCOLLO_VERSIONE") + ", " + c("Protocollo.VERSIONE") + ").", lead=True) + \
     p("All the channels are ADB channels of the service " + c("localabstract:yasde") + ". Immediately after opening one, the PC writes a line of ASCII text ended by a newline that names the channel type. The service accepts lines of at most 64 characters (5 s to arrive).") + \
     table(["Line", "Channel", "How many", "Direction"], [
         [c("comandi"), "requests and answers, events", "one", "both"],
@@ -36,12 +36,13 @@ S3 = p("Types by range. Direction: PC→T is a request or command from the PC to
         [c("0x04"), c("CHIUDI"), "PC→T", "empty; the service answers " + c("OK") + " and then restores everything and ends"],
         [c("0x05"), c("PRESENZA"), "PC→T", "empty; answer " + c("OK") + " empty. “The PC is alive”"],
         "Video (0x40–0x4f), on " + c("comandi"),
-        [c("0x40"), c("VIDEO_APRI"), "PC→T", c("u32") + " id, " + c("u16") + " width, " + c("u16") + " height, " + c("u16") + " dpi, " + c("u32") + " bits per second, " + c("u8") + " fps, " + c("stringa") + " app package (empty = mirror of the real screen)"],
+        [c("0x40"), c("VIDEO_APRI"), "PC→T", c("u32") + " id, " + c("u16") + " width, " + c("u16") + " height, " + c("u16") + " dpi, " + c("u32") + " bits per second, " + c("u8") + " fps, " + c("stringa") + " app package (empty = mirror of the real screen), " + c("u8") + " page (version 2, at the end; 0 = none)"],
         [c("0x41"), c("VIDEO_CHIUDI"), "PC→T", c("u32") + " id, " + c("u8") + " remove_task (1 = remove the app from recents)"],
         [c("0x42"), c("VIDEO_RIDIMENSIONA"), "PC→T", c("u32") + " id, " + c("u16") + " width, " + c("u16") + " height, " + c("u16") + " dpi. Answer " + c("OK") + ": " + c("u16") + " width, " + c("u16") + " height actually applied"],
         [c("0x43"), c("VIDEO_CHIAVE"), "PC→T", c("u32") + " id: ask for a key frame now"],
         [c("0x44"), c("VIDEO_PAUSA"), "PC→T", c("u32") + " id"],
         [c("0x45"), c("VIDEO_RIPRENDI"), "PC→T", c("u32") + " id"],
+        [c("0x46"), c("VIDEO_PAGINA"), "PC→T", c("u32") + " id, " + c("u8") + " page (not 0): start a page of the session's app (version 2). Answer " + c("OK") + " with an empty body"],
         [c("0x48"), c("VIDEO_EVENTO"), "T→PC event", c("u32") + " id, " + c("u8") + " what, " + c("u16") + " a, " + c("u16") + " b"],
         "Input (0x50–0x55), on " + c("input") + ", PC to phone only, no answer",
         [c("0x50"), c("TOCCO"), "PC→T", c("u32") + " id, " + c("u16") + " width, " + c("u16") + " height, " + c("u8") + " action (0 down, 1 move, 2 up, 3 cancel), " + c("u16") + " x, " + c("u16") + " y, " + c("u8") + " buttons (bit 0 left, 1 right, 2 middle; sent by the PC, not read by the phone in this version)"],
@@ -86,7 +87,8 @@ S3 = p("Types by range. Direction: PC→T is a request or command from the PC to
         "Approximate position (0x90–0x9f), on " + c("comandi"),
         [c("0x90"), c("POSIZIONE"), "PC→T", c("u8") + " search allowed. Answer: " + c("u8") + " outcome (0 known, 1 location off, 2 permission denied, 3 none known), " + c("i32") + " latitude and " + c("i32") + " longitude in thousandths of a degree, always multiples of 5, " + c("u32") + " age in seconds (" + c("0xffffffff") + " unknown), " + c("u8") + " provider (0 network, 1 gps, 2 fused, 3 passive), " + c("stringa") + " place name, " + c("u8") + " search started. The body is exactly 17 + n bytes"],
     ], "«TAB» — All message types") + \
-    note("Types " + c("0x46") + "-" + c("0x47") + " are reserved (freeing the encoder in long pauses: +0.07 s at resume; added only if a measurement asks). The sizes of video and audio packets are given in their chapters. Details of video, input, clipboard and panel are in chapters 8, 9 and 10; those of files, notifications and weather in chapters 11, 13 and 15.")
+    p("<b>Pages (version 2).</b> The page byte is a number from a fixed list: " + c("0") + " none (normal launch), " + c("1") + " battery (action " + c("android.intent.action.POWER_USAGE_SUMMARY") + "), " + c("2") + " storage (action " + c("android.settings.INTERNAL_STORAGE_SETTINGS") + "). <b>Safety rule: the PC never sends a free intent</b> (no action, no component, no data): it sends only the number and the phone turns it into the standard action of the list; any other value is an " + c("ERRORE") + ". " + c("VIDEO_APRI") + " with a page other than 0 looks for the activity answering that action inside the given package only, and launches it on the virtual display; if the package has none it launches the app normally and still answers " + c("OK") + ". A page outside the list is refused before any display or encoder exists. With the mirror (empty package) the page is ignored. " + c("VIDEO_PAGINA") + " launches the page on the virtual display of that session, inside the session's package, even if the app is already open; it answers " + c("ERRORE") + ", touching nothing, if the session is unknown or closed, is the mirror, the page is 0 or outside the list, or no activity of the package answers. It changes no phone setting, so there is nothing to restore.") + \
+    note("Type " + c("0x47") + " is reserved (freeing the encoder in long pauses: +0.07 s at resume; added only if a measurement asks). The sizes of video and audio packets are given in their chapters. Details of video, input, clipboard and panel are in chapters 8, 9 and 10; those of files, notifications and weather in chapters 11, 13 and 15.")
 
 S4 = p("Every request that fails answers " + c("ERRORE") + " with one sentence. The PC turns it into a " + c("PhErrore") + ". The cases to know:", lead=True) + \
     table(["Case", "Result"], [

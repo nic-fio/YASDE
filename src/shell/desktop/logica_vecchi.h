@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 #include "logica.h"
+#include "shell/shell.h"
 
 /* Imbottitura della mattonella (la stessa di ph_dsk_imbottitura per quella forma: la prova lo
  * controlla): serve a ricavare lo spazio utile dalla misura del widget. */
@@ -59,6 +60,10 @@ int ph_dsk_memoria_accento(PhDskMemCategoria c);
 /* Pacchetto dell'app Impostazioni standard di Android (clic di memoria e batteria): il widget
  * lo apre solo se il telefono lo ha tra le sue app. */
 const char *ph_dsk_pacchetto_impostazioni(void);
+/* Pagina dell'app Impostazioni che il clic sul widget apre (27 nov, PIANO.md 8.7): la batteria
+ * sulla pagina Batteria, la memoria su Archiviazione; ogni altro tipo (compreso «Stato del
+ * telefono») resta com'era, senza pagina. Elenco fisso: mai un intent libero. */
+PhShellPagina ph_dsk_widget_pagina(PhCfgWidgetTipo tipo);
 
 /* ---- Notifiche recenti (A4) ---------------------------------------------------------------------- */
 /* Quante righe ci stanno nella misura (almeno 1: con meno spazio si taglia, non si toglie la riga). */

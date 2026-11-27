@@ -143,7 +143,7 @@ static gpointer lettore_corpo(gpointer p)
 static void apri(PhServizi *s, Lettura *l)
 {
     PhErrore e = {{0}};
-    PhSrvFlussoRichiesta rq = {"it.finto.uno", 640, 400, 160};
+    PhSrvFlussoRichiesta rq = {"it.finto.uno", 640, 400, 160, 0};
     int aperti = n_aperti;
     l->f = ph_srv_flusso_apri(s, &rq, cb_flusso, NULL, &e);
     CONTROLLA(l->f != NULL);

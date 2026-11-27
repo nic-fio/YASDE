@@ -19,7 +19,7 @@
 #include "comune/buffer.h"
 #include "comune/errore.h"
 
-#define PH_PROTOCOLLO_VERSIONE 1
+#define PH_PROTOCOLLO_VERSIONE 2
 
 /* ---- Codifica dei messaggi (parte pura, provata con i byte attesi) -------*/
 enum {
@@ -33,6 +33,7 @@ enum {
     PH_MSG_VIDEO_CHIAVE = 0x43,
     PH_MSG_VIDEO_PAUSA = 0x44,
     PH_MSG_VIDEO_RIPRENDI = 0x45,
+    PH_MSG_VIDEO_PAGINA = 0x46, /* versione 2 */
     PH_MSG_VIDEO_EVENTO = 0x48,
     PH_MSG_TOCCO = 0x50,
     PH_MSG_ROTELLA = 0x51,
@@ -124,12 +125,23 @@ int ph_componente_ascolta(PhComponente *c, uint8_t da_tipo, uint8_t a_tipo, PhEv
 /* ---- Video ---------------------------------------------------------------*/
 typedef struct PhVideoFlusso PhVideoFlusso;
 
+/* Pagine di un'app che il PC puo' chiedere (docs/protocollo.md §2.2). Elenco
+ * fisso: il PC non manda mai un intent libero, il telefono traduce il numero
+ * in un'azione standard di Android. */
+enum PhVideoPagina {
+    PH_VIDEO_PAGINA_NESSUNA = 0,  /* avvio normale */
+    PH_VIDEO_PAGINA_BATTERIA = 1, /* POWER_USAGE_SUMMARY */
+    PH_VIDEO_PAGINA_MEMORIA = 2   /* INTERNAL_STORAGE_SETTINGS */
+};
+
 typedef struct {
     uint16_t larghezza, altezza; /* multipli di 8, 64..2560 */
     uint16_t densita;
     uint32_t bit_al_secondo;
     uint8_t fps;
     const char *pacchetto;       /* NULL o "" = specchio dello schermo reale */
+    uint8_t pagina;              /* PhVideoPagina; 0 = avvio normale. Fuori elenco:
+                                  * ph_video_apri torna NULL senza mandare nulla */
 } PhVideoRichiesta;
 
 typedef struct {
@@ -165,6 +177,15 @@ int ph_video_chiave(PhVideoFlusso *f, PhErrore *e);
  * piu'. */
 int ph_video_pausa(PhVideoFlusso *f, PhErrore *e);
 int ph_video_riprendi(PhVideoFlusso *f, PhErrore *e);
+/* Avvia una pagina (PhVideoPagina, mai 0) dell'app della sessione sul suo
+ * schermo virtuale (VIDEO_PAGINA, protocollo §2.2). 0 = OK del telefono;
+ * altrimenti -1 con PhErrore. In caso d'errore non e' stato toccato nulla: il
+ * flusso e la sessione restano com'erano (pagina 0 o fuori elenco: l'errore
+ * viene prima di mandare qualunque cosa; sessione ignota, specchio o nessuna
+ * attivita' che risponde: lo dice il telefono). Attesa col limite delle altre
+ * richieste. Regge ph_video_chiudi su un altro thread come pausa/ripresa:
+ * o finisce prima della chiusura, o torna -1. */
+int ph_video_pagina(PhVideoFlusso *f, uint8_t pagina, PhErrore *e);
 /* Manda VIDEO_CHIUDI, chiude il canale, libera. Sblocca una lettura in corso. */
 void ph_video_chiudi(PhVideoFlusso *f, bool togli_task);
 

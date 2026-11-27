@@ -158,7 +158,7 @@ def main():
     try:
         adb("forward", "tcp:%d" % PORTA, "localabstract:yasde")
         c = apri(b"comandi\n")
-        t, _ = chiedi(c, 0x01, struct.pack(">H", 1))
+        t, _ = chiedi(c, 0x01, struct.pack(">H", 2))
         controlla(t == 0x02, "SALUTO")
         pid = pid_servizio()
         base_thread = thread_servizio(pid)

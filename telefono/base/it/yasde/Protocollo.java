@@ -12,7 +12,7 @@ import java.nio.charset.Charset;
  * di messaggi e stringhe. Usa solo java.io, così si prova sulla JVM normale.
  */
 public final class Protocollo {
-    public static final int VERSIONE = 1;
+    public static final int VERSIONE = 2;
     /** Massimo del corpo di un messaggio. */
     public static final int MAX_CORPO = 1 << 20;
 
@@ -27,6 +27,8 @@ public final class Protocollo {
     public static final int VIDEO_CHIUDI = 0x41;
     public static final int VIDEO_RIDIMENSIONA = 0x42;
     public static final int VIDEO_CHIAVE = 0x43;
+    /** Versione 2: avvia una pagina dell'app della sessione (0x44 e 0x45 sono pausa e ripresa). */
+    public static final int VIDEO_PAGINA = 0x46;
     public static final int VIDEO_EVENTO = 0x48;
     // Input
     public static final int TOCCO = 0x50;

@@ -88,6 +88,15 @@ const char *ph_dsk_pacchetto_impostazioni(void)
     return "com.android.settings";
 }
 
+PhShellPagina ph_dsk_widget_pagina(PhCfgWidgetTipo tipo)
+{
+    switch (tipo) {
+    case PH_CFG_WIDGET_BATTERIA: return PH_SHELL_PAGINA_BATTERIA;
+    case PH_CFG_WIDGET_MEMORIA: return PH_SHELL_PAGINA_MEMORIA;
+    default: return PH_SHELL_PAGINA_NESSUNA;
+    }
+}
+
 /* ---- Notifiche -------------------------------------------------------------------------------------- */
 #define NOT_TITOLO 22 /* titolo del widget (12 px) e il suo respiro */
 #define NOT_RIGA 44   /* tondo di 32 px e imbottitura del pulsante */

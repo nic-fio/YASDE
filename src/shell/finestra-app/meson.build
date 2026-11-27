@@ -41,6 +41,10 @@ test('shell-finestra-app-schermo', demo_finestra_app, args: ['--prova', '9000', 
 test('shell-finestra-app-mouse', demo_finestra_app, args: ['--prova', '60000', '--mouse'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 120)
 
+# Pagine (PIANO.md 8.7): apertura con la pagina, finestra aperta o minimizzata, errore, fuori elenco.
+test('shell-finestra-app-pagine', demo_finestra_app, args: ['--prova', '15000', '--pagine'],
+  env: shell_ambiente_schermo, suite: 'shell', timeout: 60)
+
 # Prove del vetro (sfocatura dietro il titolo): modalita', alberi dei nodi, paintable, chiusure, riposo.
 test('shell-finestra-app-vetro', demo_finestra_app, args: ['--prova', '200000', '--vetro'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 300)

@@ -571,6 +571,7 @@ PhServizi *ph_ossatura_servizi_veri(const PhCfgPreferenze *pref, bool pref_salva
         .tel_memoria_dettaglio = sv_tel_memoria_dettaglio,
         .tel_calendario = sv_tel_calendario,
         .flusso_chiave = sv_flusso_chiave,
+        .flusso_pagina = sv_flusso_pagina,
         .abbina = sv_abbina,
         .flusso_pizzico = sv_flusso_pizzico,
         .tel_calendario_intervallo = sv_tel_calendario_intervallo,

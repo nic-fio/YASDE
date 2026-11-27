@@ -237,6 +237,15 @@ typedef struct {
     bool specchio;
 } PhShellFinestra;
 
+/* Pagina di un'app da aprire (27 nov): elenco FISSO, mai un intent libero. I
+ * numeri sono quelli del protocollo (PhVideoPagina, componente.h): 0 = avvio
+ * normale, 1 = batteria, 2 = memoria. */
+typedef enum {
+    PH_SHELL_PAGINA_NESSUNA = 0,
+    PH_SHELL_PAGINA_BATTERIA = 1,
+    PH_SHELL_PAGINA_MEMORIA = 2,
+} PhShellPagina;
+
 /* Servito da finestra-app. */
 typedef struct {
     void *io;
@@ -254,6 +263,13 @@ typedef struct {
      * finestra `id` con lo stesso effetto del pulsante Chiudi (app tolta dai
      * recenti, 4.6). id sconosciuto: nulla. */
     void (*chiudi)(void *io, unsigned id);
+    /* Aggiunta del 27 nov (facoltativa, NULL = si usa apri_app, cioe' la pagina
+     * si perde): come apri_app, ma l'app si apre su `pagina`.
+     * NESSUNA e' tollerata e vale apri_app (ph_shell_apri_app_pagina non la manda mai qui). Finestra del pacchetto gia'
+     * aperta: portata davanti (anche da minimizzata) e la pagina e' mandata al
+     * suo flusso. Un errore del telefono sulla pagina non chiude ne' sporca la
+     * finestra. */
+    void (*apri_pagina)(void *io, const char *pacchetto, PhShellPagina pagina);
 } PhShellGestoreFinestre;
 
 /* Servito da desktop (icone, 5.2.2). */
@@ -327,6 +343,10 @@ void ph_shell_registra_fissate(PhShell *sh, const PhShellGestoreFissate *g); /* 
 /* Chiamate dei gestori. Senza gestore registrato (demo di un pezzo solo) non
  * fanno nulla e lo scrivono su stderr; le letture tornano 0/false. */
 void ph_shell_apri_app(PhShell *sh, const char *pacchetto);
+/* Come ph_shell_apri_app, sulla pagina chiesta (27 nov). NESSUNA = apri_app,
+ * identico a oggi. Pagina fuori elenco: scartata con un messaggio su stderr,
+ * nulla aperto. Gestore senza apri_pagina: si apre l'app senza pagina. */
+void ph_shell_apri_app_pagina(PhShell *sh, const char *pacchetto, PhShellPagina pagina);
 size_t ph_shell_finestre(PhShell *sh, PhShellFinestra *out, size_t max);
 void ph_shell_clic_barra(PhShell *sh, unsigned id);
 void ph_shell_specchio(PhShell *sh, bool mostra);

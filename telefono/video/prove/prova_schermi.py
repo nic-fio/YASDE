@@ -47,7 +47,7 @@ def prova(giri, kill_app, app_a, app_b):
     p, _ = P.lancia()
     P.adb("forward", "tcp:%d" % P.PORTA, "localabstract:yasde")
     c = P.Comandi()
-    c.chiedi(1, struct.pack(">H", 1))
+    c.chiedi(1, struct.pack(">H", 2))
     base, base_rim = voci(), rimossi()
     print("   (info) voci prima: %d, task con rimozione richiesta prima: %d" % (base, base_rim))
     k = 1
@@ -74,7 +74,7 @@ def prova(giri, kill_app, app_a, app_b):
     P.adb("push", P.CACHE + "/yasde.jar", P.JAR)
     p2, _ = P.lancia()
     c = P.Comandi()
-    c.chiedi(1, struct.pack(">H", 1))
+    c.chiedi(1, struct.pack(">H", 2))
     for k2, app_k in ((51, app_a), (52, app_b), (53, app_a)):
         t, b = P.apri_video(c, k2, 720, 1280, 450, app_k)
         P.controlla(t == 2, "apri la sessione %d prima del CHIUDI" % k2)

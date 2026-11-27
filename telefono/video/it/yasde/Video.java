@@ -15,7 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Canale `video:<id>` e comandi 0x40-0x4f (docs/protocollo.md §2.2 e §2.3). */
 public final class Video {
-    private static final int APRI = 0x40, CHIUDI = 0x41, RIDIMENSIONA = 0x42, CHIAVE = 0x43, PAUSA = 0x44, RIPRENDI = 0x45;
+    private static final int APRI = 0x40, CHIUDI = 0x41, RIDIMENSIONA = 0x42, CHIAVE = 0x43, PAUSA = 0x44, RIPRENDI = 0x45,
+            PAGINA = 0x46;
 
     private static final Map<Integer, Sessione> sessioni = new ConcurrentHashMap<>();
 
@@ -69,8 +70,15 @@ public final class Video {
         if (dpi < 40 || dpi > 1000) throw new IllegalArgumentException("densita non valida");
     }
 
-    /** Apre una sessione e la registra (usato anche da ProvaVideo). */
+    /** Apre una sessione senza pagina (usato da ProvaVideo e dalle prove). */
     static Sessione apri(int id, int l, int a, int dpi, long bps, int fps, String pacchetto) throws Exception {
+        return apri(id, l, a, dpi, bps, fps, pacchetto, Pagine.NESSUNA);
+    }
+
+    /** Apre una sessione e la registra; `pagina` fuori elenco: errore prima di creare qualunque cosa. */
+    static Sessione apri(int id, int l, int a, int dpi, long bps, int fps, String pacchetto, int pagina)
+            throws Exception {
+        Pagine.azione(pagina);
         controllaMisure(l, a, dpi);
         if (!pacchetto.isEmpty() && !pacchetto.matches("[A-Za-z0-9_.]{1,255}")) {
             throw new IllegalArgumentException("nome pacchetto non valido");
@@ -78,7 +86,7 @@ public final class Video {
         if (bps < 100000 || bps > 200000000L) throw new IllegalArgumentException("bitrate non valido");
         if (fps < 1 || fps > 120) fps = 60;
         if (sessioni.containsKey(id)) throw new IllegalArgumentException("id sessione gia' in uso");
-        Sessione s = Sessione.apri(id, l, a, dpi, (int) bps, fps, pacchetto);
+        Sessione s = Sessione.apri(id, l, a, dpi, (int) bps, fps, pacchetto, pagina);
         sessioni.put(id, s);
         return s;
     }
@@ -103,7 +111,8 @@ public final class Video {
                 long bps = in.readInt() & 0xffffffffL;
                 int fps = in.readUnsignedByte();
                 String pacchetto = Binario.stringa(in);
-                apri(id, l, a, dpi, bps, fps, pacchetto);
+                int pagina = in.readUnsignedByte(); // versione 2: in coda; senza, il corpo e' troncato
+                apri(id, l, a, dpi, bps, fps, pacchetto, pagina);
                 return new byte[0];
             }
             case CHIUDI: {
@@ -132,6 +141,11 @@ public final class Video {
             case CHIAVE:
                 trova(in.readInt()).chiave();
                 return new byte[0];
+            case PAGINA: {
+                Sessione s = trova(in.readInt());
+                s.pagina(in.readUnsignedByte());
+                return new byte[0];
+            }
             default:
                 throw new IllegalArgumentException("tipo sconosciuto");
         }

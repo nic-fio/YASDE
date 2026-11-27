@@ -23,12 +23,13 @@ static GtkWidget *etichetta_tel(const char *classe)
 }
 
 /* Apre un'app come dal launcher, ma solo se il telefono la conosce: un clic che non sa che cosa
- * aprire non fa nulla (mai un errore a schermo). */
+ * aprire non fa nulla (mai un errore a schermo). La pagina la decide il tipo del widget
+ * (ph_dsk_widget_pagina: la batteria apre la pagina Batteria, la sveglia nessuna). */
 static const char *apri_se_nota(PhDskWidget *w, const char *pacchetto)
 {
     if (pacchetto == NULL || pacchetto[0] == '\0' || ph_srv_app_cerca(w->d->srv, pacchetto) == NULL)
         return NULL;
-    ph_shell_apri_app(w->d->sh, pacchetto);
+    ph_shell_apri_app_pagina(w->d->sh, pacchetto, ph_dsk_widget_pagina(w->tipo));
     return pacchetto;
 }
 
@@ -358,7 +359,7 @@ static void batteria_richiedi(PhDskWidget *w)
     ph_srv_tel_batteria(w->d->srv, ph_dsk_wx_rinnova(&x->annulla), batteria_fatta, w);
 }
 
-/* L'app Impostazioni, non una pagina precisa; `forza` come per la sveglia. */
+/* L'app Impostazioni, sulla pagina Batteria; `forza` come per la sveglia. */
 static const char *batteria_attiva(PhDskWidget *w, const char *forza)
 {
     return w->x != NULL ? apri_se_nota(w, forza != NULL ? forza : PH_DSK_BAT_PACCHETTO_IMPOSTAZIONI) : NULL;

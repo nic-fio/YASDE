@@ -307,7 +307,7 @@ Widget più belli e più utili: vetro scuro, forme diverse dal rettangolo, grafi
 
 **Protocollo (versione 2: il corpo di VIDEO_APRI cambia):**
 - VIDEO_APRI: in coda `u8` pagina. Con pagina ≠ 0 il telefono cerca l'attività che risponde a quell'azione DENTRO il pacchetto dato (`setPackage`); se non c'è, avvio normale del pacchetto (risposta OK comunque). Pagina fuori elenco → ERRORE, niente creato.
-- Nuovo 0x44 VIDEO_PAGINA, PC→T: `u32` id, `u8` pagina (≠ 0). Avvia la pagina sullo schermo virtuale di quella sessione, restando nel pacchetto della sessione. OK; ERRORE se sessione ignota, specchio, pagina fuori elenco o nessuna attività risponde (nulla toccato).
+- Nuovo 0x46 VIDEO_PAGINA (0x44 e 0x45 erano già pausa e ripresa), PC→T: `u32` id, `u8` pagina (≠ 0). Avvia la pagina sullo schermo virtuale di quella sessione, restando nel pacchetto della sessione. OK; ERRORE se sessione ignota, specchio, pagina fuori elenco o nessuna attività risponde (nulla toccato).
 
 **Contratti (autorizzati a cambiare per questo lavoro, solo come scritto qui):**
 - `src/componente/componente.h`: `PH_PROTOCOLLO_VERSIONE 2`; enum `PhVideoPagina`; campo `uint8_t pagina` in `PhVideoRichiesta`; `int ph_video_pagina(PhVideoFlusso *f, uint8_t pagina, PhErrore *e)` (regge la chiusura in parallelo come le altre; attesa con limite).

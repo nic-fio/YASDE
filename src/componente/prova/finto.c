@@ -149,6 +149,7 @@ typedef struct {
     uint16_t larghezza, altezza;
     bool viva;
     bool pausa;
+    bool specchio;
 } Sessione;
 
 struct PhAdb {
@@ -602,6 +603,7 @@ static void servi_comandi(Coppia *k)
         case PH_MSG_VIDEO_RIDIMENSIONA:
         case PH_MSG_VIDEO_PAUSA:
         case PH_MSG_VIDEO_RIPRENDI:
+        case PH_MSG_VIDEO_PAGINA:
         case PH_MSG_VIDEO_CHIAVE: {
             if (cfg.jar_vecchio) {
                 manda_errore(k, "tipo sconosciuto");
@@ -615,17 +617,42 @@ static void servi_comandi(Coppia *k)
                 (void)ph_leggi_u8(&l);
                 char pac[100];
                 ph_leggi_stringa(&l, pac, sizeof pac);
+                uint8_t pagina = ph_leggi_u8(&l); /* versione 2: senza, il corpo e' troncato */
                 if (l.rotto) {
                     manda_errore(k, "richiesta malformata");
+                } else if (pagina > 2) {
+                    manda_errore(k, "pagina non valida");
                 } else if (strcmp(pac, "com.vietato") == 0) {
                     manda_errore(k, "App non trovata sul telefono");
                 } else {
                     pthread_mutex_lock(&a->m);
                     if (a->nsessioni < 64)
-                        a->sessioni[a->nsessioni++] = (Sessione){id, w, alt, true, false};
+                        a->sessioni[a->nsessioni++] = (Sessione){id, w, alt, true, false, pac[0] == '\0'};
                     pthread_mutex_unlock(&a->m);
                     manda_ok(k, NULL, 0, cfg.evento_prima_di_ok);
                 }
+            } else if (h[0] == PH_MSG_VIDEO_PAGINA) {
+                uint8_t pagina = ph_leggi_u8(&l);
+                bool viva = false, specchio = false;
+                pthread_mutex_lock(&a->m);
+                for (size_t i = 0; i < a->nsessioni; i++)
+                    if (a->sessioni[i].id == id && a->sessioni[i].viva) {
+                        viva = true;
+                        specchio = a->sessioni[i].specchio;
+                    }
+                pthread_mutex_unlock(&a->m);
+                if (l.rotto)
+                    manda_errore(k, "richiesta malformata");
+                else if (!viva)
+                    manda_errore(k, "sessione sconosciuta");
+                else if (specchio)
+                    manda_errore(k, "sessione specchio");
+                else if (pagina == 0 || pagina > 2)
+                    manda_errore(k, "pagina non valida");
+                else if (cfg.pagina_senza_attivita)
+                    manda_errore(k, "nessuna attivita' risponde");
+                else
+                    manda_ok(k, NULL, 0, cfg.evento_prima_di_ok);
             } else if (h[0] == PH_MSG_VIDEO_PAUSA || h[0] == PH_MSG_VIDEO_RIPRENDI) {
                 if (cfg.pausa_rifiuta)
                     manda_errore(k, "pausa non riuscita");

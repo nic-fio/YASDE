@@ -99,7 +99,7 @@ static void installa(PhShell *sh, PhFinto *f, void *u)
     for (int ev = 0; ev < PH_SRV_EV_NUMERO; ev++)
         d->ascolti[d->conta_ascolti++] = ph_srv_ascolta(s, (PhSrvEvento)ev, aggiorna, d);
 
-    PhSrvFlussoRichiesta r = {"it.finto.note", 640, 400, 0};
+    PhSrvFlussoRichiesta r = {"it.finto.note", 640, 400, 0, 0};
     PhErrore e = {{0}};
     d->sup = ph_superficie_nuova(sh, &r, NULL, NULL, &e);
     if (d->sup == NULL) {

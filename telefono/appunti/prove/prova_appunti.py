@@ -303,7 +303,7 @@ def main_turno():
 
 def prova(p, orig, solo_incolla=False):
     c0 = apri(b"comandi\n")
-    r = comando(c0, 1, struct.pack(">H", 1))
+    r = comando(c0, 1, struct.pack(">H", 2))
     controlla(r and r[0] == 2, "SALUTO -> OK")
 
     # --- canale appunti: PC -> telefono ---
@@ -425,7 +425,7 @@ def prova(p, orig, solo_incolla=False):
 
 def prova_incolla(c0, ch):
     # apre una sessione video con Impostazioni (app di sistema con un campo di ricerca)
-    corpo = struct.pack(">IHHHIB", 1, 720, 1280, 300, 2000000, 15) + struct.pack(">H", 20) + b"com.android.settings"
+    corpo = struct.pack(">IHHHIB", 1, 720, 1280, 300, 2000000, 15) + struct.pack(">H", 20) + b"com.android.settings" + b"\x00"  # pagina 0 (protocollo versione 2)
     r = comando(c0, 0x40, corpo)
     controlla(r and r[0] == 2, "VIDEO_APRI di Impostazioni su uno schermo virtuale", "" if r and r[0] == 2 else repr(r))
     if not r or r[0] != 2:

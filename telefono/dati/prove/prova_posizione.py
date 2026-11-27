@@ -81,7 +81,7 @@ def prova(pid_propri):
     threading.Thread(target=lambda: [log.append(x.strip()) for x in p.stdout], daemon=True).start()
     s = socket.create_connection(("127.0.0.1", PORTA), timeout=30)
     s.sendall(b"comandi\n")
-    chiedi(s, 1, struct.pack(">H", 1))
+    chiedi(s, 1, struct.pack(">H", 2))
     print("API mancanti nel log:", [x for x in log if "MANCANTE" in x])
     print("posizione del telefono accesa:", adb("shell", "cmd location is-location-enabled").strip())
 

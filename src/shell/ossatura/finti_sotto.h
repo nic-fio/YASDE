@@ -49,6 +49,10 @@ typedef struct {
     PhEventoGrezzo pan_cb;       /* l'ascolto dell'evento del pannello (0x6e), NULL = nessuno */
     void *pan_utente;
     atomic_int chiavi;           /* ph_video_chiave */
+    atomic_int apri_pagina;      /* pagina nella richiesta dell'ultimo ph_video_apri */
+    atomic_int pag_n, pag_ultima; /* ph_video_pagina: chiamate e ultima pagina */
+    atomic_bool pag_rifiuta;     /* ph_video_pagina fallisce */
+    atomic_bool pag_gate, pag_in_corso; /* ph_video_pagina aspetta il cancello / e' ferma li' */
     atomic_int dec_creati, cfg_su_nuovo, esportati;
     atomic_bool video_pacchetti; /* ph_video_leggi manda pacchetti veri */
     atomic_bool dai_fallisce;    /* ph_decodifica_dai rifiuta i fotogrammi */
@@ -85,6 +89,8 @@ void finti_apri_cancello(void);
 /* Il telefono finto manda l'evento del pannello (0x6e) dal thread «del componente»: acceso o spento,
  * motivo del protocollo 2.9 (1-3 = l'utente o una chiamata). false se nessuno ascolta. */
 bool finti_pannello_evento(bool acceso, int motivo);
+/* Apre il cancello di ph_video_pagina (con scadenza di 10 s: nessuna attesa senza limite). */
+void finti_apri_cancello_pagina(void);
 /* Apre il cancello dell'input (canale dell'input "fermo" finche' resta chiuso). */
 void finti_apri_cancello_input(void);
 

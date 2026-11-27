@@ -558,6 +558,22 @@ void ph_shell_apri_app(PhShell *sh, const char *pacchetto)
         manca("apri app");
 }
 
+void ph_shell_apri_app_pagina(PhShell *sh, const char *pacchetto, PhShellPagina pagina)
+{
+    if (pagina == PH_SHELL_PAGINA_NESSUNA) {
+        ph_shell_apri_app(sh, pacchetto);
+        return;
+    }
+    if (pagina != PH_SHELL_PAGINA_BATTERIA && pagina != PH_SHELL_PAGINA_MEMORIA) {
+        fprintf(stderr, "shell: pagina %d fuori elenco, scartata\n", (int)pagina);
+        return;
+    }
+    if (sh->ha_finestre && sh->g_finestre.apri_pagina != NULL && pacchetto != NULL)
+        sh->g_finestre.apri_pagina(sh->g_finestre.io, pacchetto, pagina);
+    else
+        ph_shell_apri_app(sh, pacchetto); /* gestore senza pagine: l'app si apre lo stesso */
+}
+
 size_t ph_shell_finestre(PhShell *sh, PhShellFinestra *out, size_t max)
 {
     if (sh->ha_finestre && sh->g_finestre.elenco != NULL)

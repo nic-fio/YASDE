@@ -346,8 +346,10 @@ int main(void)
     atomic_store(&finti.pos_rifiuta, false);
     finti_posizione(PH_DATI_POS_SPENTA, 0, 0, NULL, false);
     ch0 = atomic_load(&finti.m_chiedi_n);
+    b = n_pubs; /* letto PRIMA: la pubblicazione IN_ATTESA di questa richiesta puo' arrivare dopo */
     ph_srv_meteo_localita(s, &roma);
     ASPETTA(atomic_load(&finti.m_chiedi_n) > ch0, 4000);
+    CONTROLLA(aspetta_stato(b, PH_SRV_METEO_IN_ATTESA)); /* consegnata al ciclo GTK prima di proseguire */
 
     /* ---- 8. Citta' presente e telefono presente con la posizione: vince il telefono. */
     finti_posizione(PH_DATI_POS_NOTA, MILANO_LAT_MILL, MILANO_LON_MILL, "Milano", false);

@@ -270,7 +270,7 @@ class Video:
     """Una sessione video su schermo virtuale con scorrimento continuo (input sullo schermo VIRTUALE)."""
 
     def __init__(self, c):
-        t, b = c.chiedi(0x40, struct.pack(">IHHHIB", 1, W, H, 320, 8000000, 60) + st("com.android.settings"))
+        t, b = c.chiedi(0x40, struct.pack(">IHHHIB", 1, W, H, 320, 8000000, 60) + st("com.android.settings") + b"\x00")  # in coda la pagina (versione 2)
         controlla(t == 2, "VIDEO_APRI Impostazioni su schermo virtuale")
         self.v = apri(b"video:1\n")
         self.v.settimeout(None)
@@ -355,7 +355,7 @@ def prova():
             controlla(any("[pannello] API di Android necessarie: tutte presenti" in r for r in LOG), "1 API del pannello presenti",
                       "; ".join(r for r in LOG if "pannello" in r)[:200])
             c = Comandi()
-            t, b = c.chiedi(1, struct.pack(">H", 1))
+            t, b = c.chiedi(1, struct.pack(">H", 2))
             controlla(t == 2, "1 SALUTO")
             controlla(stato_pannello(c) == (1, 0), "1 STATO iniziale: acceso, non in mano")
             t, b = imposta_pannello(c, 7)
@@ -489,7 +489,7 @@ def prova():
             if gruppo == "2":
                 servizio = lancia()
                 c = Comandi()
-                c.chiedi(1, struct.pack(">H", 1))
+                c.chiedi(1, struct.pack(">H", 2))
             # 7 kill -9 a pannello spento
             t, b = imposta_pannello(c, 0)
             controlla(t == 2 and potenza() == "OFF" and timeout() == MASSIMO, "7 spento, timeout al massimo")
@@ -507,7 +507,7 @@ def prova():
             # 8 il valore dell'utente vince
             servizio = lancia()
             c = Comandi()
-            c.chiedi(1, struct.pack(">H", 1))
+            c.chiedi(1, struct.pack(">H", 2))
             t, b = imposta_pannello(c, 0)
             controlla(t == 2 and timeout() == MASSIMO, "8 spento, timeout al massimo")
             imposta("screen_off_timeout", "123456")  # l'utente lo cambia
@@ -521,7 +521,7 @@ def prova():
             # 9 CHIUDI a pannello spento
             servizio = lancia()
             c = Comandi()
-            c.chiedi(1, struct.pack(">H", 1))
+            c.chiedi(1, struct.pack(">H", 2))
             t, b = imposta_pannello(c, 0)
             controlla(t == 2 and potenza() == "OFF", "9 spento")
             t, b = c.chiedi(4)
@@ -535,7 +535,7 @@ def prova():
             # 10 riaccensione che fallisce una volta e riesce al ritentativo (punto di sostituzione solo di prova)
             servizio = lancia()
             c = Comandi()
-            c.chiedi(1, struct.pack(">H", 1))
+            c.chiedi(1, struct.pack(">H", 2))
             t, b = imposta_pannello(c, 0)
             controlla(t == 2 and potenza() == "OFF", "10 spento")
             c.svuota()
@@ -562,7 +562,7 @@ def prova():
             aspetta(lambda: pid_servizio() is None, 10)
             servizio = lancia()
             c = Comandi()
-            c.chiedi(1, struct.pack(">H", 1))
+            c.chiedi(1, struct.pack(">H", 2))
             sh("echo 24.0 90.0 > %s" % FREQ)
             t, b = imposta_pannello(c, 0)
             controlla(t == 2, "11 spento con frequenza (finta) di 24 Hz su un massimo di 90")
@@ -584,7 +584,7 @@ def prova():
             servizio.kill()
             servizio = lancia()
             c = Comandi()
-            c.chiedi(1, struct.pack(">H", 1))
+            c.chiedi(1, struct.pack(">H", 2))
             sh("echo 120.0 120.0 > %s" % FREQ)
             t, b = imposta_pannello(c, 0)
             time.sleep(2.5)
@@ -595,7 +595,7 @@ def prova():
             peak_prima = sh("cmd settings get system peak_refresh_rate").strip()
             servizio = lancia()
             c = Comandi()
-            c.chiedi(1, struct.pack(">H", 1))
+            c.chiedi(1, struct.pack(">H", 2))
             try:
                 imposta("peak_refresh_rate", "60.0")
                 sh("echo 60.0 120.0 > %s" % FREQ)

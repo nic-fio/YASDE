@@ -33,6 +33,8 @@ struct SvFlusso {
     PhSrvFlusso *f;           /* NULL dopo flusso_chiudi: nessun avviso piu' */
     char pacchetto[PH_CFG_LUN_APP];
     int densita;
+    uint8_t pagina_apertura;  /* sf->m: pagina della PRIMA apertura (0 = nessuna); azzerata appena
+                                 la sessione e' nata, cosi' una riapertura dopo una caduta e' normale */
     int w, h;                 /* misura dichiarata (0 per lo specchio prima di aprire) */
     PhFlStato stato;
     bool gia_aperto;
@@ -318,6 +320,7 @@ static void apri_corpo(Sv *sv, SvFlusso *sf)
         int w = sf->w, h = sf->h, dens = sf->densita;
         int usw = 0, ush = 0, usd = 0; /* il ridimensionamento in attesa usato per aprire */
         bool specchio = sf->pacchetto[0] == '\0';
+        uint8_t pag = specchio ? 0 : sf->pagina_apertura;
         if (!specchio && sf->ridim_w > 0) { /* misura chiesta in pausa o a flusso assente: si apre gia' cosi' */
             w = usw = sf->ridim_w;
             h = ush = sf->ridim_h;
@@ -331,7 +334,7 @@ static void apri_corpo(Sv *sv, SvFlusso *sf)
             dens = s->densita > 0 ? s->densita : 420;
         PhVideoRichiesta rq = {.larghezza = (uint16_t)w, .altezza = (uint16_t)h, .densita = (uint16_t)dens,
                                .bit_al_secondo = VIDEO_BIT_AL_SECONDO, .fps = VIDEO_FPS,
-                               .pacchetto = specchio ? NULL : sf->pacchetto};
+                               .pacchetto = specchio ? NULL : sf->pacchetto, .pagina = pag};
         PhErrore e = {{0}};
         PhVideoFlusso *vf = ph_video_apri(s->c, &rq, &e);
         bool viva;
@@ -379,6 +382,7 @@ static void apri_corpo(Sv *sv, SvFlusso *sf)
             sf->w = w;
             sf->h = h;
             sf->nuova_decodifica = true;
+            sf->pagina_apertura = 0; /* usata: mai alla riapertura */
             if (usd > 0) /* la densita' usata per aprire e' ora quella del flusso */
                 sf->densita = usd;
             if (sf->ridim_w > 0 && (sf->ridim_w != usw || sf->ridim_h != ush || sf->ridim_d != usd)) {
@@ -452,6 +456,7 @@ void *sv_flusso_apri(void *b, PhSrvFlusso *f, const PhSrvFlussoRichiesta *r, PhE
     sf->f = f;
     g_strlcpy(sf->pacchetto, pk, sizeof sf->pacchetto);
     sf->densita = r->densita;
+    sf->pagina_apertura = r->pagina;
     sf->w = r->larghezza;
     sf->h = r->altezza;
     sf->stato = PH_FL_APRENDO;
@@ -759,6 +764,7 @@ typedef struct {
     bool pausa;
     int w, h, d;       /* ridimensionamento: misura e densita' (0 = invariata) */
     uint64_t barriera; /* input accodati al momento della richiesta */
+    uint8_t pagina;    /* pagina (1 o 2) da mandare al telefono */
     bool in_pausa;     /* la pausa voluta al momento della richiesta (ridimensionamento): i lavori
                           vanno in ordine, ma il flag della shell cambia subito */
 } OpJob;
@@ -990,6 +996,70 @@ void sv_flusso_chiave(void *b, void *fl)
         sf_prendi(fl);
         sv_lavoro(sv, sv->p_flussi, chiave_lavoro, fl);
     }
+}
+
+/* ---- Pagina su un flusso aperto (27 nov) -------------------------------------------------------
+ * Come il chiave: richiesta lenta, gira su p_flussi, con vf e la sessione in uso (se il flusso si
+ * chiude nel frattempo vf_prendi non lo da' e nulla parte; chi chiude aspetta uso == 0). Nessuna
+ * risposta alla shell: un rifiuto del telefono, la pausa o l'assenza di sessione si scrivono su
+ * stderr (una frase fissa, nessun dato) e il flusso resta com'era. */
+void (*sv_prova_pagina_fatto)(int esito) = NULL; /* solo prove: 0 riuscita, -1 rifiutata, 1 non mandata */
+
+/* Gli stessi numeri nei tre elenchi (servizi, shell, protocollo): un cambio in uno solo manderebbe
+ * al telefono una pagina diversa da quella chiesta. */
+_Static_assert((int)PH_SRV_PAGINA_NESSUNA == (int)PH_SHELL_PAGINA_NESSUNA &&
+                   (int)PH_SRV_PAGINA_NESSUNA == (int)PH_VIDEO_PAGINA_NESSUNA &&
+                   (int)PH_SRV_PAGINA_BATTERIA == (int)PH_SHELL_PAGINA_BATTERIA &&
+                   (int)PH_SRV_PAGINA_BATTERIA == (int)PH_VIDEO_PAGINA_BATTERIA &&
+                   (int)PH_SRV_PAGINA_MEMORIA == (int)PH_SHELL_PAGINA_MEMORIA &&
+                   (int)PH_SRV_PAGINA_MEMORIA == (int)PH_VIDEO_PAGINA_MEMORIA,
+               "pagine: valori diversi tra PH_SRV_PAGINA_*, PhShellPagina e PhVideoPagina");
+
+static void pagina_lavoro(Sv *sv, void *dati)
+{
+    OpJob *j = dati;
+    SvFlusso *sf = j->sf;
+    int esito = 1;
+    SvSessione *s = sv_sessione_usa(sv);
+    PhVideoFlusso *vf = (s != NULL && !atomic_load(&sf->chiuso)) ? vf_prendi(sf, s) : NULL;
+    if (vf != NULL) {
+        /* In pausa il telefono risponde ERRORE: non si manda. La pausa e' quella di quando la
+         * pagina e' stata chiesta (j->in_pausa), non di quando il lavoro parte: i lavori vanno in
+         * ordine, ma il flag della shell cambia subito. */
+        if (!j->in_pausa) {
+            PhErrore e = {{0}};
+            esito = ph_video_pagina(vf, j->pagina, &e) == 0 ? 0 : -1;
+        }
+        vf_lascia(sf);
+    }
+    if (s != NULL)
+        sv_sessione_lascia(s);
+    if (esito != 0 && !atomic_load(&sf->chiuso))
+        fprintf(stderr, "ossatura: pagina %u non aperta sul telefono (%s)\n", (unsigned)j->pagina,
+                esito < 0 ? "rifiutata" : "flusso non pronto o in pausa");
+    if (sv_prova_pagina_fatto != NULL)
+        sv_prova_pagina_fatto(esito);
+    g_free(j);
+    sf_lascia(sf);
+}
+
+void sv_flusso_pagina(void *b, void *fl, uint8_t pagina)
+{
+    /* Dopo ph_servizi_libera il pezzo comune passa b = NULL (vedi sv_flusso_chiave). */
+    if (b == NULL)
+        return;
+    Sv *sv = b;
+    SvFlusso *sf = fl;
+    if (atomic_load(&sf->chiuso))
+        return;
+    OpJob *j = g_new0(OpJob, 1);
+    j->sf = sf;
+    j->pagina = pagina;
+    g_mutex_lock(&sf->m);
+    j->in_pausa = sf->pausa;
+    g_mutex_unlock(&sf->m);
+    sf_prendi(sf);
+    sv_lavoro(sv, sv->p_flussi, pagina_lavoro, j);
 }
 
 /* ---- Screenshot e registrazione (tabella, thread GTK: non bloccano) -------------------------------- */

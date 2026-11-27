@@ -55,6 +55,11 @@ void ph_superficie_rotella(GtkWidget *sup, int video_w, int video_h, int x, int 
 void ph_superficie_tasto(GtkWidget *sup, bool giu, unsigned codice, unsigned meta);
 void ph_superficie_testo(GtkWidget *sup, const char *testo);
 void ph_superficie_indietro(GtkWidget *sup);
+/* 27 nov: manda al flusso una pagina dell'app (ph_srv_flusso_pagina: numeri di
+ * PhShellPagina, 1 o 2; altro = scartata). Non blocca, nessuna risposta; un
+ * errore del telefono non tocca la superficie. Dopo ph_superficie_chiudi: nulla.
+ * Solo dal thread GTK. */
+void ph_superficie_pagina(GtkWidget *sup, uint8_t pagina);
 
 /* Ultima immagine mostrata (riferimento nuovo, g_object_unref), NULL se
  * nessuna: serve allo screenshot (5.5). */

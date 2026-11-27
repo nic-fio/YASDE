@@ -266,7 +266,7 @@ static const char *impostazioni_nota(PhDesktop *d)
     return d->vivo && ph_srv_app_cerca(d->srv, pk) != NULL ? pk : NULL;
 }
 
-/* Memoria: clic sul contenuto = app Impostazioni. */
+/* Memoria: clic sul contenuto = app Impostazioni, sulla pagina Archiviazione. */
 static void memoria_clic(GtkGestureClick *g, int n, double x, double y, gpointer dati)
 {
     (void)g;
@@ -276,7 +276,7 @@ static void memoria_clic(GtkGestureClick *g, int n, double x, double y, gpointer
     PhDskWidget *w = dati;
     const char *pk = w->scheda != NULL ? impostazioni_nota(w->d) : NULL;
     if (pk != NULL)
-        ph_shell_apri_app(w->d->sh, pk);
+        ph_shell_apri_app_pagina(w->d->sh, pk, ph_dsk_widget_pagina(w->tipo));
 }
 
 static void memoria_aggiorna(PhDskWidget *w, PhDskVista *v)

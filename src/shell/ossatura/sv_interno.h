@@ -191,6 +191,7 @@ uint64_t sv_sessione_id(Sv *sv);
 extern void (*sv_prova_evento_gestito)(void);
 /* Idem: chiamata da ridim_lavoro dopo aver deciso (applicato o ricordato). */
 extern void (*sv_prova_ridim_fatto)(void);
+extern void (*sv_prova_pagina_fatto)(int esito); /* solo prove: 0 riuscita, -1 rifiutata, 1 non mandata */
 /* Idem: chiamata da input_lavoro dopo aver aggiornato lo stato dei gesti. */
 extern void (*sv_prova_input_fatto)(void);
 
@@ -283,6 +284,7 @@ void sv_controlli_sessione_nuova(Sv *sv, SvSessione *s);
  * "trova il telefono"; toglie l'ascolto; pubblica tutto "non disponibile". */
 void sv_controlli_teardown(Sv *sv, SvSessione *s);
 void sv_flusso_chiave(void *b, void *fl);
+void sv_flusso_pagina(void *b, void *fl, uint8_t pagina);
 void sv_flusso_pizzico(void *b, void *fl, int video_w, int video_h, int fase, int x, int y, int passo);
 void sv_flusso_screenshot(void *b, void *fl, PhSrvLavoro *l, unsigned dove, const char *cartella_pc,
                           const char *nome_app);

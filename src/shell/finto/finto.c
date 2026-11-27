@@ -2265,6 +2265,10 @@ void ph_finto_schermo_spento(PhFinto *f, bool si) { finto_lavora(f, 0, fai_scher
 void ph_finto_registrazione_guasta(PhFinto *f, bool si) { finto_lavora(f, 0, fai_reg_guasta, GINT_TO_POINTER(si), NULL); }
 unsigned ph_finto_chiavi_chieste(PhFinto *f) { return atomic_load(&f->chiavi); }
 int ph_finto_ultima_densita(PhFinto *f) { return atomic_load(&f->ultima_densita); }
+int ph_finto_ultima_pagina(PhFinto *f) { return atomic_load(&f->ultima_pagina); }
+unsigned ph_finto_pagine_apertura(PhFinto *f) { return atomic_load(&f->pagine_apertura); }
+unsigned ph_finto_pagine_inviate(PhFinto *f) { return atomic_load(&f->pagine_inviate); }
+void ph_finto_pagina_rifiuta(PhFinto *f, bool si) { atomic_store(&f->pagina_rifiuta, si); }
 unsigned ph_finto_pizzichi(PhFinto *f) { return atomic_load(&f->pizzichi); }
 
 /* ---- Prima connessione: abbinamento (23 nov) --------------------------------- */
@@ -2380,6 +2384,7 @@ static const PhServiziBackend TABELLA = {
     .flusso_screenshot = finto_flusso_screenshot,
     .flusso_registra = finto_flusso_registra,
     .flusso_chiave = finto_flusso_chiave,
+    .flusso_pagina = finto_flusso_pagina,
     .flusso_ridimensiona_densita = finto_flusso_ridimensiona_densita,
     .abbina = finto_abbina,
     .flusso_pizzico = finto_flusso_pizzico,
@@ -2410,6 +2415,10 @@ PhFinto *ph_finto_nuovo(const PhFintoOpzioni *opzioni)
     f->tr = g_ptr_array_new_with_free_func(tr_libera);
     f->disinstallate = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
     atomic_init(&f->chiavi, 0);
+    atomic_init(&f->pagine_apertura, 0);
+    atomic_init(&f->pagine_inviate, 0);
+    atomic_init(&f->ultima_pagina, 0);
+    atomic_init(&f->pagina_rifiuta, false);
     atomic_init(&f->meteo_ricerca_lenta, false);
     g_mutex_init(&f->m_ric);
     f->ricerche = g_ptr_array_new();

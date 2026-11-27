@@ -125,7 +125,7 @@ static bool canali_aperti(PhAdb *a, const char *tipo, int n)
 
 static PhVideoRichiesta richiesta(const char *pacchetto)
 {
-    return (PhVideoRichiesta){640, 480, 320, 4000000, 30, pacchetto};
+    return (PhVideoRichiesta){640, 480, 320, 4000000, 30, pacchetto, PH_VIDEO_PAGINA_NESSUNA};
 }
 
 /* Legge e controlla tutti i pacchetti normali di una sessione. */
@@ -170,7 +170,7 @@ static void prova_avvio_e_chiusura(void)
     VERIFICA(strcmp(finto_servizio_lanciato(bn.adb), atteso_lancio) == 0); /* stesso percorso copiato e lanciato */
     VERIFICA(ph_componente_vivo(bn.c));
     VERIFICA(canali_aperti(bn.adb, "comandi", 1) && canali_aperti(bn.adb, "input", 1));
-    comando_uguale(bn.adb, 0, PH_MSG_SALUTO, (const uint8_t[]){0, 1}, 2);
+    comando_uguale(bn.adb, 0, PH_MSG_SALUTO, (const uint8_t[]){0, 2}, 2);
     ph_componente_chiudi(bn.c);
     bn.c = NULL;
     VERIFICA(finto_ricevuto_chiudi(bn.adb));
@@ -240,9 +240,9 @@ static void prova_errori_di_avvio(void)
     banco_fine(&bn);
 
     banco_inizia(&bn);
-    finto_cfg(bn.adb)->versione = 2;
+    finto_cfg(bn.adb)->versione = 1; /* telefono con il jar della versione 1: va rifiutato */
     VERIFICA(banco_avvia(&bn, 2000, &e) == NULL);
-    VERIFICA(strstr(e.testo, "versione 2") != NULL);
+    VERIFICA(strstr(e.testo, "versione 1") != NULL);
     pulizia_giusta(&bn);
     banco_fine(&bn);
 
@@ -273,10 +273,11 @@ static void prova_video(void)
     PhVideoRichiesta r = richiesta("com.esempio.app");
     PhVideoFlusso *f1 = ph_video_apri(bn.c, &r, &e);
     VERIFICA(f1 != NULL && ph_video_id(f1) == 1);
-    /* VIDEO_APRI: id, 640, 480, 320, 4000000, 30, "com.esempio.app" */
+    /* VIDEO_APRI: id, 640, 480, 320, 4000000, 30, "com.esempio.app", pagina 0 (in coda, versione 2) */
     uint8_t atteso[64] = {0, 0, 0, 1, 0x02, 0x80, 0x01, 0xe0, 0x01, 0x40, 0x00, 0x3d, 0x09, 0x00, 30, 0, 15};
     memcpy(atteso + 17, "com.esempio.app", 15);
-    comando_uguale(bn.adb, 1, PH_MSG_VIDEO_APRI, atteso, 32);
+    atteso[32] = 0;
+    comando_uguale(bn.adb, 1, PH_MSG_VIDEO_APRI, atteso, 33);
     VERIFICA(canali_aperti(bn.adb, "video:1", 1));
 
     /* seconda sessione, specchio dello schermo (pacchetto NULL) */
@@ -287,7 +288,8 @@ static void prova_video(void)
     VERIFICA(f2 != NULL && ph_video_id(f2) == 2);
     uint8_t t;
     uint8_t corpo[64];
-    VERIFICA(finto_comando(bn.adb, 2, &t, corpo, sizeof corpo) == 17 && corpo[15] == 0 && corpo[16] == 0);
+    VERIFICA(finto_comando(bn.adb, 2, &t, corpo, sizeof corpo) == 18 && corpo[15] == 0 && corpo[16] == 0 &&
+             corpo[17] == 0);
 
     leggi_pacchetti_normali(f1, 6, 640, 480);
     leggi_pacchetti_normali(f2, 6, 1080, 2336);
@@ -1216,7 +1218,7 @@ static void prova_pausa_e_ripresa(void)
  * prima che T abbia finito, a ogni giro. T si ferma al primo -1. */
 typedef struct {
     PhVideoFlusso *f;
-    int modo;           /* 0 pausa/riprendi, 1 chiave, 2 ridimensiona */
+    int modo;           /* 0 pausa/riprendi, 1 chiave, 2 ridimensiona, 3 pagina */
     int ris;
     atomic_int fatte;
     atomic_bool finito;
@@ -1227,7 +1229,9 @@ static void *richieste_in_corsa(void *p)
     ArgPausa *a = p;
     PhErrore e;
     for (int i = 0;; i++) {
-        if (a->modo == 0)
+        if (a->modo == 3)
+            a->ris = ph_video_pagina(a->f, i % 2 == 0 ? PH_VIDEO_PAGINA_BATTERIA : PH_VIDEO_PAGINA_MEMORIA, &e);
+        else if (a->modo == 0)
             a->ris = i % 2 == 0 ? ph_video_pausa(a->f, &e) : ph_video_riprendi(a->f, &e);
         else if (a->modo == 1)
             a->ris = ph_video_chiave(a->f, &e);
@@ -1273,7 +1277,7 @@ static void nessuna_richiesta_dopo_chiusura(PhAdb *adb, uint32_t id)
         size_t len = finto_comando(adb, k, &tipo, corpo, sizeof corpo);
         if (tipo == PH_MSG_VIDEO_CHIUDI && len >= 4)
             chiusura = k;
-        if (k > chiusura && tipo >= PH_MSG_VIDEO_RIDIMENSIONA && tipo <= PH_MSG_VIDEO_RIPRENDI && len >= 4) {
+        if (k > chiusura && tipo >= PH_MSG_VIDEO_RIDIMENSIONA && tipo <= PH_MSG_VIDEO_PAGINA && len >= 4) {
             uint32_t i2 = ((uint32_t)corpo[0] << 24) | ((uint32_t)corpo[1] << 16) | ((uint32_t)corpo[2] << 8) | corpo[3];
             VERIFICA(i2 != id);
         }
@@ -1295,7 +1299,7 @@ static void prova_richieste_su_flusso_in_chiusura(void)
         ArgPausa a;
         memset((void *)&a, 0, sizeof a);
         a.f = f;
-        a.modo = giro % 3;
+        a.modo = giro % 4;
         pthread_t t, c;
         VERIFICA(pthread_create(&t, NULL, richieste_in_corsa, &a) == 0);
         while (atomic_load(&a.fatte) < 3)
@@ -1312,6 +1316,15 @@ static void prova_richieste_su_flusso_in_chiusura(void)
         nessuna_richiesta_dopo_chiusura(bn.adb, id);
         banco_fine(&bn);
     }
+}
+
+static void *pagina_una_volta(void *p)
+{
+    ArgPausa *a = p;
+    PhErrore e;
+    a->ris = ph_video_pagina(a->f, PH_VIDEO_PAGINA_BATTERIA, &e);
+    atomic_store(&a->finito, true);
+    return NULL;
 }
 
 static void *pausa_una_volta(void *p)
@@ -1355,6 +1368,126 @@ static void prova_chiusura_aspetta_richiesta_in_corso(void)
     VERIFICA(finto_numero_comandi(bn.adb) == prima + 1);
     uint8_t tipo, corpo[8];
     VERIFICA(finto_comando(bn.adb, prima, &tipo, corpo, sizeof corpo) == 5 && tipo == PH_MSG_VIDEO_CHIUDI);
+    nessuna_richiesta_dopo_chiusura(bn.adb, 1);
+    banco_fine(&bn);
+}
+
+/* Pagine (protocollo versione 2): corpo di VIDEO_APRI, VIDEO_PAGINA, errori. */
+static void prova_pagina(void)
+{
+    Banco bn;
+    banco_pronto(&bn);
+    PhErrore e;
+
+    /* VIDEO_APRI con pagina: l'ultimo byte del corpo e' la pagina */
+    PhVideoRichiesta r = richiesta("com.a");
+    r.pagina = PH_VIDEO_PAGINA_BATTERIA;
+    PhVideoFlusso *f = ph_video_apri(bn.c, &r, &e);
+    VERIFICA(f != NULL);
+    uint8_t t, corpo[64];
+    size_t n = finto_comando(bn.adb, 1, &t, corpo, sizeof corpo);
+    VERIFICA(t == PH_MSG_VIDEO_APRI && n == 23 && corpo[n - 1] == 1 && corpo[n - 2] == 'a');
+
+    /* pagina fuori elenco in apertura: errore sul PC, nulla parte */
+    size_t prima = finto_numero_comandi(bn.adb);
+    PhVideoRichiesta cattiva = richiesta("com.a");
+    cattiva.pagina = 3;
+    VERIFICA(ph_video_apri(bn.c, &cattiva, &e) == NULL && strstr(e.testo, "fuori elenco") != NULL);
+    cattiva.pagina = 255;
+    VERIFICA(ph_video_apri(bn.c, &cattiva, &e) == NULL);
+    VERIFICA(finto_numero_comandi(bn.adb) == prima);
+
+    /* VIDEO_PAGINA: id e pagina, risposta OK */
+    VERIFICA(ph_video_pagina(f, PH_VIDEO_PAGINA_MEMORIA, &e) == 0);
+    comando_uguale(bn.adb, prima, PH_MSG_VIDEO_PAGINA, (const uint8_t[]){0, 0, 0, 1, 2}, 5);
+    VERIFICA(ph_video_pagina(f, PH_VIDEO_PAGINA_BATTERIA, &e) == 0);
+    comando_uguale(bn.adb, prima + 1, PH_MSG_VIDEO_PAGINA, (const uint8_t[]){0, 0, 0, 1, 1}, 5);
+
+    /* pagina 0 o fuori elenco: errore sul PC, nulla parte */
+    prima = finto_numero_comandi(bn.adb);
+    VERIFICA(ph_video_pagina(f, PH_VIDEO_PAGINA_NESSUNA, &e) == -1);
+    VERIFICA(ph_video_pagina(f, 3, &e) == -1);
+    VERIFICA(ph_video_pagina(f, 255, &e) == -1);
+    VERIFICA(ph_video_pagina(NULL, 1, &e) == -1);
+    VERIFICA(finto_numero_comandi(bn.adb) == prima);
+
+    /* ERRORE del telefono: la sua frase; il flusso resta usabile */
+    finto_cfg(bn.adb)->pagina_senza_attivita = true;
+    VERIFICA(ph_video_pagina(f, PH_VIDEO_PAGINA_BATTERIA, &e) == -1 &&
+             strstr(e.testo, "nessuna attivita' risponde") != NULL);
+    finto_cfg(bn.adb)->pagina_senza_attivita = false;
+    VERIFICA(ph_video_pagina(f, PH_VIDEO_PAGINA_BATTERIA, &e) == 0);
+    VERIFICA(ph_video_chiave(f, &e) == 0 && ph_componente_vivo(bn.c));
+
+    /* specchio: lo rifiuta il telefono */
+    PhVideoRichiesta rs = richiesta(NULL);
+    PhVideoFlusso *fs = ph_video_apri(bn.c, &rs, &e);
+    VERIFICA(fs != NULL);
+    VERIFICA(ph_video_pagina(fs, PH_VIDEO_PAGINA_BATTERIA, &e) == -1 && strstr(e.testo, "specchio") != NULL);
+    ph_video_chiudi(fs, false);
+
+    /* sessione chiusa dal telefono (ignota): errore del telefono */
+    PhVideoFlusso *fc = ph_video_apri(bn.c, &r, &e);
+    VERIFICA(fc != NULL);
+    PhBuffer m = PH_BUFFER_VUOTO;
+    VERIFICA(ph_msg_inizia(&m, PH_MSG_VIDEO_CHIUDI) == 0 && ph_msg_u32(&m, ph_video_id(fc)) == 0 &&
+             ph_msg_u8(&m, 0) == 0 && ph_msg_finisci(&m) == 0);
+    VERIFICA(ph_componente_richiedi(bn.c, &m, NULL, 2000, &e) == 0); /* la chiude solo lato telefono */
+    ph_buffer_libera(&m);
+    VERIFICA(ph_video_pagina(fc, PH_VIDEO_PAGINA_BATTERIA, &e) == -1 && strstr(e.testo, "sessione sconosciuta") != NULL);
+    ph_video_chiudi(fc, false);
+
+    /* componente morto: errore subito */
+    finto_cade(bn.adb);
+    for (int tt = 0; tt < 2000 && ph_componente_vivo(bn.c); tt += 5)
+        pausa_ms(5);
+    int64_t t0 = ora_ms();
+    VERIFICA(ph_video_pagina(f, PH_VIDEO_PAGINA_BATTERIA, &e) == -1);
+    VERIFICA(ora_ms() - t0 < 500);
+    ph_video_chiudi(f, false);
+    banco_fine(&bn);
+}
+
+/* La chiusura aspetta una VIDEO_PAGINA in corso e dopo la chiusura il flusso la rifiuta. */
+static void prova_pagina_e_chiusura(void)
+{
+    Banco bn;
+    banco_pronto(&bn);
+    PhErrore e;
+    PhVideoRichiesta r = richiesta("com.a");
+    PhVideoFlusso *f = ph_video_apri(bn.c, &r, &e);
+    VERIFICA(f != NULL);
+    finto_trattieni(bn.adb, PH_MSG_VIDEO_PAGINA);
+    ArgPausa a;
+    memset((void *)&a, 0, sizeof a);
+    a.f = f;
+    pthread_t t, c;
+    VERIFICA(pthread_create(&t, NULL, pagina_una_volta, &a) == 0);
+    VERIFICA(finto_attendi_trattenuta(bn.adb, 3000));
+    size_t prima = finto_numero_comandi(bn.adb);
+    ArgChiudi ac;
+    memset((void *)&ac, 0, sizeof ac);
+    ac.f = f;
+    VERIFICA(pthread_create(&c, NULL, chiudi_su_thread, &ac) == 0);
+    /* Segnale, non pausa: una ridimensiona con misure non valide non manda nulla; torna -1 con
+     * "misure" finche' il flusso e' aperto e con "chiuso" appena ph_video_chiudi ha cominciato. */
+    bool in_chiusura = false;
+    for (int tt = 0; tt < 5000 && !in_chiusura; tt += 2) {
+        PhErrore e2;
+        e2.testo[0] = '\0';
+        VERIFICA(ph_video_ridimensiona(f, 1, 1, 320, NULL, NULL, &e2) == -1);
+        in_chiusura = strstr(e2.testo, "chiuso") != NULL;
+        if (!in_chiusura)
+            pausa_ms(2);
+    }
+    VERIFICA(in_chiusura);
+    VERIFICA(finto_numero_comandi(bn.adb) == prima); /* nessun VIDEO_CHIUDI ancora */
+    VERIFICA(!atomic_load(&ac.tornato) && !atomic_load(&a.finito));
+    finto_apri_cancello(bn.adb);
+    unisci(t, 10);
+    VERIFICA(a.ris == 0);
+    unisci(c, 10);
+    VERIFICA(finto_numero_comandi(bn.adb) == prima + 1);
     nessuna_richiesta_dopo_chiusura(bn.adb, 1);
     banco_fine(&bn);
 }
@@ -1652,6 +1785,8 @@ int main(void)
     prova_chiusura_con_richiesta_ferma();
     prova_richieste_su_flusso_in_chiusura();
     prova_chiusura_aspetta_richiesta_in_corso();
+    prova_pagina();
+    prova_pagina_e_chiusura();
     prova_richiesta_generica();
     prova_ascoltatori();
     prova_ascoltatore_tolto();

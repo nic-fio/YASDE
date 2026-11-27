@@ -51,7 +51,7 @@ def prova(app):
     p, _ = P.lancia()
     P.adb("forward", "tcp:%d" % P.PORTA, "localabstract:yasde")
     c = P.Comandi()
-    c.chiedi(1, struct.pack(">H", 1))
+    c.chiedi(1, struct.pack(">H", 2))
     did = {}
     pre = schermi()
     for k in (1, 2):

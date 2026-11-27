@@ -104,6 +104,16 @@ void ph_finto_schermo_spento(PhFinto *f, bool si);
 void ph_finto_registrazione_guasta(PhFinto *f, bool si);
 /* Quante richieste di fotogramma chiave sono arrivate (per le prove). */
 unsigned ph_finto_chiavi_chieste(PhFinto *f);
+/* Pagine (27 nov, PIANO.md 8.7): il telefono finto registra le pagine chieste.
+ * ultima_pagina = l'ultima pagina != 0 chiesta, all'apertura di un flusso o con
+ * ph_srv_flusso_pagina (0 = mai). pagine_apertura = flussi aperti con una pagina,
+ * pagine_inviate = pagine mandate a un flusso gia' aperto. Con
+ * ph_finto_pagina_rifiuta(true) le pagine MANDATE a un flusso aperto sono
+ * rifiutate (si contano lo stesso; il flusso non cambia). Per le prove. */
+int ph_finto_ultima_pagina(PhFinto *f);
+unsigned ph_finto_pagine_apertura(PhFinto *f);
+unsigned ph_finto_pagine_inviate(PhFinto *f);
+void ph_finto_pagina_rifiuta(PhFinto *f, bool si);
 /* Densita' (dpi) applicata per ultima a un flusso finto (apertura o
  * ridimensionamento); la stessa e' disegnata in giallo nei fotogrammi accanto
  * alla misura. Per le prove. */

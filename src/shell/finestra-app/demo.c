@@ -16,6 +16,11 @@
  *   --mouse             prova del tasto destro e centrale nel contenuto delle finestre (stessi gesti
  *                       del mouse, senza mouse: registro dei tocchi mandati alla superficie;
  *                       esce con 1 se qualcosa non torna; si usa con --prova MS).
+ *   --pagine            prova delle pagine (PIANO.md 8.7): apertura con pagina nella richiesta, finestra gia'
+ *                       aperta (anche minimizzata) = in primo piano e pagina mandata al suo flusso, pagina
+ *                       nessuna = nessun invio, errore del telefono = finestra intatta, pagina fuori elenco
+ *                       scartata (registro delle pagine del telefono finto; esce con 1 se qualcosa non
+ *                       torna; si usa con --prova MS).
  *   --vetro             prove del vetro (sfocatura dietro il titolo, fase 2): modalita',
  *                       albero dei nodi, paintable tenuti, chiusure, ridisegni a riposo
  *                       (esce con 1 se qualcosa non torna; si usa con --prova MS).
@@ -60,6 +65,7 @@ static void controllo(bool ok, const char *che)
 static gboolean passo_compat(gpointer u);
 static gboolean passo_vetro(gpointer u);
 static gboolean passo_mouse(gpointer u);
+static gboolean passo_pagine(gpointer u);
 
 typedef struct {
     int w, h, dens;
@@ -75,7 +81,7 @@ typedef struct {
     size_t prossima;
     bool host_visibile;
     bool bloccato;
-    bool scena, tasti_al_telefono, compat, vetro, spia, menu_mode, mouse;
+    bool scena, tasti_al_telefono, compat, vetro, spia, menu_mode, mouse, pagine;
     Stato s0, s1;       /* stati di riferimento della prova --compat */
     unsigned avvisi;    /* avvisi a comparsa ricevuti (gestore finto) */
     gint64 attesa_fino; /* scadenza (us) dell'attesa dell'effetto di un'azione, 0 = non in attesa */
@@ -1194,6 +1200,130 @@ static gboolean passo_mouse(gpointer u)
 }
 
 
+/* ======================================================================
+ * --pagine: la pagina chiesta con ph_shell_apri_app_pagina (PIANO.md 8.7). Il telefono finto
+ * registra le pagine in modo sincrono (ph_finto_pagine_*), quindi ogni passo controlla subito dopo
+ * la chiamata: nessuna attesa. */
+static bool trova_fin(Demo *d, const char *pacchetto, PhShellFinestra *out)
+{
+    PhShellFinestra f[DEMO_FINESTRE_MAX];
+    size_t n = ph_shell_finestre(d->sh, f, DEMO_FINESTRE_MAX);
+    for (size_t i = 0; i < n; i++)
+        if (strcmp(f[i].pacchetto, pacchetto) == 0) {
+            *out = f[i];
+            return true;
+        }
+    return false;
+}
+
+/* Gestore senza apri_pagina (come quelli dei demo degli altri pezzi): la pagina si perde, l'app si apre. */
+static int pg_aperture;
+static char pg_ultimo[64];
+static void pg_solo_apri(void *io, const char *pacchetto)
+{
+    (void)io;
+    pg_aperture++;
+    g_strlcpy(pg_ultimo, pacchetto, sizeof pg_ultimo);
+}
+
+/* Valori di partenza, tenuti per la seconda fase (la chiusura della finestra e' differita). */
+static size_t pg_nf0;
+static unsigned pg_ap0, pg_in0;
+static gint64 pg_scade_us;
+
+static gboolean passo_pagine(gpointer u)
+{
+    Demo *d = u;
+    PhFinto *f = d->finto;
+    const char *app = "it.finto.mappe";
+    PhShellFinestra fi, fi2;
+    if (d->fase == 1) {
+        /* 6. Finestra chiusa (la chiusura e' differita: si aspetta che sparisca, con scadenza): la
+         * prossima apertura e' di nuovo una finestra nuova, con la pagina nella richiesta. */
+        if (trova_fin(d, app, &fi2) && g_get_monotonic_time() < pg_scade_us)
+            return G_SOURCE_CONTINUE;
+        controllo(!trova_fin(d, app, &fi2) && n_fin(d) == pg_nf0, "pagine: la finestra non si e' chiusa");
+        ph_shell_apri_app_pagina(d->sh, app, PH_SHELL_PAGINA_BATTERIA);
+        controllo(trova_fin(d, app, &fi2) && n_fin(d) == pg_nf0 + 1 && ph_finto_pagine_apertura(f) == pg_ap0 + 2 &&
+                      ph_finto_ultima_pagina(f) == PH_SHELL_PAGINA_BATTERIA && ph_finto_pagine_inviate(f) == pg_in0 + 2,
+                  "pagine: dopo la chiusura la pagina non e' nella richiesta della finestra nuova");
+        /* 7. Gestore senza apri_pagina: l'app si apre senza pagina; pagina fuori elenco: nulla; senza
+         * gestore: nulla. (Per ultimo: sostituisce il gestore di finestra-app.) */
+        PhShellGestoreFinestre solo = {.io = NULL, .apri_app = pg_solo_apri};
+        ph_shell_registra_finestre(d->sh, &solo);
+        ph_shell_apri_app_pagina(d->sh, "it.prova.uno", PH_SHELL_PAGINA_BATTERIA);
+        controllo(pg_aperture == 1 && strcmp(pg_ultimo, "it.prova.uno") == 0,
+                  "pagine: senza apri_pagina l'app non si e' aperta lo stesso");
+        ph_shell_apri_app_pagina(d->sh, "it.prova.due", PH_SHELL_PAGINA_NESSUNA);
+        controllo(pg_aperture == 2 && strcmp(pg_ultimo, "it.prova.due") == 0, "pagine: pagina nessuna non apre come apri_app");
+        ph_shell_apri_app_pagina(d->sh, "it.prova.tre", (PhShellPagina)7);
+        controllo(pg_aperture == 2, "pagine: una pagina fuori elenco ha aperto un'app");
+        ph_shell_registra_finestre(d->sh, NULL);
+        ph_shell_apri_app_pagina(d->sh, "it.prova.tre", PH_SHELL_PAGINA_MEMORIA); /* nessun gestore: non fa nulla */
+        controllo(pg_aperture == 2, "pagine: senza gestore e' stato aperto qualcosa");
+        d->passo = 1;
+        fprintf(stderr, "demo: prova pagine %s\n", g_fallito ? "FALLITA" : "riuscita");
+        return G_SOURCE_REMOVE;
+    }
+    size_t nf0 = n_fin(d);
+    unsigned ap0 = ph_finto_pagine_apertura(f), in0 = ph_finto_pagine_inviate(f);
+    controllo(!trova_fin(d, app, &fi), "pagine: la finestra di prova c'e' gia' prima di cominciare");
+
+    /* 1. Nessuna finestra: si apre con la pagina NELLA RICHIESTA (nessun invio a parte). */
+    ph_shell_apri_app_pagina(d->sh, app, PH_SHELL_PAGINA_MEMORIA);
+    controllo(trova_fin(d, app, &fi) && n_fin(d) == nf0 + 1, "pagine: la finestra nuova non si e' aperta");
+    controllo(ph_finto_pagine_apertura(f) == ap0 + 1 && ph_finto_ultima_pagina(f) == PH_SHELL_PAGINA_MEMORIA &&
+                  ph_finto_pagine_inviate(f) == in0,
+              "pagine: la pagina non e' nella richiesta di apertura (o e' stata mandata anche a parte)");
+
+    /* 2. Pagina nessuna su una finestra aperta (e minimizzata): in primo piano come oggi, NESSUN invio. */
+    ph_shell_clic_barra(d->sh, fi.id); /* in primo piano -> minimizza */
+    controllo(trova_fin(d, app, &fi2) && fi2.minimizzata, "pagine: la finestra non si e' minimizzata");
+    ph_shell_apri_app_pagina(d->sh, app, PH_SHELL_PAGINA_NESSUNA);
+    controllo(trova_fin(d, app, &fi2) && !fi2.minimizzata && fi2.attiva && fi2.id == fi.id && n_fin(d) == nf0 + 1,
+              "pagine: pagina nessuna non ha riportato in primo piano la stessa finestra");
+    controllo(ph_finto_pagine_inviate(f) == in0 && ph_finto_pagine_apertura(f) == ap0 + 1,
+              "pagine: pagina nessuna ha mandato una pagina");
+    ph_shell_apri_app(d->sh, app); /* il vecchio ingresso: identico */
+    controllo(ph_finto_pagine_inviate(f) == in0 && n_fin(d) == nf0 + 1, "pagine: ph_shell_apri_app ha mandato una pagina");
+
+    /* 3. Finestra minimizzata + pagina: in primo piano E pagina mandata al suo flusso. */
+    ph_shell_clic_barra(d->sh, fi.id);
+    controllo(trova_fin(d, app, &fi2) && fi2.minimizzata, "pagine: la finestra non si e' minimizzata (2)");
+    ph_shell_apri_app_pagina(d->sh, app, PH_SHELL_PAGINA_BATTERIA);
+    controllo(trova_fin(d, app, &fi2) && !fi2.minimizzata && fi2.attiva && fi2.id == fi.id && n_fin(d) == nf0 + 1,
+              "pagine: la pagina non ha riportato in primo piano la finestra aperta");
+    controllo(ph_finto_pagine_inviate(f) == in0 + 1 && ph_finto_ultima_pagina(f) == PH_SHELL_PAGINA_BATTERIA &&
+                  ph_finto_pagine_apertura(f) == ap0 + 1,
+              "pagine: la pagina non e' stata mandata al flusso della finestra aperta");
+
+    /* 4. Il telefono rifiuta la pagina: la finestra resta com'era, nessun avviso, nessuna finestra in piu'. */
+    unsigned av0 = d->avvisi;
+    ph_finto_pagina_rifiuta(f, true);
+    ph_shell_apri_app_pagina(d->sh, app, PH_SHELL_PAGINA_MEMORIA);
+    ph_finto_pagina_rifiuta(f, false);
+    controllo(ph_finto_pagine_inviate(f) == in0 + 2, "pagine: la pagina rifiutata non e' stata nemmeno tentata");
+    controllo(trova_fin(d, app, &fi2) && fi2.id == fi.id && fi2.attiva && !fi2.minimizzata && n_fin(d) == nf0 + 1 &&
+                  d->avvisi == av0,
+              "pagine: l'errore del telefono ha toccato la finestra o ha dato un avviso");
+
+    /* 5. Pagina fuori elenco: scartata, nulla aperto, nulla mandato. */
+    ph_shell_apri_app_pagina(d->sh, app, (PhShellPagina)7);
+    ph_shell_apri_app_pagina(d->sh, "it.finto.meteo", (PhShellPagina)7);
+    controllo(ph_finto_pagine_inviate(f) == in0 + 2 && ph_finto_pagine_apertura(f) == ap0 + 1 && n_fin(d) == nf0 + 1,
+              "pagine: una pagina fuori elenco e' stata usata");
+
+    /* 6 (seconda fase): chiusura differita. */
+    pg_nf0 = nf0;
+    pg_ap0 = ap0;
+    pg_in0 = in0;
+    pg_scade_us = g_get_monotonic_time() + 5 * G_USEC_PER_SEC;
+    d->fase = 1;
+    ph_shell_chiudi_finestra(d->sh, fi.id);
+    g_timeout_add(100, passo_pagine, d);
+    return G_SOURCE_REMOVE;
+}
+
 static void avviso_finto(void *io, const char *titolo, const char *testo)
 {
     (void)titolo;
@@ -1226,6 +1356,10 @@ static void app_arrivate(PhServizi *s, PhSrvEvento ev, const char *arg, void *u)
         d->passo = 0;
         d->t0 = g_get_monotonic_time();
         g_timeout_add(500, passo_mouse, d);
+    }
+    if (d->pagine) {
+        d->passo = 0;
+        g_timeout_add(500, passo_pagine, d);
     }
     if (d->scena) {
         ph_shell_apri_app(d->sh, "it.finto.browser");
@@ -1316,6 +1450,8 @@ int main(int argc, char **argv)
             d.compat = true;
         else if (strcmp(argv[i], "--mouse") == 0)
             d.mouse = true;
+        else if (strcmp(argv[i], "--pagine") == 0)
+            d.pagine = true;
         else if (strcmp(argv[i], "--vetro") == 0)
             d.vetro = true;
         else if (strcmp(argv[i], "--vetro-menu") == 0)
@@ -1340,6 +1476,10 @@ int main(int argc, char **argv)
     /* La prova --compat deve aver finito tutti i passi nel tempo dato (--prova MS). */
     if (d.compat && d.passo < G_N_ELEMENTS(PASSI_COMPAT)) {
         fprintf(stderr, "demo: prova compatibilita' NON FINITA (passo %u)\n", d.passo);
+        g_fallito = 1;
+    }
+    if (d.pagine && d.passo < 1) {
+        fprintf(stderr, "demo: prova pagine NON FINITA\n");
         g_fallito = 1;
     }
     if (d.mouse && d.passo < 1) {

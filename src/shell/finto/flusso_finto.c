@@ -375,6 +375,11 @@ void *finto_flusso_apri(void *b, PhSrvFlusso *sf, const PhSrvFlussoRichiesta *r,
     fl->h = fl->specchio ? 1920 : r->altezza;
     fl->densita = r->densita > 0 ? r->densita : 420;
     atomic_store(&f->ultima_densita, fl->densita);
+    if (!fl->specchio && r->pagina != 0) {
+        atomic_store(&f->ultima_pagina, r->pagina);
+        atomic_fetch_add(&f->pagine_apertura, 1);
+        fprintf(stderr, "finto: apro %s sulla pagina %u\n", fl->pacchetto, (unsigned)r->pagina);
+    }
     fl->pool = g_new0(Pool, 1);
     atomic_init(&fl->pool->rif, 1);
     g_mutex_init(&fl->pool->m);
@@ -677,6 +682,18 @@ void finto_flusso_chiave(void *b, void *p)
     FlussoFinto *fl = p;
     atomic_fetch_add(&f->chiavi, 1);
     fprintf(stderr, "finto: fotogramma chiave chiesto per %s\n", fl->specchio ? "(specchio)" : fl->pacchetto);
+}
+
+void finto_flusso_pagina(void *b, void *p, uint8_t pagina)
+{
+    PhFinto *f = b;
+    FlussoFinto *fl = p;
+    atomic_store(&f->ultima_pagina, pagina);
+    atomic_fetch_add(&f->pagine_inviate, 1);
+    if (atomic_load(&f->pagina_rifiuta))
+        fprintf(stderr, "finto: pagina %u rifiutata per %s\n", (unsigned)pagina, fl->specchio ? "(specchio)" : fl->pacchetto);
+    else
+        fprintf(stderr, "finto: pagina %u mandata a %s\n", (unsigned)pagina, fl->specchio ? "(specchio)" : fl->pacchetto);
 }
 
 /* Nome come src/video/cattura.h: "<app ripulita> AAAA-MM-GG HH.MM.SS[ (n)].<est>". */

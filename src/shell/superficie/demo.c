@@ -281,7 +281,7 @@ static void installa(PhShell *sh, PhFinto *f, void *u)
     bool sequenza = sq != NULL && sq[0] == '1';
     for (int i = 0; i < (sequenza ? N : 3); i++) {
         PhSrvFlussoRichiesta r = {POSTI[i].app, (POSTI[i].w * 420 / 160 + 4) / 8 * 8,
-                                  (POSTI[i].h * 420 / 160 + 4) / 8 * 8, 0};
+                                  (POSTI[i].h * 420 / 160 + 4) / 8 * 8, 0, 0};
         PhErrore e = {{0}};
         d->sup[i] = ph_superficie_nuova(sh, &r, NULL, NULL, &e);
         if (d->sup[i] == NULL) {

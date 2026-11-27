@@ -35,6 +35,13 @@ static bool misure_valide(uint16_t l, uint16_t a)
     return l >= 64 && l <= 2560 && a >= 64 && a <= 2560 && l % 8 == 0 && a % 8 == 0;
 }
 
+/* Elenco fisso delle pagine (PhVideoPagina): il PC non manda mai altro. */
+static bool pagina_valida(uint8_t p)
+{
+    return p == PH_VIDEO_PAGINA_NESSUNA || p == PH_VIDEO_PAGINA_BATTERIA ||
+           p == PH_VIDEO_PAGINA_MEMORIA;
+}
+
 static void flusso_libera(PhVideoFlusso *f)
 {
     pthread_mutex_destroy(&f->m);
@@ -54,6 +61,10 @@ PhVideoFlusso *ph_video_apri(PhComponente *c, const PhVideoRichiesta *r, PhError
                   (unsigned)r->larghezza, (unsigned)r->altezza);
         return NULL;
     }
+    if (!pagina_valida(r->pagina)) {
+        ph_errore(e, "apertura video: pagina %u fuori elenco", (unsigned)r->pagina);
+        return NULL;
+    }
     const uint32_t id = atomic_fetch_add(&c->prossimo_id, 1);
     const char *pacchetto = r->pacchetto != NULL ? r->pacchetto : "";
 
@@ -61,7 +72,8 @@ PhVideoFlusso *ph_video_apri(PhComponente *c, const PhVideoRichiesta *r, PhError
     if (ph_msg_inizia(&msg, PH_MSG_VIDEO_APRI) || ph_msg_u32(&msg, id) ||
         ph_msg_u16(&msg, r->larghezza) || ph_msg_u16(&msg, r->altezza) ||
         ph_msg_u16(&msg, r->densita) || ph_msg_u32(&msg, r->bit_al_secondo) ||
-        ph_msg_u8(&msg, r->fps) || ph_msg_stringa(&msg, pacchetto) || ph_msg_finisci(&msg)) {
+        ph_msg_u8(&msg, r->fps) || ph_msg_stringa(&msg, pacchetto) || ph_msg_u8(&msg, r->pagina) ||
+        ph_msg_finisci(&msg)) {
         ph_buffer_libera(&msg);
         ph_errore(e, "apertura video: richiesta non costruibile (memoria o nome troppo lungo)");
         return NULL;
@@ -390,6 +402,35 @@ int ph_video_pausa(PhVideoFlusso *f, PhErrore *e)
 int ph_video_riprendi(PhVideoFlusso *f, PhErrore *e)
 {
     return pausa_o_ripresa(f, PH_MSG_VIDEO_RIPRENDI, "ripresa", e);
+}
+
+static int pagina_interno(PhVideoFlusso *f, uint8_t pagina, PhErrore *e)
+{
+    PhBuffer msg = PH_BUFFER_VUOTO;
+    if (ph_msg_inizia(&msg, PH_MSG_VIDEO_PAGINA) || ph_msg_u32(&msg, f->id) ||
+        ph_msg_u8(&msg, pagina) || ph_msg_finisci(&msg)) {
+        ph_buffer_libera(&msg);
+        return ph_errore(e, "pagina: memoria esaurita");
+    }
+    int ris = richiesta_flusso(f, &msg, NULL, e);
+    if (ris != 0)
+        ph_errore_contesto(e, "pagina %u del video %u", (unsigned)pagina, (unsigned)f->id);
+    return ris;
+}
+
+int ph_video_pagina(PhVideoFlusso *f, uint8_t pagina, PhErrore *e)
+{
+    if (f == NULL)
+        return ph_errore(e, "pagina: flusso mancante");
+    /* Pagina 0 non e' una richiesta valida (a differenza di VIDEO_APRI) e il
+     * controllo precede il contatore d'uso: nulla parte verso il telefono. */
+    if (pagina == PH_VIDEO_PAGINA_NESSUNA || !pagina_valida(pagina))
+        return ph_errore(e, "pagina %u non valida", (unsigned)pagina);
+    if (!flusso_entra(f, "pagina", e))
+        return -1;
+    int ris = pagina_interno(f, pagina, e);
+    flusso_esce(f);
+    return ris;
 }
 
 void ph_video_chiudi(PhVideoFlusso *f, bool togli_task)

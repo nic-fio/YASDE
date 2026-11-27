@@ -1895,8 +1895,11 @@ static void avviso_apertura(App *a, const char *dettaglio, const char *frase_ute
                     frase_utente != NULL ? frase_utente : "");
 }
 
-/* pacchetto "" = specchio dello schermo reale (4.7). */
-static void apri(App *a, const char *pacchetto)
+/* pacchetto "" = specchio dello schermo reale (4.7). pagina: PH_SHELL_PAGINA_NESSUNA = avvio
+ * normale; altrimenti, finestra nuova: la pagina e' nella richiesta di apertura del flusso;
+ * finestra gia' aperta: portata davanti come sempre e la pagina e' mandata al suo flusso (senza
+ * attese, esito ignorato: un errore del telefono non chiude ne' sporca la finestra). */
+static void apri(App *a, const char *pacchetto, PhShellPagina pagina)
 {
     bool specchio = pacchetto[0] == '\0';
     PhErrore e = {{0}};
@@ -1926,8 +1929,11 @@ static void apri(App *a, const char *pacchetto)
          * davanti e resa attiva; qui i widget la seguono. */
         Fin *f = trova_fin(a, id);
         g_free(titolo);
-        if (f != NULL)
-            attiva_effetti(a, f);
+        if (f != NULL) {
+            attiva_effetti(a, f); /* prima: se era minimizzata il flusso riprende, poi la pagina */
+            if (pagina != PH_SHELL_PAGINA_NESSUNA && !specchio)
+                ph_superficie_pagina(f->sup, (uint8_t)pagina);
+        }
         return;
     }
 
@@ -1957,7 +1963,8 @@ static void apri(App *a, const char *pacchetto)
     f->titolo_provvisorio = !specchio && info == NULL;
 
     registra_misura(a, f, "apertura", w, h, dens);
-    PhSrvFlussoRichiesta r = {.pacchetto = pacchetto, .larghezza = w, .altezza = h, .densita = dens};
+    PhSrvFlussoRichiesta r = {.pacchetto = pacchetto, .larghezza = w, .altezza = h, .densita = dens,
+                              .pagina = specchio ? 0 : (uint8_t)pagina};
     GtkWidget *sup = ph_superficie_nuova(a->sh, &r, sup_avviso, f, &e);
     if (sup == NULL) {
         ph_fin_chiudi(a->d, id, ora(), NULL);
@@ -1992,7 +1999,21 @@ static void gf_apri_app(void *io, const char *pacchetto)
 {
     if (pacchetto == NULL || pacchetto[0] == '\0')
         return;
-    apri(io, pacchetto);
+    apri(io, pacchetto, PH_SHELL_PAGINA_NESSUNA);
+}
+
+/* Pagina fuori elenco: scartata (ph_shell_apri_app_pagina la filtra prima, qui si ripete per chi
+ * chiama il gestore da solo). */
+static void gf_apri_pagina(void *io, const char *pacchetto, PhShellPagina pagina)
+{
+    if (pacchetto == NULL || pacchetto[0] == '\0')
+        return;
+    if (pagina != PH_SHELL_PAGINA_NESSUNA && pagina != PH_SHELL_PAGINA_BATTERIA &&
+        pagina != PH_SHELL_PAGINA_MEMORIA) {
+        fprintf(stderr, "finestra-app: pagina %d fuori elenco, scartata\n", (int)pagina);
+        return;
+    }
+    apri(io, pacchetto, pagina);
 }
 
 static size_t gf_elenco(void *io, PhShellFinestra *out, size_t max)
@@ -2059,7 +2080,7 @@ static void gf_specchio(void *io, bool mostra)
 {
     App *a = io;
     if (mostra) {
-        apri(a, "");
+        apri(a, "", PH_SHELL_PAGINA_NESSUNA);
         return;
     }
     char chiave[PH_FIN_APP_MAX];
@@ -2442,6 +2463,7 @@ void ph_finestra_app_installa(PhShell *sh)
     PhShellGestoreFinestre gf = {
         .io = a,
         .apri_app = gf_apri_app,
+        .apri_pagina = gf_apri_pagina,
         .elenco = gf_elenco,
         .clic_barra = gf_clic_barra,
         .specchio = gf_specchio,

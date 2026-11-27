@@ -1878,12 +1878,23 @@ int main(int argc, char **argv)
     CONTROLLA(aspetta(schermo_spento, &no, 3000));
 
     /* Flusso: lettura da un altro thread, ridimensiona, pausa, chiusura. */
-    PhSrvFlussoRichiesta r = {"it.finto.note", 400, 240, 0};
+    PhSrvFlussoRichiesta r = {"it.finto.note", 400, 240, 0, 0};
     Lettura l = {0};
     l.f = ph_srv_flusso_apri(S, &r, avviso_flusso, NULL, &err);
     CONTROLLA(l.f != NULL);
-    PhSrvFlussoRichiesta storta = {"it.finto.note", 401, 240, 0};
+    PhSrvFlussoRichiesta storta = {"it.finto.note", 401, 240, 0, 0};
     CONTROLLA(ph_srv_flusso_apri(S, &storta, avviso_flusso, NULL, NULL) == NULL);
+    /* Pagine (27 nov): una pagina nella richiesta e' registrata dal telefono finto; pagina 0 no; fuori
+     * elenco (3) e' rifiutata prima di toccare il backend. Il flusso `l.f` qui sopra e' di pagina 0. */
+    CONTROLLA(ph_finto_pagine_apertura(f) == 0 && ph_finto_ultima_pagina(f) == 0);
+    PhSrvFlussoRichiesta con_pagina = {"it.finto.note", 400, 240, 0, PH_SRV_PAGINA_MEMORIA};
+    PhSrvFlusso *fpg = ph_srv_flusso_apri(S, &con_pagina, avviso_flusso, NULL, &err);
+    CONTROLLA(fpg != NULL && ph_finto_pagine_apertura(f) == 1 && ph_finto_ultima_pagina(f) == PH_SRV_PAGINA_MEMORIA);
+    if (fpg != NULL)
+        ph_srv_flusso_chiudi(fpg, false);
+    PhSrvFlussoRichiesta fuori_elenco = {"it.finto.note", 400, 240, 0, 3};
+    CONTROLLA(ph_srv_flusso_apri(S, &fuori_elenco, avviso_flusso, NULL, NULL) == NULL &&
+              ph_finto_pagine_apertura(f) == 1);
     if (l.f != NULL) {
         GThread *th = g_thread_new("lettura", leggi, &l);
         CONTROLLA(aspetta(almeno, &l, 3000));
@@ -1941,6 +1952,18 @@ int main(int argc, char **argv)
         ph_srv_flusso_pizzico(l.f, vw, vh, PH_SRV_PIZZICO_INIZIO, vw, 10, 0);
         ph_srv_flusso_pizzico(l.f, vw + 8, vh, PH_SRV_PIZZICO_INIZIO, 10, 10, 0);
         CONTROLLA(ph_finto_pizzichi(f) == p0 + 3);
+
+        /* (9) Pagina su un flusso aperto: sincrona fino al finto; 0 e fuori elenco scartate prima. */
+        unsigned pg0 = ph_finto_pagine_inviate(f);
+        ph_srv_flusso_pagina(l.f, PH_SRV_PAGINA_BATTERIA);
+        CONTROLLA(ph_finto_pagine_inviate(f) == pg0 + 1 && ph_finto_ultima_pagina(f) == PH_SRV_PAGINA_BATTERIA);
+        ph_srv_flusso_pagina(l.f, PH_SRV_PAGINA_NESSUNA);
+        ph_srv_flusso_pagina(l.f, 9);
+        CONTROLLA(ph_finto_pagine_inviate(f) == pg0 + 1 && ph_finto_ultima_pagina(f) == PH_SRV_PAGINA_BATTERIA);
+        ph_finto_pagina_rifiuta(f, true); /* rifiutata: contata, il flusso resta com'era */
+        ph_srv_flusso_pagina(l.f, PH_SRV_PAGINA_MEMORIA);
+        ph_finto_pagina_rifiuta(f, false);
+        CONTROLLA(ph_finto_pagine_inviate(f) == pg0 + 2 && ph_finto_ultima_pagina(f) == PH_SRV_PAGINA_MEMORIA);
 
         /* (8) Fotogramma chiave a richiesta. */
         unsigned k0 = ph_finto_chiavi_chieste(f);

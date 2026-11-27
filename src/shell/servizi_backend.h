@@ -133,6 +133,10 @@ typedef struct {
                             bool con_audio);
     /* (8) */
     void (*flusso_chiave)(void *b, void *fl);
+    /* (9) Pagina su un flusso aperto (facoltativa: NULL = nulla). pagina gia'
+     * controllata (1 o 2). Non blocca; nessuna risposta: un errore si scrive su
+     * stderr senza dati. */
+    void (*flusso_pagina)(void *b, void *fl, uint8_t pagina);
     /* Densita' nel ridimensionamento (facoltativa: NULL = flusso_ridimensiona,
      * densita' ignorata). densita' 0 = invariata, altrimenti gia' controllata
      * (50-2000); misura gia' controllata come per flusso_ridimensiona. */

@@ -149,7 +149,7 @@ GRUPPI = [
         ("it/yasde/Custode.java", "The guardian: a separate shell process that restores the phone"), ("it/yasde/Resti.java", "Leftovers of old sessions: finding and removing"), ("it/yasde/Pari.java", "Who may connect to the service socket"),
         ("it/yasde/Nascoste.java", "Single point for hidden APIs and their startup check"), ("prove.sh", "JVM tests"), ("prove/prova_telefono.py", "Real-phone test")]),
     grp("Phone: video and input", "telefono/video", [
-        ("it/yasde/Video.java", "Video channel and commands 0x40–0x4f"), ("it/yasde/Sessione.java", "A session: virtual screen, encoder, the app on it"), ("it/yasde/Codificatore.java", "Hardware H.264 encoder and its reader thread"),
+        ("it/yasde/Video.java", "Video channel and commands 0x40–0x4f"), ("it/yasde/Sessione.java", "A session: virtual screen, encoder, the app on it"), ("it/yasde/Pagine.java", "Fixed list of app pages: number to standard action"), ("it/yasde/Codificatore.java", "Hardware H.264 encoder and its reader thread"),
         ("it/yasde/Inoltro.java", "Rules of what leaves on the video channel"), ("it/yasde/Input.java", "Input channel"), ("it/yasde/Iniettore.java", "Builds and injects input events"), ("it/yasde/Gesti.java", "State of gestures in progress"),
         ("it/yasde/Pizzico.java", "Geometry and state machine of the pinch"), ("it/yasde/Specchio.java", "Real screen measures for the mirror"), ("it/yasde/ControlloSchermi.java", "Protected-screen watch"),
         ("it/yasde/AnalisiFinestre.java", "Reads the window dump for protected windows"), ("it/yasde/LiberaTask.java", "Close with task removal"), ("it/yasde/Barriera.java", "Barrier on an execution queue"),

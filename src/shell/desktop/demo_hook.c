@@ -1708,6 +1708,10 @@ static void ab_clic_e_gestori(Stress *s)
         r = ph_dsk_wx_telefono_clic_prova(due[i], "it.finto.orologio");
         if (r == NULL || strcmp(r, "it.finto.orologio") != 0)
             g_error("prova d'insieme: il clic non ha aperto l'app nota");
+        /* Pagina: la batteria chiede la pagina Batteria, la sveglia nessuna (come oggi). */
+        if (strcmp(g_demo_aperta, "it.finto.orologio") != 0 ||
+            g_demo_pagina != (due[i] == bat ? PH_SHELL_PAGINA_BATTERIA : PH_SHELL_PAGINA_NESSUNA))
+            g_error("prova d'insieme: il clic del widget %d ha chiesto la pagina %d", i, (int)g_demo_pagina);
         r = ph_dsk_wx_telefono_clic_prova(due[i], "");
         if (r != NULL)
             g_error("prova d'insieme: il clic con un pacchetto vuoto ha aperto qualcosa");
@@ -1999,10 +2003,20 @@ static void stress_avvia(PhShell *sh)
 static char vecchi_aperta[256];
 static bool vecchi_iniziato, vecchi_finito;
 
+static PhShellPagina vecchi_pagina = PH_SHELL_PAGINA_NESSUNA;
+
 static void vecchi_apri(void *io, const char *pacchetto)
 {
     (void)io;
     g_strlcpy(vecchi_aperta, pacchetto, sizeof vecchi_aperta);
+    vecchi_pagina = PH_SHELL_PAGINA_NESSUNA;
+}
+
+static void vecchi_apri_pagina(void *io, const char *pacchetto, PhShellPagina pagina)
+{
+    (void)io;
+    g_strlcpy(vecchi_aperta, pacchetto, sizeof vecchi_aperta);
+    vecchi_pagina = pagina;
 }
 
 static size_t vecchi_elenco(void *io, PhShellFinestra *out, size_t max)
@@ -2385,6 +2399,8 @@ static void vecchi_impostazioni(PhDesktop *d)
     g_signal_emit_by_name(cl, "released", 1, 5.0, 5.0);
     if (strcmp(vecchi_aperta, "it.finto.impostazioni") != 0)
         g_error("vecchi: memoria: il clic non ha aperto Impostazioni (aperto \"%s\")", vecchi_aperta);
+    if (vecchi_pagina != PH_SHELL_PAGINA_MEMORIA)
+        g_error("vecchi: memoria: il clic ha chiesto la pagina %d invece di Archiviazione", (int)vecchi_pagina);
     if (gtk_widget_get_cursor(w->corpo) == NULL)
         g_error("vecchi: memoria: con Impostazioni il cursore dovrebbe essere una mano");
     ph_dsk_impostazioni_pacchetto_prova(NULL);
@@ -2618,6 +2634,7 @@ static void vecchi_avvia(PhShell *sh, PhDesktop *d, PhCfgTelefono *p)
     ph_dsk_orologio_ora_fissa(VECCHI_ORA); /* la prova non dipende dall'ora vera */
     PhShellGestoreFinestre gf = {.io = NULL,
                                  .apri_app = vecchi_apri,
+                                 .apri_pagina = vecchi_apri_pagina,
                                  .elenco = vecchi_elenco,
                                  .clic_barra = vecchi_clic_barra,
                                  .specchio = vecchi_specchio,

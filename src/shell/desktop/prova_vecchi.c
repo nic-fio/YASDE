@@ -145,6 +145,23 @@ static void prova_memoria_fette(void)
     VERIFICA_STR(ph_dsk_pacchetto_impostazioni(), "com.android.settings");
 }
 
+/* Clic sui widget (27 nov): batteria -> pagina Batteria, memoria -> Archiviazione; tutti gli altri
+ * tipi (anche «Stato del telefono» e la sveglia) restano senza pagina. I numeri sono quelli del
+ * protocollo (1 batteria, 2 memoria): se cambiano qui cambia anche il telefono. */
+static void prova_pagine(void)
+{
+    VERIFICA(ph_dsk_widget_pagina(PH_CFG_WIDGET_BATTERIA) == PH_SHELL_PAGINA_BATTERIA);
+    VERIFICA(ph_dsk_widget_pagina(PH_CFG_WIDGET_BATTERIA) == 1);
+    VERIFICA(ph_dsk_widget_pagina(PH_CFG_WIDGET_MEMORIA) == PH_SHELL_PAGINA_MEMORIA);
+    VERIFICA(ph_dsk_widget_pagina(PH_CFG_WIDGET_MEMORIA) == 2);
+    VERIFICA(ph_dsk_widget_pagina(PH_CFG_WIDGET_STATO) == PH_SHELL_PAGINA_NESSUNA);
+    VERIFICA(ph_dsk_widget_pagina(PH_CFG_WIDGET_SVEGLIA) == PH_SHELL_PAGINA_NESSUNA);
+    VERIFICA(ph_dsk_widget_pagina(PH_CFG_WIDGET_OROLOGIO) == PH_SHELL_PAGINA_NESSUNA);
+    VERIFICA(ph_dsk_widget_pagina(PH_CFG_WIDGET_NOTIFICHE) == PH_SHELL_PAGINA_NESSUNA);
+    VERIFICA(ph_dsk_widget_pagina(PH_CFG_WIDGET_CALENDARIO) == PH_SHELL_PAGINA_NESSUNA);
+    VERIFICA(ph_dsk_widget_pagina((PhCfgWidgetTipo)999) == PH_SHELL_PAGINA_NESSUNA); /* fuori elenco */
+}
+
 static void prova_notifiche(void)
 {
     /* Le misure equivalenti del tipo tengono 1 / 2 / 4 righe (specifica 5.2.3). */
@@ -293,6 +310,7 @@ int main(void)
     prova_stato();
     prova_accenti();
     prova_maiuscola();
+    prova_pagine();
     if (errori == 0)
         printf("prova_vecchi: tutto bene\n");
     return errori == 0 ? 0 : 1;

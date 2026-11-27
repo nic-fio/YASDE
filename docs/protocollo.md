@@ -1,4 +1,4 @@
-# Protocollo PC ↔ componente sul telefono (versione 1)
+# Protocollo PC ↔ componente sul telefono (versione 2)
 
 Contratto tra `src/componente/` (C, PC) e `telefono/` (Java). Chi lo trova sbagliato o incompleto **non lo cambia da solo**: lo segnala a chi coordina.
 
@@ -42,7 +42,7 @@ Sul canale `comandi` il PC manda **una richiesta alla volta** e aspetta la rispo
 
 | Tipo | Nome | Verso | Corpo |
 |---|---|---|---|
-| 0x01 | SALUTO | PC→T | `u16` versione del protocollo (1) |
+| 0x01 | SALUTO | PC→T | `u16` versione del protocollo (2) |
 | 0x02 | OK | T→PC | dipende dalla richiesta (vuoto se non detto) |
 | 0x03 | ERRORE | T→PC | `stringa` frase in italiano. Tipo sconosciuto: `tipo sconosciuto` |
 | 0x04 | CHIUDI | PC→T | vuoto: il servizio ripristina tutto e termina (risponde OK prima) |
@@ -60,15 +60,19 @@ Versione diversa da quella del servizio: `ERRORE`.
 
 | Tipo | Nome | Verso | Corpo |
 |---|---|---|---|
-| 0x40 | VIDEO_APRI | PC→T | `u32` id, `u16` larghezza, `u16` altezza, `u16` dpi, `u32` bit al secondo, `u8` fps, `stringa` pacchetto dell'app (vuota = specchio dello schermo reale) |
+| 0x40 | VIDEO_APRI | PC→T | `u32` id, `u16` larghezza, `u16` altezza, `u16` dpi, `u32` bit al secondo, `u8` fps, `stringa` pacchetto dell'app (vuota = specchio dello schermo reale), `u8` pagina (versione 2, in coda; 0 = nessuna) |
 | 0x41 | VIDEO_CHIUDI | PC→T | `u32` id, `u8` togli_task (1 = toglie l'app dai recenti) |
 | 0x42 | VIDEO_RIDIMENSIONA | PC→T | `u32` id, `u16` larghezza, `u16` altezza, `u16` dpi |
 | 0x43 | VIDEO_CHIAVE | PC→T | `u32` id: chiede subito un fotogramma chiave |
+| 0x46 | VIDEO_PAGINA | PC→T | `u32` id, `u8` pagina (≠ 0): avvia una pagina dell'app della sessione (versione 2) |
 | 0x48 | VIDEO_EVENTO | T→PC (evento) | `u32` id, `u8` che cosa, `u16` a, `u16` b |
 
 - L'`id` lo sceglie il PC, mai riusato nella stessa connessione.
 - Larghezza e altezza: multipli di 8, tra 64 e 2560. Altrimenti `ERRORE`.
 - VIDEO_APRI con un pacchetto: crea uno schermo virtuale di quelle misure e densità, avvia lì l'app, e codifica in H.264 con il codificatore hardware di Android (`MediaCodec`). Risponde `OK` quando la sessione esiste; il PC apre allora il canale `video:<id>`. Il codificatore parte quando il canale è aperto.
+- **Pagine** (versione 2). Il `u8` pagina è un numero di un elenco fisso: 0 = nessuna (avvio normale), 1 = batteria (azione `android.intent.action.POWER_USAGE_SUMMARY`), 2 = memoria (azione `android.settings.INTERNAL_STORAGE_SETTINGS`). **Regola di sicurezza: il PC non manda mai un intent libero** (né azione, né componente, né dati): manda solo il numero e il telefono lo traduce nell'azione standard dell'elenco; qualunque altro valore è `ERRORE`.
+  - VIDEO_APRI con pagina ≠ 0: il telefono cerca l'attività che risponde a quell'azione DENTRO il pacchetto dato (mai fuori: `setPackage`) e avvia quella sullo schermo virtuale; se il pacchetto non ne ha (o l'attività non è esportata, o il lancio della pagina fallisce), avvia l'app normalmente e risponde `OK` comunque. Pagina fuori elenco → `ERRORE` prima di creare schermo o codificatore (nulla creato). Con lo specchio (pacchetto vuoto) la pagina si ignora.
+  - VIDEO_PAGINA: avvia la pagina sullo schermo virtuale di quella sessione, nel pacchetto della sessione. Ogni VIDEO_PAGINA apre un task NUOVO sullo schermo virtuale (mai il riuso di un task esistente, che potrebbe stare su un altro schermo): quindi la pagina chiesta è quella che si vede anche se l'app è già aperta, e i task precedenti restano sotto fino alla chiusura. VIDEO_CHIUDI con `togli_task` toglie tutti i task nati sullo schermo virtuale della sessione e nessuno di altri schermi. Risposta `OK` vuota. `ERRORE` (nulla toccato, la sessione resta com'era) se: sessione sconosciuta o chiusa, sessione specchio, pagina 0 o fuori elenco, nessuna attività nel pacchetto risponde all'azione. Non cambia nessuna impostazione del telefono: non c'è nulla da ripristinare.
 - VIDEO_RIDIMENSIONA: risposta `OK` con `u16` larghezza, `u16` altezza effettive. Dopo, il primo pacchetto con le nuove misure è una CONFIGURAZIONE. Dopo quella CONFIGURAZIONE non arrivano più pacchetti con le misure vecchie.
 - VIDEO_EVENTO, `che cosa`: 1 = l'app si è chiusa da sola (la sessione resta da chiudere), 2 = schermo protetto acceso/spento (`a` = 1/0), 3 = le misure sono cambiate (`a`×`b`), 4 = errore del codificatore (la sessione è morta).
 
@@ -84,7 +88,7 @@ Pausa e ripresa (misura della Fase 0 sul telefono di prova: ripresa in 0,12–0,
 - Le sessioni specchio (pacchetto vuoto) si mettono in pausa allo stesso modo.
 - Precisazioni. Dopo l'`OK` a VIDEO_PAUSA il servizio non scrive più pacchetti sul canale: ciò che il codificatore restituisce ancora si scarta. I pacchetti scritti PRIMA della pausa e non ancora letti dal PC possono arrivare anche dopo la ripresa: «il primo è un fotogramma chiave» vale per ciò che il telefono scrive dopo l'`OK` a VIDEO_RIPRENDI. PAUSA o RIPRENDI con un id sconosciuto o di una sessione chiusa → `ERRORE`. PAUSA prima che il canale `video:<id>` sia aperto è valida: il codificatore parte alla ripresa, se il canale è aperto. Se in pausa le misure cambiano da sole (VIDEO_EVENTO 3), dopo la ripresa arriva prima la CONFIGURAZIONE con le misure nuove. Per ridimensionare una sessione in pausa il PC prima la riprende.
 
-Tipi 0x46–0x47 riservati (liberare il codificatore nelle pause lunghe: +0,07 s alla ripresa; si aggiunge solo se una misura lo richiede).
+Tipo 0x47 riservato (liberare il codificatore nelle pause lunghe: +0,07 s alla ripresa; si aggiunge solo se una misura lo richiede).
 
 ### 2.3 Canale `video:<id>` (solo T→PC)
 
