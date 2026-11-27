@@ -281,3 +281,9 @@ Approvato dal committente dal vivo («È meraviglioso») e pubblicato come relea
 - Fatto: `fai-schermate.sh` estrae dall'AppImage costruita la cartella `usr/share/yasde/icone-kora` (tabella e PNG veri, in cache, mai nel repository) e lancia `demo-ossatura --app-note`: telefono dimostrativo con 17 app note presenti in `data/icone-kora.txt` (solo demo; prova `shell-finto-app-note`). Dati sempre inventati; nel sito e nel manuale utente la riga sui titolari di nomi e icone. `tutto` 92 OK / 0 Fail. Sito ripubblicato dopo l'approvazione del committente; pagine in linea identiche a quelle generate.
 - Lezione: le immagini pubbliche devono mostrare ciò che l'app mostra davvero; le scelte d'aspetto si chiedono al committente e gli si fanno vedere PRIMA di pubblicare.
 - Osservazione del revisore, non fatta: la scelta dell'insieme di app nel finto sta in variabili globali del file (`finto.c`), da spostare in `PhFinto` se un giorno due telefoni finti con opzioni diverse convivono nello stesso processo.
+
+### 9.4 Sito ricostruito e pubblicato (27 nov 2026)
+
+- Dopo «il sito è aggiornato a metà» (immagini con icone nuove e widget vecchi) e «rifai il sito da zero»: tutte le schermate partono dalla disposizione della vetrina (`desktop.png` tolta, resta `desktop-widgets.png`); `sito/index.html` riscritta dai manuali 2.3 con la sezione «Widgets» (catalogo di 16 voci, quattro schede di dettaglio), galleria di sei immagini, requisiti, scaricamento `v2.3`, stato e limiti; immagini incorporate in WebP (pagina ~0,9 MB). Veste grafica invariata.
+- Revisore: ogni frase verificata su manuali e codice, tre correzioni di testo fatte. Pubblicato dopo l'OK del committente; le cinque pagine in linea sono identiche a quelle generate e i tre scaricamenti rispondono.
+- Limite noto delle immagini: il contenuto delle finestre di app è un segnaposto (il telefono dimostrativo non ha app vere).
