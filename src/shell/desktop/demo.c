@@ -278,7 +278,7 @@ int main(int argc, char **argv)
         }
         v[n++] = argv[i];
     }
-    int r = ph_finto_demo(n, v, "YASDE 2.1 - demo desktop", installa, NULL);
+    int r = ph_finto_demo(n, v, "YASDE 2.2 - demo desktop", installa, NULL);
     g_free(v);
     return r;
 }

@@ -1,4 +1,4 @@
-# PIANO — YASDE 2.1: decisioni e stato
+# PIANO — YASDE 2.2: decisioni e stato
 
 Documento delle DECISIONI e dello STATO. Non è una cronaca: ciò che è già stato eseguito sta nel codice, nei manuali e nei test.
 
@@ -290,3 +290,9 @@ Widget più belli e più utili: vetro scuro, forme diverse dal rettangolo, grafi
 - Scelta visibile: il clic destro sul campo apre il menu del widget; copia e incolla solo da tastiera.
 - Non visto: mouse, rotella e Ctrl+Z veri; sfocatura; il caso vero senza profilo.
 - Restano: B1/B3/B4 (serve il telefono collegato per la sonda in sola lettura), stile «senza fondo», AppImage e prova dal vivo.
+
+### 8.6 Versione 2.2 (27 nov 2026)
+
+- Il committente ha deciso: i widget nuovi escono come YASDE 2.2. Numero cambiato ovunque indichi il prodotto; protocollo e formato del profilo restano 1; la cartella dei dati non contiene il numero.
+- Stile «No background» per orologio e meteo: fatto.
+- Sonda in sola lettura sul telefono: registro chiamate e rete leggibili senza root; musica non verificata (nessun lettore attivo). B1/B3/B4 fuori dalla 2.2.

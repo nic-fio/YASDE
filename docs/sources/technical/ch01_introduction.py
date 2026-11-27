@@ -32,7 +32,7 @@ S2 = p("Four rules shape every design choice in the code. They come from the pro
 
 S3 = p("What is needed to build and run YASDE, as declared by the " + c("meson.build") + " files.", lead=True) + \
     table(["Where", "Requirement"], [
-        ["PC, language and build", "C17, warnings as errors, Meson; tests run under AddressSanitizer. Version 2.1.0 (" + c("meson.build") + " at the root)."],
+        ["PC, language and build", "C17, warnings as errors, Meson; tests run under AddressSanitizer. Version 2.2.0 (" + c("meson.build") + " at the root)."],
         ["PC, libraries", "OpenSSL (TLS 1.3, RSA, AES-GCM, HKDF, SPAKE2 arithmetic), FFmpeg (" + c("libavcodec") + ", " + c("libavformat") +
          ", " + c("libavutil") + ", " + c("libswscale") + "), Vulkan headers and loader (to detect hardware decoding), Opus, PipeWire (" +
          c("libpipewire-0.3") + "), GTK 4.14 or newer for the shell, pthreads."],

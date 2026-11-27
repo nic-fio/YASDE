@@ -1,4 +1,4 @@
-project('yasde', 'c', version: '2.1.0',
+project('yasde', 'c', version: '2.2.0',
   default_options: ['c_std=c17', 'warning_level=3', 'werror=true', 'buildtype=debugoptimized'])
 
 # Ogni pezzo vive nella sua cartella con il suo meson.build e definisce:

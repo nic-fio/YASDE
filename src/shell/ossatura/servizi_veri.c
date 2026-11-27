@@ -70,7 +70,7 @@ void sv_lavoro(Sv *sv, GThreadPool *pool, SvFn fn, void *dati)
         if (t != NULL)
             g_thread_unref(t);
         else
-            fprintf(stderr, "YASDE 2.1: lavoro perso: memoria o thread finiti\n");
+            fprintf(stderr, "YASDE 2.2: lavoro perso: memoria o thread finiti\n");
     }
 }
 
@@ -174,7 +174,7 @@ static void salva_profilo_lavoro(Sv *sv, void *dati)
     SalvaProfilo *j = dati;
     PhErrore e = {{0}};
     if (ph_cfg_telefono_salva(j->seriale, j->copia, &e) != 0)
-        fprintf(stderr, "YASDE 2.1: profilo del telefono non salvato\n");
+        fprintf(stderr, "YASDE 2.2: profilo del telefono non salvato\n");
     ph_cfg_telefono_libera(j->copia);
     g_free(j);
 }
@@ -200,7 +200,7 @@ static void salva_pref_lavoro(Sv *sv, void *dati)
     PhCfgPreferenze *p = dati;
     PhErrore e = {{0}};
     if (ph_cfg_preferenze_salva(p, &e) != 0)
-        fprintf(stderr, "YASDE 2.1: preferenze non salvate\n");
+        fprintf(stderr, "YASDE 2.2: preferenze non salvate\n");
     free(p);
 }
 
@@ -253,7 +253,7 @@ static void profilo_carica(Sv *sv, const char *seriale)
         if (r == -1)
             ph_cfg_telefono_predefinito(prof); /* e per questa sessione mai salvare */
         if (r != 0)
-            fprintf(stderr, "YASDE 2.1: profilo del telefono %s\n",
+            fprintf(stderr, "YASDE 2.2: profilo del telefono %s\n",
                     r == 1 ? "illeggibile, messo da parte" : "non letto, uso i valori predefiniti");
     }
     int volume = prof->volume;
@@ -455,7 +455,7 @@ static void sv_chiudi(void *b)
          * restituisce il prestito mentre ph_col_chiudi lo aspetta. */
         int r = ph_col_chiudi(col);
         if (r == 1)
-            fprintf(stderr, "YASDE 2.1: un prestito non e' tornato in tempo alla chiusura\n");
+            fprintf(stderr, "YASDE 2.2: un prestito non e' tornato in tempo alla chiusura\n");
         g_mutex_lock(&sv->m);
         sv->col = NULL;
         g_mutex_unlock(&sv->m);

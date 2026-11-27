@@ -30,9 +30,9 @@ Popup `PH_POPUP_TELEFONO`: 8 px da destra, 56 dal basso, largo 300, colonna con 
 ### Volume (F-08)
 Popup `PH_POPUP_VOLUME`: a 135 px da destra, 56 dal basso, largo 250, colonna con 10 px:
 - intestazione «Volume» e a destra il valore 12 px #cbd5e1 («Muto» se muto o 0, altrimenti «{percento}%»);
-- cursore 0–100 (`GtkScale` orizzontale, colore accento, etichetta «Volume di YASDE 2.1»): muovendolo si toglie il muto (mockup `onVol`);
+- cursore 0–100 (`GtkScale` orizzontale, colore accento, etichetta «Volume di YASDE 2.2»): muovendolo si toglie il muto (mockup `onVol`);
 - `ph-pbtn` «Muto» con pillola «Attivo»/«Disattivo» (`aria-pressed`);
-- nota 11 px #9aa4b5, interlinea 1,4: «Regola l'audio di YASDE 2.1 sul PC. Il volume del telefono non cambia.»
+- nota 11 px #9aa4b5, interlinea 1,4: «Regola l'audio di YASDE 2.2 sul PC. Il volume del telefono non cambia.»
 - Semantica: guadagno lato PC (`ph_srv_imposta_volume`, `ph_srv_imposta_muto`; lo stato vero torna con `PH_SRV_EV_VOLUME`). Il muto non ferma la cattura. Persistenza: `volume` del profilo (il muto no), salvato con `ph_srv_profilo_salva` a cursore fermo (non a ogni passo).
 
 ## Che cosa NON fa

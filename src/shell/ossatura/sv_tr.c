@@ -84,7 +84,7 @@ void sv_tr_sessione_nuova(Sv *sv, SvSessione *s)
     if (t == NULL) {
         t = ph_tr_crea(s->a, su_avviso, sv, &e);
         if (t == NULL) {
-            fprintf(stderr, "YASDE 2.1: coda dei trasferimenti non creata\n");
+            fprintf(stderr, "YASDE 2.2: coda dei trasferimenti non creata\n");
             return;
         }
         atomic_store(&sv->tr, t);
@@ -99,7 +99,7 @@ void sv_tr_sessione_nuova(Sv *sv, SvSessione *s)
             ph_tr_elenco_libera(&el);
         }
         if (ph_tr_riprendi(t, s->a, &e) != 0) {
-            fprintf(stderr, "YASDE 2.1: coda dei trasferimenti non ripresa\n");
+            fprintf(stderr, "YASDE 2.2: coda dei trasferimenti non ripresa\n");
         } else if (attese > 0) {
             ph_shell_decisione("trasferimenti ripresi", "connessione tornata, %zu voci in attesa", attese);
         }
@@ -119,7 +119,7 @@ void sv_tr_teardown(Sv *sv, SvSessione *s, bool chiusura)
         atomic_store(&sv->tr, NULL);
         ph_tr_chiudi(t);
     } else if (ph_tr_riprendi(t, NULL, &e) != 0) {
-        fprintf(stderr, "YASDE 2.1: coda dei trasferimenti non staccata\n");
+        fprintf(stderr, "YASDE 2.2: coda dei trasferimenti non staccata\n");
     }
 }
 

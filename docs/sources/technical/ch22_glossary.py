@@ -6,7 +6,7 @@ def v(titolo):
 
 
 EN = [
-    ("AppImage", "The single-file package of YASDE (" + c("YASDE-2.1-x86_64.AppImage") + ") with the program, the phone component and the libraries." + v("The AppImage")),
+    ("AppImage", "The single-file package of YASDE (" + c("YASDE-2.2-x86_64.AppImage") + ") with the program, the phone component and the libraries." + v("The AppImage")),
     ("AppRun", "The AppImage's launcher script: sets libraries, schemas and image loaders, then starts the program." + v("The AppImage")),
     ("Automatic density", "The rule that gives every app window a stream equal to its physical pixels and a density of 160 times the shell scale." + v("The density rule")),
     ("Backend", "A realization of the services: the real one in the skeleton, or the fake one." + v("The services and their backends")),

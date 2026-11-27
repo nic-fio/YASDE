@@ -313,7 +313,7 @@ static void giro_una(Sv *sv)
         if (ph_dati_posizione(s->d, permessa, &pos, &e) == 0) {
             letta = true;
         } else {
-            fprintf(stderr, "YASDE 2.1: posizione del telefono non letta\n"); /* mai dati */
+            fprintf(stderr, "YASDE 2.2: posizione del telefono non letta\n"); /* mai dati */
             explicit_bzero(&pos, sizeof pos);
             pos.esito = PH_DATI_POS_SCONOSCIUTA;
         }

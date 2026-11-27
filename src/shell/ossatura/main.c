@@ -1,4 +1,4 @@
-/* Il programma YASDE 2.1 (lo fa l'ossatura). */
+/* Il programma YASDE 2.2 (lo fa l'ossatura). */
 #include "ossatura.h"
 
 int main(int argc, char **argv)

@@ -255,7 +255,7 @@ int main(int argc, char **argv)
     if (opz_prova) /* nessun avviso di GTK (per esempio di misura della griglia) deve comparire */
         g_log_set_always_fatal(
             (GLogLevelFlags)(G_LOG_FATAL_MASK | G_LOG_LEVEL_WARNING | G_LOG_LEVEL_CRITICAL));
-    int r = ph_finto_demo(argc, argv, "YASDE 2.1 - demo launcher", installa, NULL);
+    int r = ph_finto_demo(argc, argv, "YASDE 2.2 - demo launcher", installa, NULL);
     if (r == 0 && opz_prova && !verificato) {
         fprintf(stderr, "prova a schermo: la verifica non e' mai riuscita (%d controlli falliti)\n",
                 esito_prova);

@@ -497,6 +497,6 @@ int main(int argc, char **argv)
         args[n++] = argv[i];
     }
     args[n] = NULL;
-    int r = ph_finto_demo(n, args, "YASDE 2.1 - demo barra", installa, GINT_TO_POINTER(prova));
+    int r = ph_finto_demo(n, args, "YASDE 2.2 - demo barra", installa, GINT_TO_POINTER(prova));
     return r != 0 ? r : (vetro_errori != 0 ? 1 : 0);
 }

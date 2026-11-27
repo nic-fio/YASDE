@@ -3,7 +3,7 @@
 # Uso: pacchetto/costruisci.sh
 # Prima servono l'eseguibile (strumenti/prova.sh veloce) e il jar
 # (strumenti/prova.sh telefono) gia' compilati sul server.
-# Risultato: /media/YASDE/lavoro/pacchetto/YASDE-2.1-x86_64.AppImage
+# Risultato: /media/YASDE/lavoro/pacchetto/YASDE-2.2-x86_64.AppImage
 # Stampa solo le ultime righe; il log intero resta sul server in
 # /media/YASDE/log/pacchetto.log, l'ultima riga e' sempre "uscita N" e lo
 # script esce con lo stesso N (255 se la connessione al server fallisce).

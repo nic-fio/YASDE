@@ -1,6 +1,6 @@
 from build import arrow, box, c, fig, note, p, rif, table, term, tree, ui, ul, warn, zone
 
-S1 = p("The PC side is built with Meson. The root " + c("meson.build") + " declares the project " + c("yasde") + " version 2.1.0 in C with the default options " + c("c_std=c17") + ", " + c("warning_level=3") + ", "
+S1 = p("The PC side is built with Meson. The root " + c("meson.build") + " declares the project " + c("yasde") + " version 2.2.0 in C with the default options " + c("c_std=c17") + ", " + c("warning_level=3") + ", "
        + c("werror=true") + " and " + c("buildtype=debugoptimized") + ", adds " + c("-D_GNU_SOURCE") + ", and then includes the pieces.", lead=True) + \
     table(["Option (" + c("meson_options.txt") + ")", "Type, default", "Meaning"], [
         [c("pezzo"), "string, " + c("tutto"), "Builds one piece (for example " + c("adb") + ", " + c("config") + ", " + c("shell-desktop") + ") or everything. With one piece the others do not exist and its tests use fakes."],
@@ -43,7 +43,7 @@ CONTENT = fig(
     + box(460, 198, 400, 46, "Not included", "full icon themes (only the Kora icons of the table), other image loaders, GIO modules, GTK themes and engines", "dark"),
     900, 284, "«FIG» — What is inside the AppImage and what is left to the system")
 
-S3 = p("The program ships as one file, " + c("YASDE-2.1-x86_64.AppImage") + " (Linux x86_64), plus a source archive, " + c("YASDE-2.1-sorgenti.tar") + ", published on the same release page. "
+S3 = p("The program ships as one file, " + c("YASDE-2.2-x86_64.AppImage") + " (Linux x86_64), plus a source archive, " + c("YASDE-2.2-sorgenti.tar") + ", published on the same release page. "
        "The scripts are " + c("pacchetto/costruisci.sh") + " (starts on the development machine and sends the work to the build server over SSH, to run in the build container) and " + c("pacchetto/dentro.sh") + " (runs inside; mounted read-only: the optimized program from " + c("prova.sh veloce")
        + " and the jar from " + c("prova.sh telefono") + "). The log ends with " + c("uscita N") + ", and the script exits with the same N. A lock prevents two builds at once; a cache of downloaded sources and of the already built FFmpeg "
        "survives between runs, the rest is redone from zero. The script checks its folder variables (" + c("PACCHETTO_LAVORO") + ", " + c("PACCHETTO_VELOCE") + ", " + c("PACCHETTO_TELEFONO") + ", " + c("PACCHETTO_LOG") + ") against a strict pattern "

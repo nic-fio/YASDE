@@ -139,5 +139,5 @@ static void installa(PhShell *sh, PhFinto *f, void *u)
 int main(int argc, char **argv)
 {
     Demo d = {0};
-    return ph_finto_demo(argc, argv, "YASDE 2.1 - demo sistema", installa, &d);
+    return ph_finto_demo(argc, argv, "YASDE 2.2 - demo sistema", installa, &d);
 }

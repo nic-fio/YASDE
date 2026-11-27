@@ -1125,7 +1125,7 @@ static void input_lavoro(Sv *sv, void *dati)
             if (j->pizzico) {
                 if (ph_input_pizzico(s->c, id, (uint16_t)in->video_w, (uint16_t)in->video_h, (uint8_t)j->fase,
                                      (uint16_t)in->x, (uint16_t)in->y, (int16_t)j->passo, &e) != 0) {
-                    fprintf(stderr, "YASDE 2.1: pizzico non mandato\n"); /* mai le coordinate */
+                    fprintf(stderr, "YASDE 2.2: pizzico non mandato\n"); /* mai le coordinate */
                 } else {
                     g_mutex_lock(&sf->m);
                     sf->pizzico_inviato = j->fase != PH_PIZZICO_FINE && j->fase != PH_PIZZICO_ANNULLA;

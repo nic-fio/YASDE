@@ -308,7 +308,7 @@ int ph_finto_demo(int argc, char **argv, const char *titolo, PhFintoInstalla ins
     ph_shell_strato_aggiungi(sh, PH_STRATO_DESKTOP, sfondo);
 
     GtkWidget *win = gtk_window_new();
-    gtk_window_set_title(GTK_WINDOW(win), titolo != NULL ? titolo : "YASDE 2.1 - demo");
+    gtk_window_set_title(GTK_WINDOW(win), titolo != NULL ? titolo : "YASDE 2.2 - demo");
     gtk_window_set_default_size(GTK_WINDOW(win), larg, alt);
     gtk_window_set_child(GTK_WINDOW(win), ph_shell_radice(sh));
     GtkEventController *k = gtk_event_controller_key_new();

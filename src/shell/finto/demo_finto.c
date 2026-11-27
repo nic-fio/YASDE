@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     for (int i = 1; i < argc; i++)
         if (strcmp(argv[i], "--prova") == 0)
             d.prova = true;
-    int r = ph_finto_demo(argc, argv, "YASDE 2.1 - telefono finto", installa, &d);
+    int r = ph_finto_demo(argc, argv, "YASDE 2.2 - telefono finto", installa, &d);
     /* In prova l'etichetta e' stata tolta a ciclo acceso e un avviso e' arrivato DOPO: se non
      * e' arrivato, la prova non ha provato nulla. */
     if (r == 0 && d.prova && d.eventi_dopo == 0) {

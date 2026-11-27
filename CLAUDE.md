@@ -1,6 +1,6 @@
 # YASDE
 
-Nome: il prodotto si chiama **YASDE** («Yet Another Samsung Dex Emulator», progetto indipendente non affiliato a Samsung), versione corrente 2.1. È un progetto nuovo, senza legami con progetti precedenti: nessun altro nome di prodotto deve comparire in codice, documenti, script, pacchetto o attrezzatura (i controlli di `pacchetto/dentro.sh` e di `docs/sources/build.py` lo fanno rispettare). App e documenti pubblici solo in inglese (sostituisce «it/en» della specifica). Sito del progetto: `https://yasde.nicfio.it/`; contatto: `yasde@nicfio.it` (decisi dal committente: sono gli unici indirizzi ammessi nei file).
+Nome: il prodotto si chiama **YASDE** («Yet Another Samsung Dex Emulator», progetto indipendente non affiliato a Samsung), versione corrente 2.2. È un progetto nuovo, senza legami con progetti precedenti: nessun altro nome di prodotto deve comparire in codice, documenti, script, pacchetto o attrezzatura (i controlli di `pacchetto/dentro.sh` e di `docs/sources/build.py` lo fanno rispettare). App e documenti pubblici solo in inglese (sostituisce «it/en» della specifica). Sito del progetto: `https://yasde.nicfio.it/`; contatto: `yasde@nicfio.it` (decisi dal committente: sono gli unici indirizzi ammessi nei file).
 
 Scopo: app Linux (AppImage) con una sola finestra che è un desktop emulato; le app di un telefono Android 14+ girano come finestre interne. Fonte di verità: `yasde-specification.md` e `mockup/project/Main.dc.html`. Niente funzioni oltre a quelle.
 

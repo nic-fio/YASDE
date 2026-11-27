@@ -1336,7 +1336,7 @@ int main(int argc, char **argv)
         /* Nessun avviso di GTK (per esempio "snapshot without a current allocation") deve comparire. */
         g_log_set_always_fatal((GLogLevelFlags)(G_LOG_FATAL_MASK | G_LOG_LEVEL_WARNING | G_LOG_LEVEL_CRITICAL));
     }
-    int rc = ph_finto_demo(argc, argv, "YASDE 2.1 - demo finestra-app", installa, &d);
+    int rc = ph_finto_demo(argc, argv, "YASDE 2.2 - demo finestra-app", installa, &d);
     /* La prova --compat deve aver finito tutti i passi nel tempo dato (--prova MS). */
     if (d.compat && d.passo < G_N_ELEMENTS(PASSI_COMPAT)) {
         fprintf(stderr, "demo: prova compatibilita' NON FINITA (passo %u)\n", d.passo);

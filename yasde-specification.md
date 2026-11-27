@@ -1,6 +1,6 @@
-# YASDE 2.1 — Specifica per Claude Code
+# YASDE 2.2 — Specifica per Claude Code
 
-> Documento di partenza per la progettazione e lo sviluppo di **YASDE 2.1**: un'app (AppImage) la cui unica finestra, ridimensionabile, è un **desktop environment emulato** nel quale le app di *qualunque* telefono Android (anche senza uscita video) girano come finestre interne.
+> Documento di partenza per la progettazione e lo sviluppo di **YASDE 2.2**: un'app (AppImage) la cui unica finestra, ridimensionabile, è un **desktop environment emulato** nel quale le app di *qualunque* telefono Android (anche senza uscita video) girano come finestre interne.
 > Autore delle specifiche: il committente (non scrive codice, dà le specifiche e giudica i risultati). Questo documento nasce da una lunga discussione di funzionalità e da un mockup HTML interattivo iterato più volte.
 > Lingua del progetto: **italiano** (nomi, commenti, messaggi, documenti). Questo file è in italiano per coerenza con le convenzioni di lavoro (sezione 11).
 
@@ -35,7 +35,7 @@
 
 ### 1.1 Che cos'è
 
-YASDE 2.1 è un'app per PC (Linux, AppImage) con **una sola finestra principale ridimensionabile che rappresenta un desktop**, in stile Samsung DeX / AndroidDex. Sul desktop virtuale ci sono:
+YASDE 2.2 è un'app per PC (Linux, AppImage) con **una sola finestra principale ridimensionabile che rappresenta un desktop**, in stile Samsung DeX / AndroidDex. Sul desktop virtuale ci sono:
 
 - uno **sfondo** personalizzabile,
 - **icone di app** e **widget**,
@@ -52,7 +52,7 @@ L'utente può mettere la finestra principale a **schermo intero** per avere l'im
 
 ### 1.3 Nome
 
-**[DECISO]** Il nome è **YASDE 2.1**. Nel mockup il nome compare nella barra del titolo. L'organizzazione del repository (nuovo repo, branch o cartella nuova) **non è ancora decisa**: **[APERTO]**, da proporre al committente in Fase 0.
+**[DECISO]** Il nome è **YASDE 2.2**. Nel mockup il nome compare nella barra del titolo. L'organizzazione del repository (nuovo repo, branch o cartella nuova) **non è ancora decisa**: **[APERTO]**, da proporre al committente in Fase 0.
 
 ### 1.4 Perimetro iniziale
 
@@ -127,7 +127,7 @@ Questi vincoli valgono per **ogni funzione**: tutto ciò che una funzione modifi
 | D16 | **Widget** aggiunti dal menu del clic destro sul desktop, voce "Aggiungi widget…" (come DeX), insieme a "Cambia sfondo…" | |
 | D17 | **Trasferimento file** con due pulsanti nella barra: freccia su = PC→telefono, freccia giù = telefono→PC (5.9) | Funzione chiave, assente in DeX |
 | D18 | Sul telefono il file può trovarsi in **qualunque cartella**, non solo in quelle preimpostate; dalla selezione delle cartelle si deve poter risalire fino a **"/"** (5.9.4) | Correzione fatta dopo due iterazioni del mockup |
-| D19 | Nome del prodotto: **YASDE 2.1** | |
+| D19 | Nome del prodotto: **YASDE 2.2** | |
 | D20 | Supporto minimo **Android 14+** | |
 
 ---
@@ -314,7 +314,7 @@ Ogni funzione ha un identificatore **F-xx** per la tracciabilità (test, commit,
 - Un AppImage, **una sola finestra principale**, **ridimensionabile**, con i **controlli standard del window manager Linux**: minimizza, ingrandisci/ripristina, chiudi. Nel mockup sono disegnati nella barra del titolo (stile libadwaita); nel prodotto sono quelli del sistema/GTK.
 - **Schermo intero**: un **solo** pulsante, **nella barra del titolo**. In schermo intero la barra del titolo si riduce a una **striscia sottile (6 px)** che, passando il mouse sul **bordo alto**, si espande (36 px nel mockup) e permette di uscire. Il pulsante cambia etichetta ("Schermo intero" / "Esci da schermo intero").
 - Dimensioni del mockup (riferimento): finestra host 980×584 di partenza; schermo intero 1280×800; ingrandita 1280×764.
-- Se la finestra host viene **chiusa**: la connessione si chiude e il telefono viene ripristinato (guardiani); il mockup mostra, per illustrazione, una schermata "YASDE 2.1 è chiuso — Riapri".
+- Se la finestra host viene **chiusa**: la connessione si chiude e il telefono viene ripristinato (guardiani); il mockup mostra, per illustrazione, una schermata "YASDE 2.2 è chiuso — Riapri".
 - Un secondo avvio **non** apre una seconda connessione: porta in primo piano l'istanza esistente.
 - **Criteri di accettazione**: ridimensionamento fluido (senza scatti) con N finestre interne aperte; schermo intero entra/esce senza ricreare le sessioni; la striscia in alto si espande in meno di 150 ms al passaggio del mouse.
 
@@ -442,7 +442,7 @@ I pulsanti di trasferimento mostrano un **puntino colorato** se ci sono trasferi
 
 **[DECISO]** Nell'area di sistema della barra, come DeX.
 
-- Pulsante con icona di altoparlante (diversa se mutato o a 0); un clic apre un popup con **cursore 0–100**, pulsante **muto**, percentuale e nota: "Regola l'audio di YASDE 2.1 sul PC. Il volume del telefono non cambia."
+- Pulsante con icona di altoparlante (diversa se mutato o a 0); un clic apre un popup con **cursore 0–100**, pulsante **muto**, percentuale e nota: "Regola l'audio di YASDE 2.2 sul PC. Il volume del telefono non cambia."
 - **Semantica**: guadagno lato PC dell'audio di YASDE. Muto non ferma la cattura (si smette di riprodurre). Persistenza: ultimo livello.
 - **[PROPOSTA]** Estensione: scorciatoie da tastiera per volume/muto quando la shell ha il focus.
 

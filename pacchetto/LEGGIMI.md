@@ -1,7 +1,7 @@
-# Pacchetto AppImage di YASDE 2.1
+# Pacchetto AppImage di YASDE 2.2
 
-Un solo file, `YASDE-2.1-x86_64.AppImage` (Linux x86_64), piu' l'archivio dei
-sorgenti `YASDE-2.1-sorgenti.tar` da pubblicare nella stessa pagina di
+Un solo file, `YASDE-2.2-x86_64.AppImage` (Linux x86_64), piu' l'archivio dei
+sorgenti `YASDE-2.2-sorgenti.tar` da pubblicare nella stessa pagina di
 rilascio. Nessun file `.desktop` viene installato sul PC (specifica 11.5):
 quello dentro il pacchetto serve solo ad `appimagetool` e dichiara
 `X-AppImage-Integrate=false`.
@@ -67,7 +67,7 @@ costruzione si ferma.
   doppia licenza o GPL solo su parti non distribuite, ognuno col suo motivo).
 - **Offerta del sorgente**: `usr/share/doc/licenses/SOURCE-OFFER.txt` dice che i
   sorgenti sono pubblicati accanto all'AppImage nella stessa pagina di rilascio,
-  nell'archivio `YASDE-2.1-sorgenti.tar` (con `SHA256SUMS`), e elenca versioni e
+  nell'archivio `YASDE-2.2-sorgenti.tar` (con `SHA256SUMS`), e elenca versioni e
   origini esatte. L'archivio contiene i sorgenti Debian (`apt-get source`) di ogni
   libreria Debian inclusa, quelli di libtiff e cairo, e il tar di FFmpeg.
   **Va pubblicato insieme all'AppImage.**

@@ -8,7 +8,7 @@
 #include "config/config.h"
 #include "shell/shell.h"
 
-/* Il programma YASDE 2.1: applicazione GTK a istanza unica, finestra
+/* Il programma YASDE 2.2: applicazione GTK a istanza unica, finestra
  * principale F-01, servizi veri, pezzi installati. Torna il codice d'uscita. */
 int ph_ossatura_esegui(int argc, char **argv);
 

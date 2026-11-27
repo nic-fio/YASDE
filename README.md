@@ -1,6 +1,6 @@
 # YASDE
 
-**Yet Another Samsung Dex Emulator** — version 2.1. Site: <https://yasde.nicfio.it/>
+**Yet Another Samsung Dex Emulator** — version 2.2. Site: <https://yasde.nicfio.it/>
 
 YASDE is a Linux application, shipped as a single AppImage. Its one window is an emulated
 desktop: the apps of an Android 14+ phone run inside it as separate windows, with sound,
