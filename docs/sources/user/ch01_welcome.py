@@ -63,7 +63,7 @@ S3 = table(["Convention", "Meaning"], [
     p("In this manual “phone” is the Android phone connected to YASDE and “PC” is the Linux computer running it. "
       "Names of Android settings, for example " + ui("Wireless debugging") + ", can differ a little from one brand to "
       "another: the manual uses the most common names. The figures that are drawings show the idea. The screenshots "
-      "were taken with a demonstration phone, with invented apps and data; the content inside the app windows is a placeholder.") + \
+      "were taken with a demonstration phone, with invented apps and data; the app icons are generic icons of the Kora theme (credited in the chapter on the desktop) and the content inside the app windows is a placeholder.") + \
     note("this manual describes YASDE " + VERSION + ". What it says is checked against the program: if something is "
          "not described here, YASDE does not do it.", "Version.")
 

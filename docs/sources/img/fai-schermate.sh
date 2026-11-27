@@ -9,6 +9,11 @@
 #         phone-popup transfer transfer-list widgets window-menu decoding-warning desktop-widgets
 # Prima va compilato "veloce" sul server (strumenti/prova.sh veloce): i demo si
 # prendono da /media/YASDE/lavoro/veloce/build-veloce.
+# Icone delle app finte: icone generiche del tema Kora (GPL-3, NON nel repository). Le SVG
+# si prendono dalla copia di Kora sul server (/media/YASDE/terzi/kora, al commit fissato
+# da pacchetto/icone-kora.sh), si convertono in PNG 128x128 con gdk-pixbuf e restano in
+# ~/.cache/yasde-sviluppo/schermate/icone-kora/ insieme a tabella.txt (copia di
+# icone-demo.txt); il programma le legge con YASDE_ICONE_KORA, come nel pacchetto vero.
 # Le foto grezze restano in ~/.cache/yasde-sviluppo/schermate/grezze/.
 set -e
 QUI="$(cd "$(dirname "$0")" && pwd)"
@@ -18,6 +23,27 @@ SRV="${YASDE_SERVER:?imposta YASDE_SERVER con il nome o l'indirizzo del server d
 B=/media/YASDE/lavoro/veloce/build-veloce/src/shell
 mkdir -p "$G" "$D/bin"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+# Prepara la cartella delle icone Kora per il demo (SVG dal server, PNG con gdk-pixbuf).
+prepara_icone() {
+    K="$D/icone-kora"; mkdir -p "$K/svg"
+    cp "$QUI/icone-demo.txt" "$K/tabella.txt"
+    # Tabella letta riga per riga; un nome di icona strano ferma tutto (finirebbe in un
+    # percorso locale e in uno remoto).
+    while IFS= read -r riga || [ -n "$riga" ]; do
+        case "$riga" in ''|'#'*) continue ;; esac
+        n=${riga#* }
+        printf '%s\n' "$n" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]*$' && ! printf '%s' "$n" | grep -q '\.\.' \
+            || { echo "nome di icona non ammesso in icone-demo.txt: $n"; exit 1; }
+        [ -f "$K/$n.png" ] && continue
+        scp -q -o BatchMode=yes "$SRV:/media/YASDE/terzi/kora/kora/apps/scalable/$n.svg" "$K/svg/$n.svg" \
+            || { echo "manca l'icona Kora $n sul server"; exit 1; }
+        gdk-pixbuf-thumbnailer -s 128 "$K/svg/$n.svg" "$K/$n.png.nuovo" \
+            && mv -f "$K/$n.png.nuovo" "$K/$n.png" \
+            || { rm -f "$K/$n.png.nuovo"; echo "conversione fallita: $n"; exit 1; }
+    done < "$QUI/icone-demo.txt"
+    export YASDE_ICONE_KORA="$K"
+}
 
 scarica() { # nome-demo percorso-sul-server
     scp -q -o BatchMode=yes "$SRV:$B/$2" "$D/bin/$1.nuovo" && mv -f "$D/bin/$1.nuovo" "$D/bin/$1"
@@ -80,6 +106,7 @@ fai() {
     esac
 }
 
+prepara_icone
 scarica demo-ossatura ossatura/demo-ossatura
 scarica demo-connessione connessione/demo-connessione
 TUTTE="connect connect-search desktop launcher window windows-snapped volume notifications phone-popup transfer transfer-list widgets window-menu decoding-warning desktop-widgets"
