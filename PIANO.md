@@ -296,3 +296,27 @@ Widget più belli e più utili: vetro scuro, forme diverse dal rettangolo, grafi
 - Il committente ha deciso: i widget nuovi escono come YASDE 2.2. Numero cambiato ovunque indichi il prodotto; protocollo e formato del profilo restano 1; la cartella dei dati non contiene il numero.
 - Stile «No background» per orologio e meteo: fatto.
 - Sonda in sola lettura sul telefono: registro chiamate e rete leggibili senza root; musica non verificata (nessun lettore attivo). B1/B3/B4 fuori dalla 2.2.
+
+### 8.7 Clic sui widget: la pagina giusta (27 nov 2026, deciso dal committente dopo la prova dal vivo)
+
+**Difetto visto dal vivo:** il clic sulla batteria apre le Impostazioni sulla schermata iniziale. **Obiettivo:** batteria → pagina Batteria; memoria → pagina Archiviazione; funziona anche se la finestra delle Impostazioni è già aperta. Poi si pubblica la 2.2.
+
+**Regola di sicurezza:** il PC non manda mai un intent libero. Manda un numero di pagina da un elenco fisso; il telefono lo traduce in un'azione standard di Android puro. Pagina sconosciuta = errore senza toccare nulla.
+
+**Pagine (u8):** 0 = nessuna (avvio normale); 1 = batteria (`android.intent.action.POWER_USAGE_SUMMARY`); 2 = memoria (`android.settings.INTERNAL_STORAGE_SETTINGS`). Sul telefono di prova entrambe rispondono in `com.android.settings` (letto con `resolve-activity`, sola lettura).
+
+**Protocollo (versione 2: il corpo di VIDEO_APRI cambia):**
+- VIDEO_APRI: in coda `u8` pagina. Con pagina ≠ 0 il telefono cerca l'attività che risponde a quell'azione DENTRO il pacchetto dato (`setPackage`); se non c'è, avvio normale del pacchetto (risposta OK comunque). Pagina fuori elenco → ERRORE, niente creato.
+- Nuovo 0x44 VIDEO_PAGINA, PC→T: `u32` id, `u8` pagina (≠ 0). Avvia la pagina sullo schermo virtuale di quella sessione, restando nel pacchetto della sessione. OK; ERRORE se sessione ignota, specchio, pagina fuori elenco o nessuna attività risponde (nulla toccato).
+
+**Contratti (autorizzati a cambiare per questo lavoro, solo come scritto qui):**
+- `src/componente/componente.h`: `PH_PROTOCOLLO_VERSIONE 2`; enum `PhVideoPagina`; campo `uint8_t pagina` in `PhVideoRichiesta`; `int ph_video_pagina(PhVideoFlusso *f, uint8_t pagina, PhErrore *e)` (regge la chiusura in parallelo come le altre; attesa con limite).
+- `src/shell/servizi.h`: campo pagina nella richiesta di flusso e una chiamata per mandare la pagina a un flusso aperto (mai bloccante per il thread GTK: stesso schema delle altre richieste ai flussi).
+- `src/shell/shell.h`: `ph_shell_apri_app_pagina(sh, pacchetto, pagina)` e il campo `apri_pagina` nel gestore delle finestre; `ph_shell_apri_app` resta e vale pagina 0.
+- `docs/protocollo.md`, `telefono/base` (`Protocollo.java`, tipi) e `telefono/contratto/` se serve.
+
+**Pezzi:** telefono-video (Sessione/Video), componente (video.c + finto), ossatura (sv_flussi, finti), finestra-app (finestra del pacchetto già aperta → in primo piano + VIDEO_PAGINA; altrimenti apertura con pagina), desktop (batteria → 1, memoria → 2; «stato del telefono» resta sulle Impostazioni generali), telefono finto.
+
+**Rischi:** la finestra identificata dal pacchetto resta una sola (Impostazioni); una pagina che fallisce non deve chiudere né sporcare la sessione; telefono vero: prova solo quando il committente non sta usando YASDE (regola: se c'è già un `it.yasde` la prova esce).
+
+**Finito quando:** `tutto`, `veloce`, `telefono` puliti; ogni ramo d'errore ha la sua prova; manuali (protocollo, capitoli tecnici, ch05 utente) allineati; revisore APPROVATO; il committente vede dal vivo batteria → Batteria.
