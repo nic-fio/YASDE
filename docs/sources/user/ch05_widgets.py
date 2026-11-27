@@ -6,6 +6,7 @@ from build import c, note, p, rif, shot, steps, table, tip, ui, ul, warn
 S1 = p("Widgets are cards on the desktop. YASDE draws them on the PC with data it reads from the phone. They "
        "are not Android widgets: only the ones in the catalog below exist. Like the taskbar they are dark glass, with white text; "
        "the menus and dialogs stay light.", lead=True) + \
+    shot("desktop-widgets.png", "«FIG» — The desktop with widgets: analog clock, battery, quick switches, now playing, network, quick notes, month calendar, phone storage, next alarm, weather and recent calls (demonstration phone, invented data)") + \
     shot("widgets.png", "«FIG» — The Add widget dialog") + steps([
         "Right-click an empty part of the desktop and choose " + ui("Add widget…") + ".",
         "In the dialog " + ui("Add widget") + " press " + ui("Add") + " on the card you want. The message " + ui("Widget added") + " confirms it. You can add several; close the dialog with " + ui("Done") + ".",

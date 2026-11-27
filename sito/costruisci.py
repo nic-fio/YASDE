@@ -33,7 +33,7 @@ IMG = RADICE / "docs" / "sources" / "img"
 TIPI = {".png": "image/png"}
 # Immagini incorporate nella pagina come data URI
 IMMAGINI = {}
-for _n in ("desktop.png", "launcher.png", "windows-snapped.png", "widgets.png", "transfer.png"):
+for _n in ("desktop-widgets.png", "launcher.png", "windows-snapped.png", "widgets.png", "transfer.png"):
     IMMAGINI[_n] = IMG / _n
 
 

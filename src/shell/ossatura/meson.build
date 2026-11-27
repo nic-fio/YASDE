@@ -48,7 +48,10 @@ test('shell-ossatura-logica', executable('prova_ossatura', 'prova_ossatura.c',
 # sta PRIMA, cosi' il linker prende da li' i simboli di finestra-app e il programma vero
 # (yasde) resta senza gli aiuti.
 demo_ossatura_dep = shell_presenti.contains('finestra-app') ? [shell_finestra_app_demo_dep] : []
-demo_ossatura = executable('demo-ossatura', 'demo.c', c_args: ossatura_args,
+# La disposizione dei widget per la schermata «vetrina» (solo demo) sta nella cartella del desktop.
+demo_vetrina_lib = shell_presenti.contains('desktop') ? [static_library('demo_vetrina', '../desktop/demo_vetrina.c',
+  include_directories: [inc, include_directories('../desktop')], dependencies: [shell_desktop_dep])] : []
+demo_ossatura = executable('demo-ossatura', 'demo.c', c_args: ossatura_args, link_with: demo_vetrina_lib,
   include_directories: shell_presenti_inc, dependencies: demo_ossatura_dep + [shell_ossatura_dep, shell_finto_dep])
 test('shell-ossatura-schermo', demo_ossatura, args: ['--prova', '3000'],
   env: shell_ambiente_schermo, suite: 'shell', timeout: 60)

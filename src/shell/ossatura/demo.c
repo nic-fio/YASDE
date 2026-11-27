@@ -13,7 +13,8 @@
  * <sel> = css=<classe>[#n] | tip=<suggerimento>[#n] | dato=<chiave>[#n] | testo=<etichetta>[#n]
  * (n-esimo in ordine di albero, da 0); hook:<azione>:<n> e' un'azione di
  * finestra_app_demo.h; invia:<nome> (accoda l'invio di un file vuoto da 40 MB, tolto all'uscita);
- * decodifica-sw (l'avviso «decodifica col processore»);
+ * decodifica-sw (l'avviso «decodifica col processore»); vetrina (la disposizione fissa
+ * di undici widget con dati finti, per desktop-widgets.png: src/shell/desktop/demo_vetrina.c);
  * destro:X:Y (clic destro nel punto, coordinate della
  * finestra, per i menu); notifica; chiudi (chiude il popup); elenca (stampa i
  * pulsanti su stderr, per scegliere i selettori). */
@@ -31,6 +32,9 @@
 #include "shell/servizi_backend.h"
 #if PH_SHELL_HA_FINESTRA_APP
 #include "shell/finestra-app/finestra_app_demo.h"
+#endif
+#if PH_SHELL_HA_DESKTOP
+void ph_demo_vetrina(PhShell *sh); /* src/shell/desktop/demo_vetrina.c, solo demo */
 #endif
 
 typedef struct {
@@ -187,6 +191,10 @@ static gboolean passo(gpointer p)
     } else if (strcmp(st, "decodifica-sw") == 0) {
         /* Come se un flusso passasse al processore: l'avviso a schermo (solo per le foto del manuale). */
         ph_servizi_pubblica_decodifica_software(ph_shell_servizi(d->sh));
+#if PH_SHELL_HA_DESKTOP
+    } else if (strcmp(st, "vetrina") == 0) {
+        ph_demo_vetrina(d->sh);
+#endif
     } else if (strcmp(st, "chiudi") == 0) {
         ph_shell_popup_chiudi(d->sh);
     } else if (strncmp(st, "destro:", 7) == 0) {

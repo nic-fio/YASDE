@@ -6,7 +6,7 @@
 #
 # Uso:  docs/sources/img/fai-schermate.sh [nome ...]      (senza nomi: tutte)
 #   nomi: connect connect-search desktop launcher window windows-snapped volume notifications
-#         phone-popup transfer transfer-list widgets window-menu decoding-warning
+#         phone-popup transfer transfer-list widgets window-menu decoding-warning desktop-widgets
 # Prima va compilato "veloce" sul server (strumenti/prova.sh veloce): i demo si
 # prendono da /media/YASDE/lavoro/veloce/build-veloce.
 # Le foto grezze restano in ~/.cache/yasde-sviluppo/schermate/grezze/.
@@ -72,6 +72,7 @@ fai() {
     phone-popup) foto phone-popup 6 demo-ossatura --app-neutra --passi "clic:$SIS#1" ;;
     notifications) foto notifications 6 demo-ossatura --app-neutra --passi "clic:$SIS#2" ;;
     transfer)  foto transfer 6 demo-ossatura --app-neutra --passi "clic:tip=Send files to the phone (PC to phone)" ;;
+    desktop-widgets) foto desktop-widgets 9 demo-ossatura --app-neutra --passi "vetrina" ;;
     widgets)   foto widgets 8 demo-ossatura --app-neutra --passi "destro:600:300,clic:testo=Add widget…" ;;
     window-menu) foto window-menu 7 demo-ossatura --app-neutra --passi "app:it.finto.note,clic:css=ph-finestra-app-puls#3" ;;
     decoding-warning) foto decoding-warning 6 demo-ossatura --app-neutra --passi "decodifica-sw" ;;
@@ -81,7 +82,7 @@ fai() {
 
 scarica demo-ossatura ossatura/demo-ossatura
 scarica demo-connessione connessione/demo-connessione
-TUTTE="connect connect-search desktop launcher window windows-snapped volume notifications phone-popup transfer transfer-list widgets window-menu decoding-warning"
+TUTTE="connect connect-search desktop launcher window windows-snapped volume notifications phone-popup transfer transfer-list widgets window-menu decoding-warning desktop-widgets"
 for n in ${*:-$TUTTE}; do fai "$n"; done
 
 # Copie ottimizzate: stesso nome, in docs/sources/img/ (le grezze restano nella cache).
